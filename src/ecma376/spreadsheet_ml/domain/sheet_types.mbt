@@ -791,13 +791,13 @@ pub fn CT_RevisionHeaders::new(
   let history = revision_headers_bool(element, "history", true)
   let track_revisions = revision_headers_bool(element, "trackRevisions", true)
   let exclusive = revision_headers_bool(element, "exclusive", false)
-  let revision_id = attr_uint(element, "revisionId", 0)
-  let version = attr_int(element, "version", 1)
+  let revision_id = attr_uint_schema(element, "revisionId", 0)
+  let version = attr_int_schema(element, "version", 1)
   let keep_change_history = revision_headers_bool(
     element, "keepChangeHistory", true,
   )
   let is_protected = revision_headers_bool(element, "protected", false)
-  let preserve_history = attr_uint(element, "preserveHistory", 30)
+  let preserve_history = attr_uint_schema(element, "preserveHistory", 30)
   {
     element,
     header,
@@ -851,7 +851,9 @@ pub(all) struct CT_RevisionHeader {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RevisionHeader::new(element : @xml.Element) -> CT_RevisionHeader {
+pub fn CT_RevisionHeader::new(
+  element : @xml.Element,
+) -> CT_RevisionHeader raise @opc_errors.SchemaViolation {
   let mut sheet_id_map : CT_SheetIdMap? = None
   let mut reviewed_list : CT_ReviewedRevisions? = None
   let mut ext_lst : CT_ExtensionList? = None
@@ -874,7 +876,7 @@ pub fn CT_RevisionHeader::new(element : @xml.Element) -> CT_RevisionHeader {
     Some(value) => value
     None => ""
   }
-  let max_sheet_id = attr_uint(element, "maxSheetId", 0)
+  let max_sheet_id = attr_uint_schema(element, "maxSheetId", 0)
   let user_name = match attr(element, "userName") {
     Some(value) => value
     None => ""
@@ -883,8 +885,8 @@ pub fn CT_RevisionHeader::new(element : @xml.Element) -> CT_RevisionHeader {
     Some(value) => value
     None => ""
   }
-  let min_r_id = attr_uint_opt(element, "minRId")
-  let max_r_id = attr_uint_opt(element, "maxRId")
+  let min_r_id = attr_uint_opt_schema(element, "minRId")
+  let max_r_id = attr_uint_opt_schema(element, "maxRId")
   {
     element,
     sheet_id_map,
@@ -912,8 +914,10 @@ pub(all) struct CT_SheetId {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetId::new(element : @xml.Element) -> CT_SheetId {
-  let val = attr_uint(element, "val", 0)
+pub fn CT_SheetId::new(
+  element : @xml.Element,
+) -> CT_SheetId raise @opc_errors.SchemaViolation {
+  let val = attr_uint_schema(element, "val", 0)
   { element, val }
 }
 
@@ -933,7 +937,7 @@ pub(all) struct CT_ReviewedRevisions {
 ///|
 pub fn CT_ReviewedRevisions::new(
   element : @xml.Element,
-) -> CT_ReviewedRevisions {
+) -> CT_ReviewedRevisions raise @opc_errors.SchemaViolation {
   let reviewed : Array[CT_Reviewed] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -942,7 +946,7 @@ pub fn CT_ReviewedRevisions::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, reviewed, count }
 }
 
@@ -958,8 +962,10 @@ pub(all) struct CT_Reviewed {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Reviewed::new(element : @xml.Element) -> CT_Reviewed {
-  let r_id = attr_uint(element, "rId", 0)
+pub fn CT_Reviewed::new(
+  element : @xml.Element,
+) -> CT_Reviewed raise @opc_errors.SchemaViolation {
+  let r_id = attr_uint_schema(element, "rId", 0)
   { element, r_id }
 }
 

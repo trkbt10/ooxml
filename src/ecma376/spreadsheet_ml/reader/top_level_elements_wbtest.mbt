@@ -577,11 +577,57 @@ test "SML metadata reader rejects malformed metadataType booleans" {
 }
 
 ///|
-test "SML headers reader rejects malformed revision-header booleans" {
-  let invalid = try? read_headers(
-    bytes("<s:headers xmlns:s=\"urn:s\" shared=\"maybe\"/>"),
-  )
+fn assert_headers_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_headers(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML headers reader rejects malformed revision-header booleans" {
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\" shared=\"maybe\"/>",
+  )
+}
+
+///|
+test "SML headers reader rejects malformed revision-header unsigned integers" {
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\" revisionId=\"abc\"/>",
+  )
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\" preserveHistory=\"abc\"/>",
+  )
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\"><s:header maxSheetId=\"abc\"/></s:headers>",
+  )
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\"><s:header minRId=\"abc\"/></s:headers>",
+  )
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\"><s:header>" +
+    "<s:sheetIdMap count=\"abc\"/></s:header></s:headers>",
+  )
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\"><s:header>" +
+    "<s:sheetIdMap><s:sheetId val=\"abc\"/></s:sheetIdMap>" +
+    "</s:header></s:headers>",
+  )
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\"><s:header>" +
+    "<s:reviewedList count=\"abc\"/></s:header></s:headers>",
+  )
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\"><s:header>" +
+    "<s:reviewedList><s:reviewed rId=\"abc\"/></s:reviewedList>" +
+    "</s:header></s:headers>",
+  )
+}
+
+///|
+test "SML headers reader rejects malformed revision-header signed integers" {
+  assert_headers_schema_violation(
+    "<s:headers xmlns:s=\"urn:s\" version=\"abc\"/>",
+  )
 }
 
 ///|

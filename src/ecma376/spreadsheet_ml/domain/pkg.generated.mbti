@@ -2784,14 +2784,14 @@ pub(all) struct CT_Reviewed {
   element : @xml.Element
   r_id : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Reviewed::new(@xml.Element) -> Self
+pub fn CT_Reviewed::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ReviewedRevisions {
   element : @xml.Element
   reviewed : Array[CT_Reviewed]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_ReviewedRevisions::new(@xml.Element) -> Self
+pub fn CT_ReviewedRevisions::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionAutoFormatting {
   element : @xml.Element
@@ -2921,7 +2921,7 @@ pub(all) struct CT_RevisionHeader {
   min_r_id : Int?
   max_r_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionHeader::new(@xml.Element) -> Self
+pub fn CT_RevisionHeader::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionHeaders {
   element : @xml.Element
@@ -3228,14 +3228,14 @@ pub(all) struct CT_SheetId {
   element : @xml.Element
   val : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetId::new(@xml.Element) -> Self
+pub fn CT_SheetId::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetIdMap {
   element : @xml.Element
   count : Int?
   sheet_ids : Array[CT_SheetId]
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetIdMap::new(@xml.Element) -> Self
+pub fn CT_SheetIdMap::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetPr {
   element : @xml.Element

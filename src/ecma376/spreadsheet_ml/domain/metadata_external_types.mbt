@@ -224,8 +224,10 @@ pub(all) struct CT_SheetIdMap {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetIdMap::new(element : @xml.Element) -> CT_SheetIdMap {
-  let count = attr_uint_opt(element, "count")
+pub fn CT_SheetIdMap::new(
+  element : @xml.Element,
+) -> CT_SheetIdMap raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let sheet_ids : Array[CT_SheetId] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
