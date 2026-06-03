@@ -1524,35 +1524,35 @@ pub(all) struct CT_GroupLevel {
   user : Bool
   custom_roll_up : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupLevel::new(@xml.Element) -> Self
+pub fn CT_GroupLevel::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_GroupLevels {
   element : @xml.Element
   group_level : Array[CT_GroupLevel]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupLevels::new(@xml.Element) -> Self
+pub fn CT_GroupLevels::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_GroupMember {
   element : @xml.Element
   unique_name : String
   group : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupMember::new(@xml.Element) -> Self
+pub fn CT_GroupMember::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_GroupMembers {
   element : @xml.Element
   count : Int?
   group_members : Array[CT_GroupMember]
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupMembers::new(@xml.Element) -> Self
+pub fn CT_GroupMembers::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Groups {
   element : @xml.Element
   group : Array[CT_LevelGroup]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Groups::new(@xml.Element) -> Self
+pub fn CT_Groups::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_HeaderFooter {
   element : @xml.Element
@@ -1701,7 +1701,7 @@ pub(all) struct CT_LevelGroup {
   unique_parent : String?
   id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_LevelGroup::new(@xml.Element) -> Self
+pub fn CT_LevelGroup::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Location {
   element : @xml.Element

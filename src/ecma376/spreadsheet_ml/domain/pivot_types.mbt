@@ -816,7 +816,9 @@ pub(all) struct CT_GroupMembers {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GroupMembers::new(element : @xml.Element) -> CT_GroupMembers {
+pub fn CT_GroupMembers::new(
+  element : @xml.Element,
+) -> CT_GroupMembers raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let group_members : Array[CT_GroupMember] = []
   for child in element.children {
@@ -843,12 +845,16 @@ pub(all) struct CT_GroupMember {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GroupMember::new(element : @xml.Element) -> CT_GroupMember {
+pub fn CT_GroupMember::new(
+  element : @xml.Element,
+) -> CT_GroupMember raise @opc_errors.SchemaViolation {
   let unique_name = match attr(element, "uniqueName") {
     Some(v) => v
     None => ""
   }
-  let group = attr_bool(element, "group", false)
+  let group = attr_bool_schema(
+    element, "group", false, "Part 1 §18.10.1.41", "groupMember",
+  )
   { element, unique_name, group }
 }
 

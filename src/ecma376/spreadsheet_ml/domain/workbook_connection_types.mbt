@@ -1726,7 +1726,9 @@ pub(all) struct CT_GroupLevels {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GroupLevels::new(element : @xml.Element) -> CT_GroupLevels {
+pub fn CT_GroupLevels::new(
+  element : @xml.Element,
+) -> CT_GroupLevels raise @opc_errors.SchemaViolation {
   let group_level : Array[CT_GroupLevel] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1763,7 +1765,9 @@ pub(all) struct CT_GroupLevel {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GroupLevel::new(element : @xml.Element) -> CT_GroupLevel {
+pub fn CT_GroupLevel::new(
+  element : @xml.Element,
+) -> CT_GroupLevel raise @opc_errors.SchemaViolation {
   let mut groups : CT_Groups? = None
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -1783,8 +1787,12 @@ pub fn CT_GroupLevel::new(element : @xml.Element) -> CT_GroupLevel {
     Some(value) => value
     None => ""
   }
-  let user = attr_bool(element, "user", false)
-  let custom_roll_up = attr_bool(element, "customRollUp", false)
+  let user = attr_bool_schema(
+    element, "user", false, "Part 1 §18.10.1.32", "groupLevel",
+  )
+  let custom_roll_up = attr_bool_schema(
+    element, "customRollUp", false, "Part 1 §18.10.1.32", "groupLevel",
+  )
   { element, groups, ext_lst, unique_name, caption, user, custom_roll_up }
 }
 
@@ -1804,7 +1812,9 @@ pub(all) struct CT_Groups {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Groups::new(element : @xml.Element) -> CT_Groups {
+pub fn CT_Groups::new(
+  element : @xml.Element,
+) -> CT_Groups raise @opc_errors.SchemaViolation {
   let group : Array[CT_LevelGroup] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1840,7 +1850,9 @@ pub(all) struct CT_LevelGroup {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_LevelGroup::new(element : @xml.Element) -> CT_LevelGroup {
+pub fn CT_LevelGroup::new(
+  element : @xml.Element,
+) -> CT_LevelGroup raise @opc_errors.SchemaViolation {
   let mut group_members : CT_GroupMembers? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {

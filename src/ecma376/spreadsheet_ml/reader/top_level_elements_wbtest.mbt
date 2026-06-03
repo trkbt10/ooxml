@@ -259,6 +259,26 @@ test "SML pivotCacheDefinition reader rejects malformed cache-hierarchy booleans
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed group-level booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels>" +
+    "<s:groupLevel user=\"maybe\"/>" +
+    "</s:groupLevels></s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels>" +
+    "<s:groupLevel><s:groups><s:group>" +
+    "<s:groupMembers><s:groupMember group=\"maybe\"/></s:groupMembers>" +
+    "</s:group></s:groups></s:groupLevel>" +
+    "</s:groupLevels></s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
