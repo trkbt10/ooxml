@@ -1068,6 +1068,22 @@ test "SML MapInfo reader rejects malformed unsigned integers" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_connection = try? read_map_info(
+    bytes(
+      "<s:MapInfo xmlns:s=\"urn:s\">" +
+      "<s:Map><s:DataBinding ConnectionID=\"abc\"/></s:Map>" +
+      "</s:MapInfo>",
+    ),
+  )
+  assert_true(invalid_connection is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_load_mode = try? read_map_info(
+    bytes(
+      "<s:MapInfo xmlns:s=\"urn:s\">" +
+      "<s:Map><s:DataBinding DataBindingLoadMode=\"abc\"/></s:Map>" +
+      "</s:MapInfo>",
+    ),
+  )
+  assert_true(invalid_load_mode is Err(@opc_errors.SchemaViolation(_)))
 }
 
 ///|
@@ -2734,6 +2750,18 @@ test "SML calc chain reader rejects malformed calc cell booleans" {
     bytes(
       "<s:calcChain xmlns:s=\"urn:s\">" +
       "<s:c r=\"A1\" s=\"maybe\"/>" +
+      "</s:calcChain>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML calc chain reader rejects malformed calc cell numerics" {
+  let invalid = try? read_calc_chain(
+    bytes(
+      "<s:calcChain xmlns:s=\"urn:s\">" +
+      "<s:c r=\"A1\" i=\"abc\"/>" +
       "</s:calcChain>",
     ),
   )

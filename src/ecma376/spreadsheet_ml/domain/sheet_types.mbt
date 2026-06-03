@@ -94,7 +94,7 @@ pub fn CT_CalcCell::new(
     Some(value) => value
     None => ""
   }
-  let i = attr_int(element, "i", 0)
+  let i = attr_int_schema(element, "i", 0)
   let s = attr_bool_schema(element, "s", false, "Part 1 §18.6.1", "c")
   let l = attr_bool_schema(element, "l", false, "Part 1 §18.6.1", "c")
   let t = attr_bool_schema(element, "t", false, "Part 1 §18.6.1", "c")
@@ -143,9 +143,11 @@ pub fn CT_DataBinding::new(
   let file_binding = attr_bool_schema_opt(
     element, "FileBinding", "Part 1 §18.16.1", "DataBinding",
   )
-  let connection_id = attr_uint_opt(element, "ConnectionID")
+  let connection_id = attr_uint_opt_schema(element, "ConnectionID")
   let file_binding_name = attr(element, "FileBindingName")
-  let data_binding_load_mode = attr_uint(element, "DataBindingLoadMode", 0)
+  let data_binding_load_mode = attr_uint_schema(
+    element, "DataBindingLoadMode", 0,
+  )
   {
     element,
     any_children,
