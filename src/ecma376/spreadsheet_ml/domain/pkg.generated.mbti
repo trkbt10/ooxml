@@ -1291,7 +1291,7 @@ pub(all) struct CT_Field {
   element : @xml.Element
   x : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Field::new(@xml.Element) -> Self
+pub fn CT_Field::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FieldGroup {
   element : @xml.Element
@@ -1598,7 +1598,7 @@ pub(all) struct CT_I {
   r : Int
   i : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_I::new(@xml.Element) -> Self
+pub fn CT_I::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_IconFilter {
   icon_set : String
@@ -1639,7 +1639,7 @@ pub(all) struct CT_Index {
   element : @xml.Element
   v : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Index::new(@xml.Element) -> Self
+pub fn CT_Index::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_IndexedColors {
   element : @xml.Element

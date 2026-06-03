@@ -1574,6 +1574,9 @@ test "SML pivotCacheDefinition reader rejects malformed field-group numerics" {
     "<s:fieldGroup><s:discretePr count=\"abc\"/></s:fieldGroup>",
   )
   assert_pivot_cache_field_group_schema_violation(
+    "<s:fieldGroup><s:discretePr><s:x v=\"abc\"/></s:discretePr></s:fieldGroup>",
+  )
+  assert_pivot_cache_field_group_schema_violation(
     "<s:fieldGroup><s:groupItems count=\"abc\"/></s:fieldGroup>",
   )
 }
@@ -1813,6 +1816,11 @@ test "SML pivotCacheDefinition reader rejects malformed pivot-dimension booleans
 test "SML pivotCacheDefinition reader rejects malformed measure-map numerics" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:dimensions count=\"abc\"/>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:measureGroups count=\"abc\"/>" +
     "</s:pivotCacheDefinition>",
   )
@@ -1930,6 +1938,11 @@ test "SML pivotTableDefinition reader rejects malformed pivot-field numerics" {
     "<s:pivotFields><s:pivotField rankBy=\"abc\"/></s:pivotFields>" +
     "</s:pivotTableDefinition>",
   )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields><s:pivotField><s:items count=\"abc\"/></s:pivotField></s:pivotFields>" +
+    "</s:pivotTableDefinition>",
+  )
 }
 
 ///|
@@ -1947,7 +1960,19 @@ test "SML pivotTableDefinition reader rejects malformed field item numerics" {
     "</s:pivotTableDefinition>",
   )
   assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:rowItems><s:i r=\"abc\"/></s:rowItems>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:rowItems><s:i i=\"abc\"/></s:rowItems>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:colItems count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:rowFields><s:field x=\"abc\"/></s:rowFields>" +
     "</s:pivotTableDefinition>",
   )
   assert_pivot_table_definition_schema_violation(
@@ -1991,6 +2016,11 @@ test "SML pivotTableDefinition reader rejects malformed field item numerics" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
     "<s:dataFields><s:dataField numFmtId=\"abc\"/></s:dataFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields><s:pivotField><s:items><s:item x=\"abc\"/></s:items></s:pivotField></s:pivotFields>" +
     "</s:pivotTableDefinition>",
   )
 }
@@ -2172,6 +2202,16 @@ test "SML pivotTableDefinition reader rejects malformed pivot-area numerics" {
   )
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format dxfId=\"abc\"/></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
     "<s:formats><s:format><s:pivotArea field=\"abc\"/></s:format></s:formats>" +
     "</s:pivotTableDefinition>",
   )
@@ -2198,6 +2238,13 @@ test "SML pivotTableDefinition reader rejects malformed pivot-area numerics" {
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
     "<s:formats><s:format><s:pivotArea>" +
     "<s:references><s:reference count=\"abc\"/></s:references>" +
+    "</s:pivotArea></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea>" +
+    "<s:references><s:reference><s:x v=\"abc\"/></s:reference></s:references>" +
     "</s:pivotArea></s:format></s:formats>" +
     "</s:pivotTableDefinition>",
   )

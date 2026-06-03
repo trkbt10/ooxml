@@ -2293,7 +2293,7 @@ pub fn CT_Items::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, item, count }
 }
 
@@ -2354,7 +2354,7 @@ pub fn CT_Item::new(
   let f = item_bool(element, "f", false)
   let m = item_bool(element, "m", false)
   let c = item_bool(element, "c", false)
-  let x = attr_uint_opt(element, "x")
+  let x = attr_uint_opt_schema(element, "x")
   let d = item_bool(element, "d", false)
   let e = item_bool(element, "e", true)
   { element, n, t, h, s, sd, f, m, c, x, d, e }
@@ -2383,7 +2383,9 @@ pub(all) struct CT_I {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_I::new(element : @xml.Element) -> CT_I {
+pub fn CT_I::new(
+  element : @xml.Element,
+) -> CT_I raise @opc_errors.SchemaViolation {
   let x : Array[CT_X] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2396,8 +2398,8 @@ pub fn CT_I::new(element : @xml.Element) -> CT_I {
     Some(value) => value
     None => "data"
   }
-  let r = attr_uint(element, "r", 0)
-  let i = attr_uint(element, "i", 0)
+  let r = attr_uint_schema(element, "r", 0)
+  let i = attr_uint_schema(element, "i", 0)
   { element, x, t, r, i }
 }
 
@@ -2430,8 +2432,10 @@ pub(all) struct CT_Field {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Field::new(element : @xml.Element) -> CT_Field {
-  let x = attr_int(element, "x", 0)
+pub fn CT_Field::new(
+  element : @xml.Element,
+) -> CT_Field raise @opc_errors.SchemaViolation {
+  let x = attr_int_schema(element, "x", 0)
   { element, x }
 }
 
@@ -2460,7 +2464,7 @@ pub fn CT_Formats::new(
       }
     }
   }
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   { element, format, count }
 }
 
@@ -2505,7 +2509,7 @@ pub fn CT_Format::new(
     Some(value) => value
     None => "formatting"
   }
-  let dxf_id = attr_uint_opt(element, "dxfId")
+  let dxf_id = attr_uint_opt_schema(element, "dxfId")
   { element, pivot_area: pivot_area_value, ext_lst, action, dxf_id }
 }
 
@@ -2534,7 +2538,7 @@ pub fn CT_Dimensions::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, dimension, count }
 }
 
@@ -2550,8 +2554,10 @@ pub(all) struct CT_Index {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Index::new(element : @xml.Element) -> CT_Index {
-  let v = attr_uint(element, "v", 0)
+pub fn CT_Index::new(
+  element : @xml.Element,
+) -> CT_Index raise @opc_errors.SchemaViolation {
+  let v = attr_uint_schema(element, "v", 0)
   { element, v }
 }
 
