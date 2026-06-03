@@ -1790,6 +1790,16 @@ test "SML worksheet reader rejects malformed custom sheet view booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed custom sheet view numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:customSheetViews><s:customSheetView scale=\"abc\"/></s:customSheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:customSheetViews><s:customSheetView colorId=\"abc\"/></s:customSheetViews>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed sheet calculation booleans" {
   let invalid = try? read_worksheet(
     bytes(
@@ -1968,6 +1978,13 @@ test "SML worksheet reader rejects malformed page margin doubles" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed merge cell numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:mergeCells count=\"abc\"><s:mergeCell ref=\"A1:A1\"/></s:mergeCells>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed data consolidation booleans" {
   let invalid = try? read_worksheet(
     bytes(
@@ -1977,6 +1994,13 @@ test "SML worksheet reader rejects malformed data consolidation booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed data consolidation numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:dataConsolidate><s:dataRefs count=\"abc\"/></s:dataConsolidate>",
+  )
 }
 
 ///|
@@ -2022,6 +2046,35 @@ test "SML worksheet reader rejects malformed smart tag booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed smart tag unsigned integers" {
+  assert_worksheet_body_schema_violation(
+    "<s:smartTags><s:cellSmartTags r=\"A1\"><s:cellSmartTag type=\"abc\"/></s:cellSmartTags></s:smartTags>",
+  )
+}
+
+///|
+test "SML worksheet reader rejects malformed drawingHF unsigned integers" {
+  assert_worksheet_body_schema_violation("<s:drawingHF lho=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF lhe=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF lhf=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF cho=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF che=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF chf=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF rho=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF rhe=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF rhf=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF lfo=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF lfe=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF lff=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF cfo=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF cfe=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF cff=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF rfo=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF rfe=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:drawingHF rff=\"abc\"/>")
 }
 
 ///|
@@ -2077,6 +2130,42 @@ test "SML worksheet reader rejects malformed scenario booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed scenario unsigned integers" {
+  assert_worksheet_body_schema_violation(
+    "<s:scenarios current=\"abc\"><s:scenario name=\"Case\"/></s:scenarios>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:scenarios show=\"abc\"><s:scenario name=\"Case\"/></s:scenarios>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:scenarios><s:scenario name=\"Case\" count=\"abc\"/></s:scenarios>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:scenarios><s:scenario name=\"Case\"><s:inputCells r=\"A1\" val=\"1\" numFmtId=\"abc\"/></s:scenario></s:scenarios>",
+  )
+}
+
+///|
+test "SML worksheet reader rejects malformed protected range unsigned integers" {
+  assert_worksheet_body_schema_violation(
+    "<s:protectedRanges><s:protectedRange sqref=\"A1\" name=\"r\" spinCount=\"abc\"/></s:protectedRanges>",
+  )
+}
+
+///|
+test "SML worksheet reader rejects malformed data validation unsigned integers" {
+  assert_worksheet_body_schema_violation(
+    "<s:dataValidations xWindow=\"abc\"><s:dataValidation sqref=\"A1\"/></s:dataValidations>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:dataValidations yWindow=\"abc\"><s:dataValidation sqref=\"A1\"/></s:dataValidations>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:dataValidations count=\"abc\"><s:dataValidation sqref=\"A1\"/></s:dataValidations>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed control property booleans" {
   let invalid = try? read_worksheet(
     bytes(
@@ -2088,4 +2177,18 @@ test "SML worksheet reader rejects malformed control property booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed control unsigned integers" {
+  assert_worksheet_body_schema_violation(
+    "<s:controls><s:control shapeId=\"abc\"/></s:controls>",
+  )
+}
+
+///|
+test "SML worksheet reader rejects malformed table parts unsigned integers" {
+  assert_worksheet_body_schema_violation(
+    "<s:tableParts count=\"abc\"><s:tablePart id=\"rId1\"/></s:tableParts>",
+  )
 }

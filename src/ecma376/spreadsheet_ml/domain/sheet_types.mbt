@@ -2652,7 +2652,9 @@ pub(all) struct CT_DataRefs {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataRefs::new(element : @xml.Element) -> CT_DataRefs {
+pub fn CT_DataRefs::new(
+  element : @xml.Element,
+) -> CT_DataRefs raise @opc_errors.SchemaViolation {
   let data_refs : Array[CT_DataRef] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2661,7 +2663,7 @@ pub fn CT_DataRefs::new(element : @xml.Element) -> CT_DataRefs {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, data_refs, count }
 }
 
@@ -2705,7 +2707,9 @@ pub(all) struct CT_MergeCells {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MergeCells::new(element : @xml.Element) -> CT_MergeCells {
+pub fn CT_MergeCells::new(
+  element : @xml.Element,
+) -> CT_MergeCells raise @opc_errors.SchemaViolation {
   let merge_cells : Array[CT_MergeCell] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2714,7 +2718,7 @@ pub fn CT_MergeCells::new(element : @xml.Element) -> CT_MergeCells {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, merge_cells, count }
 }
 
@@ -2810,7 +2814,7 @@ pub fn CT_CellSmartTag::new(
       }
     }
   }
-  let type_ = attr_uint(element, "type", 0)
+  let type_ = attr_uint_schema(element, "type", 0)
   let deleted = cell_smart_tag_bool(element, "deleted", false)
   let xml_based = cell_smart_tag_bool(element, "xmlBased", false)
   { element, cell_smart_tag_prs, type_, deleted, xml_based }
@@ -2936,29 +2940,31 @@ pub(all) struct CT_DrawingHF {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DrawingHF::new(element : @xml.Element) -> CT_DrawingHF {
+pub fn CT_DrawingHF::new(
+  element : @xml.Element,
+) -> CT_DrawingHF raise @opc_errors.SchemaViolation {
   let r_id = match attr_with_ns(element, "id") {
     Some(value) => value
     None => ""
   }
-  let lho = attr_uint_opt(element, "lho")
-  let lhe = attr_uint_opt(element, "lhe")
-  let lhf = attr_uint_opt(element, "lhf")
-  let cho = attr_uint_opt(element, "cho")
-  let che = attr_uint_opt(element, "che")
-  let chf = attr_uint_opt(element, "chf")
-  let rho = attr_uint_opt(element, "rho")
-  let rhe = attr_uint_opt(element, "rhe")
-  let rhf = attr_uint_opt(element, "rhf")
-  let lfo = attr_uint_opt(element, "lfo")
-  let lfe = attr_uint_opt(element, "lfe")
-  let lff = attr_uint_opt(element, "lff")
-  let cfo = attr_uint_opt(element, "cfo")
-  let cfe = attr_uint_opt(element, "cfe")
-  let cff = attr_uint_opt(element, "cff")
-  let rfo = attr_uint_opt(element, "rfo")
-  let rfe = attr_uint_opt(element, "rfe")
-  let rff = attr_uint_opt(element, "rff")
+  let lho = attr_uint_opt_schema(element, "lho")
+  let lhe = attr_uint_opt_schema(element, "lhe")
+  let lhf = attr_uint_opt_schema(element, "lhf")
+  let cho = attr_uint_opt_schema(element, "cho")
+  let che = attr_uint_opt_schema(element, "che")
+  let chf = attr_uint_opt_schema(element, "chf")
+  let rho = attr_uint_opt_schema(element, "rho")
+  let rhe = attr_uint_opt_schema(element, "rhe")
+  let rhf = attr_uint_opt_schema(element, "rhf")
+  let lfo = attr_uint_opt_schema(element, "lfo")
+  let lfe = attr_uint_opt_schema(element, "lfe")
+  let lff = attr_uint_opt_schema(element, "lff")
+  let cfo = attr_uint_opt_schema(element, "cfo")
+  let cfe = attr_uint_opt_schema(element, "cfe")
+  let cff = attr_uint_opt_schema(element, "cff")
+  let rfo = attr_uint_opt_schema(element, "rfo")
+  let rfe = attr_uint_opt_schema(element, "rfe")
+  let rff = attr_uint_opt_schema(element, "rff")
   {
     element,
     r_id,
@@ -3137,8 +3143,8 @@ pub fn CT_CustomSheetView::new(
     Some(value) => value
     None => ""
   }
-  let scale = attr_uint(element, "scale", 100)
-  let color_id = attr_uint(element, "colorId", 64)
+  let scale = attr_uint_schema(element, "scale", 100)
+  let color_id = attr_uint_schema(element, "colorId", 64)
   let show_page_breaks = custom_sheet_view_bool(
     element, "showPageBreaks", false,
   )
@@ -3236,9 +3242,9 @@ pub fn CT_DataValidations::new(
   let disable_prompts = attr_bool_schema(
     element, "disablePrompts", false, "Part 1 §18.3.1.33", "dataValidations",
   )
-  let x_window = attr_uint_opt(element, "xWindow")
-  let y_window = attr_uint_opt(element, "yWindow")
-  let count = attr_uint_opt(element, "count")
+  let x_window = attr_uint_opt_schema(element, "xWindow")
+  let y_window = attr_uint_opt_schema(element, "yWindow")
+  let count = attr_uint_opt_schema(element, "count")
   { element, data_validations, disable_prompts, x_window, y_window, count }
 }
 
@@ -3751,8 +3757,8 @@ pub fn CT_Scenarios::new(
       }
     }
   }
-  let current = attr_uint_opt(element, "current")
-  let show = attr_uint_opt(element, "show")
+  let current = attr_uint_opt_schema(element, "current")
+  let show = attr_uint_opt_schema(element, "show")
   let sqref = attr(element, "sqref")
   { element, scenarios, current, show, sqref }
 }
@@ -3768,7 +3774,9 @@ pub(all) struct CT_ProtectedRanges {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ProtectedRanges::new(element : @xml.Element) -> CT_ProtectedRanges {
+pub fn CT_ProtectedRanges::new(
+  element : @xml.Element,
+) -> CT_ProtectedRanges raise @opc_errors.SchemaViolation {
   let protected_ranges : Array[CT_ProtectedRange] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3810,7 +3818,9 @@ pub(all) struct CT_ProtectedRange {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ProtectedRange::new(element : @xml.Element) -> CT_ProtectedRange {
+pub fn CT_ProtectedRange::new(
+  element : @xml.Element,
+) -> CT_ProtectedRange raise @opc_errors.SchemaViolation {
   let security_descriptors : Array[String] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3830,7 +3840,7 @@ pub fn CT_ProtectedRange::new(element : @xml.Element) -> CT_ProtectedRange {
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
-  let spin_count = attr_uint_opt(element, "spinCount")
+  let spin_count = attr_uint_opt_schema(element, "spinCount")
   let legacy_password = attr(element, "password")
   {
     element,
@@ -3899,7 +3909,7 @@ pub fn CT_Scenario::new(
   }
   let locked = scenario_bool(element, "locked", false)
   let hidden = scenario_bool(element, "hidden", false)
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let user = attr(element, "user")
   let comment = attr(element, "comment")
   { element, input_cells, name, locked, hidden, count, user, comment }
@@ -3950,7 +3960,7 @@ pub fn CT_InputCells::new(
     Some(value) => value
     None => ""
   }
-  let num_fmt_id = attr_uint_opt(element, "numFmtId")
+  let num_fmt_id = attr_uint_opt_schema(element, "numFmtId")
   { element, r, deleted, undone, val, num_fmt_id }
 }
 
@@ -4421,7 +4431,7 @@ pub fn CT_Control::new(
   }
   {
     element,
-    shape_id: attr_int(element, "shapeId", 0),
+    shape_id: attr_uint_schema(element, "shapeId", 0),
     r_id: attr(element, "id").unwrap_or(""),
     name: attr(element, "name").unwrap_or(""),
     control_pr,
@@ -4607,14 +4617,16 @@ pub(all) struct CT_TableParts {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TableParts::new(element : @xml.Element) -> CT_TableParts {
+pub fn CT_TableParts::new(
+  element : @xml.Element,
+) -> CT_TableParts raise @opc_errors.SchemaViolation {
   let parts : Array[CT_TablePart] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "tablePart" {
       parts.push(CT_TablePart::new(e))
     }
   }
-  { element, count: attr_int(element, "count", 0), parts }
+  { element, count: attr_uint_schema(element, "count", 0), parts }
 }
 
 ///|

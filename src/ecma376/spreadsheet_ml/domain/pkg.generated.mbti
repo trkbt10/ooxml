@@ -947,7 +947,7 @@ pub(all) struct CT_DataRefs {
   data_refs : Array[CT_DataRef]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_DataRefs::new(@xml.Element) -> Self
+pub fn CT_DataRefs::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DataValidation {
   element : @xml.Element
@@ -1142,7 +1142,7 @@ pub(all) struct CT_DrawingHF {
   rfe : Int?
   rff : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_DrawingHF::new(@xml.Element) -> Self
+pub fn CT_DrawingHF::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Dxf {
   element : @xml.Element
@@ -1909,7 +1909,7 @@ pub(all) struct CT_MergeCells {
   merge_cells : Array[CT_MergeCell]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_MergeCells::new(@xml.Element) -> Self
+pub fn CT_MergeCells::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Metadata {
   element : @xml.Element
@@ -2613,13 +2613,13 @@ pub(all) struct CT_ProtectedRange {
   spin_count : Int?
   legacy_password : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_ProtectedRange::new(@xml.Element) -> Self
+pub fn CT_ProtectedRange::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ProtectedRanges {
   element : @xml.Element
   protected_ranges : Array[CT_ProtectedRange]
 } derive(Eq, @debug.Debug)
-pub fn CT_ProtectedRanges::new(@xml.Element) -> Self
+pub fn CT_ProtectedRanges::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Query {
   element : @xml.Element
@@ -3516,7 +3516,7 @@ pub(all) struct CT_TableParts {
   count : Int
   parts : Array[CT_TablePart]
 } derive(Eq, @debug.Debug)
-pub fn CT_TableParts::new(@xml.Element) -> Self
+pub fn CT_TableParts::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TableStyle {
   element : @xml.Element
