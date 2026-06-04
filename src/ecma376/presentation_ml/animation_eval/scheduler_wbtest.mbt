@@ -149,7 +149,7 @@ test "§19.5.3 animEffect decodes as a leaf timing behaviour" {
 test "§19.5.49 audio and §19.5.85 video decode as media time-node leaves" {
   let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<audio isNarration=\"true\"><cMediaNode vol=\"50000\" mute=\"true\" numSld=\"2\" showWhenStopped=\"false\"><cTn id=\"50\" dur=\"1500\" fill=\"hold\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
-    "<video fullScrn=\"true\"><cMediaNode><cTn id=\"51\" dur=\"500\" fill=\"hold\"/><tgtEl><spTgt spid=\"17\"/></tgtEl></cMediaNode></video>" +
+    "<video fullScrn=\"true\"><cMediaNode vol=\"50%\"><cTn id=\"51\" dur=\"500\" fill=\"hold\"/><tgtEl><spTgt spid=\"17\"/></tgtEl></cMediaNode></video>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   let timeline = try! decode_timing(build_timing(xml))
   let root = root_node(timeline)
@@ -163,6 +163,7 @@ test "§19.5.49 audio and §19.5.85 video decode as media time-node leaves" {
   match audio.node_kind {
     @domain.TimeNodeAudio(media) => {
       assert_true(media.is_narration == Some(true))
+      assert_true(media.cMediaNode.vol == Some("50000"))
       assert_true(media.cMediaNode.mute == Some(true))
       assert_true(media.cMediaNode.num_sld == Some(2U))
       assert_true(media.cMediaNode.show_when_stopped == Some(false))
@@ -173,6 +174,7 @@ test "§19.5.49 audio and §19.5.85 video decode as media time-node leaves" {
   match video.node_kind {
     @domain.TimeNodeVideo(media) => {
       assert_true(media.full_scrn == Some(true))
+      assert_true(media.cMediaNode.vol == Some("50%"))
       match media.cMediaNode.tgtEl.choice {
         @domain.TimeTargetSp(target) => assert_eq(target.spid, "17")
         _ => fail("expected video shape target")
@@ -227,6 +229,26 @@ test "§19.5 media nodes reject malformed direct children" {
   assert_timing_schema_violation(
     before +
     "<video><cMediaNode><cTn id=\"57\"/><tgtEl><spTgt spid=\"1\"/></tgtEl><bogus/></cMediaNode></video>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<audio><cMediaNode vol=\"bad\"><cTn id=\"58\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<audio><cMediaNode vol=\"-1%\"><cTn id=\"59\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<video><cMediaNode vol=\"100.1%\"><cTn id=\"60\"/><tgtEl><spTgt spid=\"1\"/></tgtEl></cMediaNode></video>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<video><cMediaNode vol=\"100001\"><cTn id=\"61\"/><tgtEl><spTgt spid=\"1\"/></tgtEl></cMediaNode></video>" +
     after,
   )
 }

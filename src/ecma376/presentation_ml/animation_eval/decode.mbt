@@ -1218,6 +1218,11 @@ fn validate_media_leaf_children(
 fn validate_common_media_node_children(
   element : @xml.Element,
 ) -> Unit raise @opc_errors.SchemaViolation {
+  match attr_local(element, "vol") {
+    Some(text) =>
+      validate_positive_fixed_percentage_attr(text, "cMediaNode/@vol")
+    None => ()
+  }
   let mut ctn_count = 0
   let mut target_count = 0
   let mut last_rank = 0
@@ -2048,6 +2053,21 @@ fn parse_percentage_attr(
 }
 
 ///|
+fn validate_positive_fixed_percentage_attr(
+  text : String,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let trimmed = trim_whitespace(text)
+  if !is_positive_fixed_percentage_token(trimmed) {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="malformed ST_PositiveFixedPercentage: " + text,
+    )
+  }
+}
+
+///|
 fn parse_xsd_bool(
   text : String,
   path : String,
@@ -2116,6 +2136,78 @@ fn parse_percentage(text : String) -> Double? {
     Some(n) => Some((n.to_double() / 100000.0).min(1.0))
     None => parse_double(trimmed)
   }
+}
+
+///|
+fn is_positive_fixed_percentage_token(text : String) -> Bool {
+  if text.length() == 0 {
+    false
+  } else if text.code_unit_at(text.length() - 1).to_int() == 0x25 {
+    let end = text.length() - 1
+    if !is_decimal_token(text, 0, end) {
+      false
+    } else {
+      let body = text.unsafe_substring(start=0, end~)
+      match parse_double(body) {
+        Some(value) => value >= 0.0 && value <= 100.0
+        None => false
+      }
+    }
+  } else {
+    is_unsigned_integer_at_most(text, 100000)
+  }
+}
+
+///|
+fn is_unsigned_integer_at_most(text : String, max : Int) -> Bool {
+  if text.length() == 0 {
+    return false
+  }
+  let mut value = 0
+  for i in 0..<text.length() {
+    let unit = text.code_unit_at(i).to_int()
+    if unit < 0x30 || unit > 0x39 {
+      return false
+    }
+    let digit = unit - 0x30
+    if value > (max - digit) / 10 {
+      return false
+    }
+    value = value * 10 + digit
+  }
+  value <= max
+}
+
+///|
+fn is_decimal_token(text : String, start : Int, end : Int) -> Bool {
+  if start >= end {
+    return false
+  }
+  let mut pos = start
+  if text[pos:pos + 1] == "-" {
+    pos = pos + 1
+  }
+  let digits_start = pos
+  while pos < end && is_ascii_digit_at(text, pos) {
+    pos = pos + 1
+  }
+  let has_whole_digits = pos > digits_start
+  if pos < end && text[pos:pos + 1] == "." {
+    pos = pos + 1
+    let fraction_start = pos
+    while pos < end && is_ascii_digit_at(text, pos) {
+      pos = pos + 1
+    }
+    has_whole_digits && pos > fraction_start && pos == end
+  } else {
+    has_whole_digits && pos == end
+  }
+}
+
+///|
+fn is_ascii_digit_at(text : String, index : Int) -> Bool {
+  let unit = text.code_unit_at(index).to_int()
+  unit >= 0x30 && unit <= 0x39
 }
 
 ///|
