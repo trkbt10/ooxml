@@ -1917,6 +1917,70 @@ fn validate_by_color_transform(
   } noraise {
     _ => ()
   }
+  for child in endpoint.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "rgb" => validate_rgb_color_transform_attrs(e)
+          "hsl" => validate_hsl_color_transform_attrs(e)
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn validate_rgb_color_transform_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  validate_no_element_children(element, "rgb")
+  validate_fixed_percentage_child_attr(element, "r", "rgb/@r")
+  validate_fixed_percentage_child_attr(element, "g", "rgb/@g")
+  validate_fixed_percentage_child_attr(element, "b", "rgb/@b")
+}
+
+///|
+fn validate_hsl_color_transform_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  validate_no_element_children(element, "hsl")
+  match attr_local(element, "h") {
+    Some(text) => parse_signed_int_attr(text, "hsl/@h") |> ignore
+    None => ()
+  }
+  validate_fixed_percentage_child_attr(element, "s", "hsl/@s")
+  validate_fixed_percentage_child_attr(element, "l", "hsl/@l")
+}
+
+///|
+fn validate_fixed_percentage_child_attr(
+  element : @xml.Element,
+  name : String,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  match attr_local(element, name) {
+    Some(text) => validate_fixed_percentage_attr(text, path)
+    None => ()
+  }
+}
+
+///|
+fn validate_no_element_children(
+  element : @xml.Element,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path~,
+          reason="unsupported child element: " + e.name.local_name,
+        )
+      _ => ()
+    }
+  }
 }
 
 ///|
@@ -2077,6 +2141,21 @@ fn validate_percentage_attr(
 }
 
 ///|
+fn validate_fixed_percentage_attr(
+  text : String,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let trimmed = trim_whitespace(text)
+  if !is_fixed_percentage_token(trimmed) {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="malformed ST_FixedPercentage: " + text,
+    )
+  }
+}
+
+///|
 fn parse_xsd_bool(
   text : String,
   path : String,
@@ -2153,6 +2232,29 @@ fn is_positive_fixed_percentage_token(text : String) -> Bool {
     }
   } else {
     is_unsigned_integer_at_most(text, 100000)
+  }
+}
+
+///|
+fn is_fixed_percentage_token(text : String) -> Bool {
+  if text.length() == 0 {
+    false
+  } else if text.code_unit_at(text.length() - 1).to_int() == 0x25 {
+    let end = text.length() - 1
+    if !is_decimal_token(text, 0, end) {
+      false
+    } else {
+      let body = text.unsafe_substring(start=0, end~)
+      match parse_double(body) {
+        Some(value) => value >= -100.0 && value <= 100.0
+        None => false
+      }
+    }
+  } else {
+    match parse_signed_int(text) {
+      Some(value) => value >= -100000 && value <= 100000
+      None => false
+    }
   }
 }
 

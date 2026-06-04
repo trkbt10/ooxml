@@ -497,6 +497,26 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animClr><cBhvr><cTn id=\"13\"/></cBhvr><by><rgb r=\"100%\" g=\"0%\"/></by></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(malformed_anim_clr_by)
+  let malformed_anim_clr_by_rgb = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"27\"/></cBhvr><by><rgb r=\"bad\" g=\"0%\" b=\"0%\"/></by></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_by_rgb)
+  let out_of_range_anim_clr_by_rgb = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"28\"/></cBhvr><by><rgb r=\"-100.1%\" g=\"0%\" b=\"0%\"/></by></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(out_of_range_anim_clr_by_rgb)
+  let malformed_anim_clr_by_hsl_angle = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"29\"/></cBhvr><by><hsl h=\"1.5\" s=\"0%\" l=\"0%\"/></by></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_by_hsl_angle)
+  let out_of_range_anim_clr_by_hsl = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"30\"/></cBhvr><by><hsl h=\"0\" s=\"100001\" l=\"0%\"/></by></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(out_of_range_anim_clr_by_hsl)
+  let nested_anim_clr_by_rgb = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"31\"/></cBhvr><by><rgb r=\"0%\" g=\"0%\" b=\"0%\"><bogus/></rgb></by></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(nested_anim_clr_by_rgb)
   let duplicate_anim_clr_from = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animClr><cBhvr><cTn id=\"24\"/></cBhvr><from><srgbClr val=\"000000\"/></from><from><schemeClr val=\"accent1\"/></from></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
@@ -734,6 +754,24 @@ test "§19.5.2 animClr preserves endpoint payloads" {
         _ => fail("expected by transform")
       }
     }
+    _ => fail("expected animate color node")
+  }
+}
+
+///|
+test "§19.5.2 animClr preserves signed hsl by transform payload" {
+  let node = try! decode_anim_clr(
+    parse_root(
+      "<animClr><cBhvr><cTn id=\"13\"/></cBhvr><by><hsl h=\"-5400000\" s=\"-100000\" l=\"100%\"/></by></animClr>",
+    ),
+  )
+  match node.node_kind {
+    @domain.TimeNodeAnimateColor(behavior) =>
+      match behavior.common.by_value {
+        Some(@domain.AnimVariantColor(payload)) =>
+          assert_eq(payload, "hsl:h=-5400000,s=-100000,l=100%")
+        _ => fail("expected hsl by transform")
+      }
     _ => fail("expected animate color node")
   }
 }
