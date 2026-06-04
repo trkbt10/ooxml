@@ -32,6 +32,9 @@ REPO = Path(__file__).resolve().parents[1]
 CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 RELATIONSHIPS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 RELATIONSHIPS_CONTENT_TYPE = "application/vnd.openxmlformats-package.relationships+xml"
+CORE_PROPERTIES_RELATIONSHIP_TYPE = (
+    "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+)
 CORE_PROPERTIES_CONTENT_TYPE = "application/vnd.openxmlformats-package.core-properties+xml"
 DIGITAL_SIGNATURE_XML_SIGNATURE_CONTENT_TYPE = (
     "application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml"
@@ -72,6 +75,15 @@ class ValidationResult:
     status: str
     check: str
     message: str
+
+
+@dataclass(frozen=True)
+class RelationshipEntry:
+    relationship_id: str
+    relationship_type: str
+    target: str
+    target_mode: str
+    resolved_part: str | None
 
 
 def parse_args() -> argparse.Namespace:
@@ -608,6 +620,45 @@ def validate_relationships_part(
     return results
 
 
+def read_relationship_entries(
+    archive: zipfile.ZipFile,
+    item_name: str,
+    source_part: str | None,
+) -> list[RelationshipEntry]:
+    try:
+        relationships_xml = archive.read(item_name)
+    except KeyError:
+        return []
+    if validate_opc_xml_usage(relationships_xml):
+        return []
+    try:
+        root = ET.fromstring(relationships_xml)
+    except ET.ParseError:
+        return []
+    if root.tag != f"{{{RELATIONSHIPS_NS}}}Relationships":
+        return []
+
+    entries: list[RelationshipEntry] = []
+    for relationship in root:
+        if relationship.tag != f"{{{RELATIONSHIPS_NS}}}Relationship":
+            continue
+        target = relationship.get("Target", "")
+        target_mode = relationship.get("TargetMode", "Internal")
+        resolved_part = None
+        if target and target_mode == "Internal":
+            resolved_part, _ = resolve_internal_target(source_part, target)
+        entries.append(
+            RelationshipEntry(
+                relationship.get("Id", ""),
+                relationship.get("Type", ""),
+                target,
+                target_mode,
+                resolved_part,
+            )
+        )
+    return entries
+
+
 def validate_opc_defined_xml_part(
     package: Path,
     archive: zipfile.ZipFile,
@@ -620,6 +671,80 @@ def validate_opc_defined_xml_part(
     if xml_usage_error is None:
         return []
     return [fail(package, item_name, "xml-usage", xml_usage_error)]
+
+
+def validate_core_properties_contract(
+    package: Path,
+    package_relationships: list[RelationshipEntry],
+    core_properties_parts: set[str],
+    defaults: dict[str, str],
+    overrides: dict[str, str],
+) -> list[ValidationResult]:
+    results: list[ValidationResult] = []
+    if len(core_properties_parts) > 1:
+        results.append(
+            fail(
+                package,
+                "(package)",
+                "core-properties",
+                f"package must contain at most one Core Properties part: {len(core_properties_parts)}",
+            )
+        )
+
+    core_relationships = [
+        relationship
+        for relationship in package_relationships
+        if relationship.relationship_type == CORE_PROPERTIES_RELATIONSHIP_TYPE
+    ]
+    if len(core_relationships) > 1:
+        results.append(
+            fail(
+                package,
+                RELATIONSHIPS_ROOT,
+                "core-properties",
+                f"package must contain at most one core properties relationship: {len(core_relationships)}",
+            )
+        )
+
+    referenced_core_parts: set[str] = set()
+    for relationship in core_relationships:
+        if relationship.target_mode != "Internal":
+            results.append(
+                fail(
+                    package,
+                    RELATIONSHIPS_ROOT,
+                    "core-properties",
+                    f"{relationship.relationship_id or '(missing Id)'}: core properties relationship must target an internal part",
+                )
+            )
+            continue
+        target_part = relationship.resolved_part
+        if target_part is None:
+            continue
+        target_item = item_name_for_part(target_part)
+        content_type = content_type_for_item(target_item, defaults, overrides)
+        if content_type != CORE_PROPERTIES_CONTENT_TYPE:
+            results.append(
+                fail(
+                    package,
+                    RELATIONSHIPS_ROOT,
+                    "core-properties",
+                    f"{relationship.relationship_id or '(missing Id)'}: core properties target must have content type {CORE_PROPERTIES_CONTENT_TYPE}",
+                )
+            )
+            continue
+        referenced_core_parts.add(target_part)
+
+    for part_name in sorted(core_properties_parts - referenced_core_parts):
+        results.append(
+            fail(
+                package,
+                part_name,
+                "core-properties",
+                "Core Properties part must be referenced by a package core properties relationship",
+            )
+        )
+    return results
 
 
 def validate_package(package: Path) -> list[ValidationResult]:
@@ -735,6 +860,27 @@ def validate_package(package: Path) -> list[ValidationResult]:
                             content_type,
                         )
                     )
+
+            package_relationships = read_relationship_entries(
+                archive,
+                RELATIONSHIPS_ROOT,
+                None,
+            )
+            core_properties_parts = {
+                part_name_for_item(item_name)
+                for item_name in ordinary_items
+                if content_type_for_item(item_name, defaults, overrides)
+                == CORE_PROPERTIES_CONTENT_TYPE
+            }
+            results.extend(
+                validate_core_properties_contract(
+                    package,
+                    package_relationships,
+                    core_properties_parts,
+                    defaults,
+                    overrides,
+                )
+            )
 
             for item_name in sorted(relationship_items):
                 source_part = relationships_source_part(item_name)

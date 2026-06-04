@@ -109,6 +109,9 @@ The validator checks:
 - OPC XML usage for the Media Types stream, Core Properties part, Digital
   Signature XML Signature parts, and Relationships parts, including UTF-8 /
   UTF-16 encoding declarations and rejection of DTD declarations.
+- Core Properties package contract: at most one Core Properties part, at most
+  one package core-properties relationship, and every Core Properties part must
+  be referenced by that package relationship.
 - Relationship part ownership: package relationships and part relationships
   must map to existing sources.
 - Relationship part structure: `Relationship` children only, required non-empty
