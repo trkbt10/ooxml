@@ -29,12 +29,44 @@ scripts/ooxml_office_smoke.sh path/to/file.docx path/to/file.xlsx path/to/file.p
 scripts/ooxml_mso_smoke.sh path/to/file.docx path/to/file.xlsx path/to/file.pptx
 ```
 
+Generated fixture categories:
+
+```bash
+scripts/ooxml_office_smoke.sh --fixture-category docx/drawing
+scripts/ooxml_office_smoke.sh --fixture-category xlsx/cf --fixture-category pptx/diagram
+
+scripts/ooxml_mso_smoke.sh --fixture-category docx/drawing
+scripts/ooxml_mso_smoke.sh --fixture-category xlsx/cf --fixture-category pptx/diagram
+```
+
+All generated fixtures:
+
+```bash
+scripts/ooxml_office_smoke.sh --all-fixtures
+scripts/ooxml_mso_smoke.sh --all-fixtures
+```
+
 The default inputs are generated catalog fixtures under `.snapshots/fixtures/`.
 If they are absent, generate them first:
 
 ```bash
 moon run src/cmd/catalog -- fixtures
 ```
+
+Recent interop evidence on 2026-06-04:
+
+| Scope | Result |
+|---|---|
+| LibreOffice default representative fixtures | `ok (3 file(s))` |
+| Microsoft Office default representative fixtures | `ok (3 file(s))` |
+| LibreOffice `docx/drawing`, `xlsx/cf`, `pptx/diagram` categories | `ok (59 file(s))` |
+
+The category run covers the ECMA Transitional VML drawing fixtures, SpreadsheetML
+conditional-formatting/dataBar fixtures, and PresentationML diagram fixtures
+that were most recently changed for XSD cleanliness. Each file passed internal
+`ooxml_cli verify`, LibreOffice PDF export of the original package, a
+format-appropriate CLI edit, verification of the edited package, and LibreOffice
+PDF export of the edited package.
 
 ## What This Proves
 

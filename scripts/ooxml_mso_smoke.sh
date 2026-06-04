@@ -19,21 +19,76 @@ KEEP_TMP=0
 RUN_EDIT=1
 OPEN_DELAY_SECONDS="${OPEN_DELAY_SECONDS:-3}"
 MSO_TIMEOUT_SECONDS="${MSO_TIMEOUT_SECONDS:-45}"
+ALL_FIXTURES=0
+fixture_categories=()
 
 usage() {
   cat <<'EOF'
-Usage: scripts/ooxml_mso_smoke.sh [--keep-tmp] [--no-edit] [file...]
+Usage: scripts/ooxml_mso_smoke.sh [--keep-tmp] [--no-edit] [--all-fixtures] [--fixture-category format/category] [file...]
 
 When no files are provided, the script uses one generated fixture per format:
   .snapshots/fixtures/docx/paragraph/paragraph-alignment.docx
   .snapshots/fixtures/xlsx/cell/cell-values.xlsx
   .snapshots/fixtures/pptx/shape/pml-slide-grid-with-text.pptx
 
+Fixture category examples:
+  scripts/ooxml_mso_smoke.sh --fixture-category docx/drawing
+  scripts/ooxml_mso_smoke.sh --fixture-category xlsx/cf --fixture-category pptx/diagram
+
 Environment:
   OOXML_CLI=/path/to/ooxml_cli      prebuilt CLI executable
   OPEN_DELAY_SECONDS=3              seconds to wait after Office open
   MSO_TIMEOUT_SECONDS=45            AppleScript timeout per open
 EOF
+}
+
+fixture_extension_for_category() {
+  case "$1" in
+    docx/*) printf 'docx' ;;
+    xlsx/*) printf 'xlsx' ;;
+    pptx/*) printf 'pptx' ;;
+    *)
+      echo "ooxml_mso_smoke.sh: invalid fixture category: $1" >&2
+      echo "expected format/category under .snapshots/fixtures/{docx,xlsx,pptx}" >&2
+      exit 2
+      ;;
+  esac
+}
+
+add_fixture_category() {
+  category="$1"
+  ext="$(fixture_extension_for_category "$category")"
+  dir="$ROOT/.snapshots/fixtures/$category"
+  before="${#files[@]}"
+  if [ ! -d "$dir" ]; then
+    echo "ooxml_mso_smoke.sh: fixture category not found: $category" >&2
+    echo "Run 'moon run src/cmd/catalog -- fixtures' to generate fixtures." >&2
+    exit 2
+  fi
+  while IFS= read -r fixture; do
+    files+=("$fixture")
+  done < <(find "$dir" -maxdepth 1 -type f -name "*.$ext" | sort)
+  if [ "${#files[@]}" -eq "$before" ]; then
+    echo "ooxml_mso_smoke.sh: no .$ext fixtures in category: $category" >&2
+    exit 2
+  fi
+}
+
+add_all_fixtures() {
+  before="${#files[@]}"
+  for ext in docx xlsx pptx; do
+    dir="$ROOT/.snapshots/fixtures/$ext"
+    if [ -d "$dir" ]; then
+      while IFS= read -r fixture; do
+        files+=("$fixture")
+      done < <(find "$dir" -type f -name "*.$ext" | sort)
+    fi
+  done
+  if [ "${#files[@]}" -eq "$before" ]; then
+    echo "ooxml_mso_smoke.sh: no generated fixtures found" >&2
+    echo "Run 'moon run src/cmd/catalog -- fixtures' to generate fixtures." >&2
+    exit 2
+  fi
 }
 
 files=()
@@ -48,6 +103,21 @@ while [ "$#" -gt 0 ]; do
       ;;
     --no-edit)
       RUN_EDIT=0
+      ;;
+    --all-fixtures)
+      ALL_FIXTURES=1
+      ;;
+    --fixture-category)
+      shift
+      if [ "$#" -eq 0 ]; then
+        echo "ooxml_mso_smoke.sh: --fixture-category requires format/category" >&2
+        usage >&2
+        exit 2
+      fi
+      fixture_categories+=("$1")
+      ;;
+    --fixture-category=*)
+      fixture_categories+=("${1#--fixture-category=}")
       ;;
     --)
       shift
@@ -69,7 +139,17 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-if [ "${#files[@]}" -eq 0 ]; then
+if [ "$ALL_FIXTURES" -eq 1 ]; then
+  add_all_fixtures
+fi
+
+if [ "${#fixture_categories[@]}" -gt 0 ]; then
+  for category in "${fixture_categories[@]}"; do
+    add_fixture_category "$category"
+  done
+fi
+
+if [ "${#files[@]}" -eq 0 ] && [ "$ALL_FIXTURES" -eq 0 ] && [ "${#fixture_categories[@]}" -eq 0 ]; then
   defaults=(
     ".snapshots/fixtures/docx/paragraph/paragraph-alignment.docx"
     ".snapshots/fixtures/xlsx/cell/cell-values.xlsx"
