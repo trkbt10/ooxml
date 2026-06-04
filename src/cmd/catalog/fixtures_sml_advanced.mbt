@@ -18,8 +18,9 @@ fn s_empty_cell(ref_ : String) -> @xml.Element {
 
 ///|
 /// Build a `<sheetFormatPr>` element with the requested default
-/// column width and / or default row height.  Either value can be
-/// the empty string to omit it.  ECMA-376 §18.3.1.81.
+/// column width and row height.  ECMA-376 §18.3.1.81 requires
+/// `defaultRowHeight`, so an empty row-height argument means the
+/// normal worksheet default of 15pt rather than omission.
 fn s_sheet_format_pr(
   default_col_width : String,
   default_row_height : String,
@@ -28,9 +29,12 @@ fn s_sheet_format_pr(
   if default_col_width != "" {
     attrs.push(xa("defaultColWidth", default_col_width))
   }
-  if default_row_height != "" {
-    attrs.push(xa("defaultRowHeight", default_row_height))
+  let row_height = if default_row_height == "" {
+    "15"
+  } else {
+    default_row_height
   }
+  attrs.push(xa("defaultRowHeight", row_height))
   xe(NS_S, "sheetFormatPr", attrs, [])
 }
 

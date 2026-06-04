@@ -207,8 +207,8 @@ fn extras_wml_paragraph(cases : Array[VisualCase]) -> Unit {
         w_p(
           Some(
             ppr([
-              xe(NS_W, "contextualSpacing", [], []),
               spacing([("before", "240"), ("after", "240")]),
+              xe(NS_W, "contextualSpacing", [], []),
             ]),
           ),
           [
@@ -223,8 +223,8 @@ fn extras_wml_paragraph(cases : Array[VisualCase]) -> Unit {
         w_p(
           Some(
             ppr([
-              xe(NS_W, "contextualSpacing", [], []),
               spacing([("before", "240"), ("after", "240")]),
+              xe(NS_W, "contextualSpacing", [], []),
             ]),
           ),
           [

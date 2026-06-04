@@ -58,9 +58,9 @@ fn extras_wml_numbering(xcases : Array[ExtendedCase]) -> Unit {
     xe(NS_W, "lvl", [w_attr("ilvl", ilvl)], [
       Element(xe(NS_W, "start", [w_attr("val", start)], [])),
       Element(xe(NS_W, "numFmt", [w_attr("val", fmt)], [])),
+      Element(xe(NS_W, "lvlRestart", [w_attr("val", restart)], [])),
       Element(xe(NS_W, "lvlText", [w_attr("val", text)], [])),
       Element(xe(NS_W, "lvlJc", [w_attr("val", "left")], [])),
-      Element(xe(NS_W, "lvlRestart", [w_attr("val", restart)], [])),
     ])
   }
   // Wrap a `<w:abstractNum>` around a list of `<w:lvl>` children.

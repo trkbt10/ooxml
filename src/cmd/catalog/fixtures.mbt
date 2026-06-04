@@ -3030,7 +3030,7 @@ fn visual_cases() -> Array[VisualCase] {
     category: "shape",
     content: preset_batch(
       [
-        "mathDivide", "mathEqual", "mathNotEqual", "gear6", "gear9", "funnel", "pyramid",
+        "mathDivide", "mathEqual", "mathNotEqual", "gear6", "gear9", "funnel", "flowChartSort",
         "leftRightArrow", "upDownArrow", "flowChartConnector",
       ],
       "C9C9C9",

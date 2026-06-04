@@ -122,7 +122,10 @@ fn sp_tree_p(shapes : Array[@xml.Element]) -> @xml.Element {
   let clr_map_ovr = xep("p", NS_PML, "clrMapOvr", [], [
     Element(ae("masterClrMapping", [], [])),
   ])
-  xep("p", NS_PML, "cSld", [], [Element(sp_tree), Element(clr_map_ovr)])
+  xep("p", NS_PML, "sld", [], [
+    Element(xep("p", NS_PML, "cSld", [], [Element(sp_tree)])),
+    Element(clr_map_ovr),
+  ])
 }
 
 ///|

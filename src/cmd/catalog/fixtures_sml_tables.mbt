@@ -335,15 +335,6 @@ fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
         ]),
       ),
       Element(
-        s_conditional_formatting("A2:A4", [
-          s_cf_rule_icon_set("1", "3TrafficLights1", [
-            s_cfvo("percent", Some("0")),
-            s_cfvo("percent", Some("33")),
-            s_cfvo("percent", Some("67")),
-          ]),
-        ]),
-      ),
-      Element(
         xe(NS_S_TBL, "autoFilter", [xa("ref", "A1:B4")], [
           Element(
             xe(NS_S_TBL, "filterColumn", [xa("colId", "0")], [
@@ -357,6 +348,15 @@ fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
               ),
             ]),
           ),
+        ]),
+      ),
+      Element(
+        s_conditional_formatting("A2:A4", [
+          s_cf_rule_icon_set("1", "3TrafficLights1", [
+            s_cfvo("percent", Some("0")),
+            s_cfvo("percent", Some("33")),
+            s_cfvo("percent", Some("67")),
+          ]),
         ]),
       ),
     ]),

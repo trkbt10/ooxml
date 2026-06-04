@@ -419,7 +419,7 @@ fn line_chart_payload() -> @xml.Element {
     Element(c_val("grouping", "standard")),
     Element(c_val("varyColors", "0")),
     Element(ser),
-    Element(c_elem("marker", [], [Element(c_val("val", "1"))])),
+    Element(c_val("marker", "1")),
     Element(c_val("axId", "111111111")),
     Element(c_val("axId", "222222222")),
   ])
@@ -773,9 +773,9 @@ fn bubble_chart_payload() -> @xml.Element {
   c_elem("bubbleChart", [], [
     Element(c_val("varyColors", "0")),
     Element(ser),
+    Element(c_val("bubbleScale", "100")),
     Element(c_val("axId", "111111111")),
     Element(c_val("axId", "222222222")),
-    Element(c_val("bubbleScale", "100")),
   ])
 }
 
@@ -828,9 +828,9 @@ fn bubble_chart_two_series_payload() -> @xml.Element {
     Element(c_val("varyColors", "0")),
     Element(ser_a),
     Element(ser_b),
+    Element(c_val("bubbleScale", "100")),
     Element(c_val("axId", "111111111")),
     Element(c_val("axId", "222222222")),
-    Element(c_val("bubbleScale", "100")),
   ])
 }
 

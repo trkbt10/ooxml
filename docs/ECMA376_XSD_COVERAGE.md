@@ -8,6 +8,56 @@ It measures identifier presence for complex types, simple types, and top-level e
 
 Use this alongside `docs/ECMA376_SDD_COVERAGE.md`, parser/builder tests, package validation, and office-suite smoke tests.
 
+## Package XSD validation gate
+
+The identifier audit above proves that every vendored ECMA-376 Strict,
+Transitional, and OPC schema declaration name is represented in the public
+implementation surface. That is necessary, but it is not sufficient for
+schema health: a package can mention every type while still emitting invalid
+child order, invalid required children, invalid attributes, or extension
+elements in a namespace with no vendored schema.
+
+Use `scripts/ooxml_xsd_validate.py` for part-level XML validation of generated
+OOXML packages:
+
+```bash
+python3 scripts/ooxml_xsd_validate.py --summary
+python3 scripts/ooxml_xsd_validate.py --all-fixtures --failures-only --summary
+python3 scripts/ooxml_xsd_validate.py path/to/file.docx path/to/file.xlsx path/to/file.pptx
+```
+
+The validator unzips `.docx`, `.xlsx`, and `.pptx` packages, maps each XML
+part's root namespace to the locally vendored ECMA-376 Strict, Transitional,
+or OPC XSD set, and runs `xmllint --schema` on the part. This checks known
+namespace child sequences, cardinality, attributes, and simple type values.
+
+This gate does not prove complete OPC graph conformance, relationship/content
+type semantics beyond the XSD-covered XML parts, Markup Compatibility
+preprocessing, visual fidelity, or Microsoft Office / LibreOffice openability.
+Application-open checks are covered separately by `docs/OOXML_INTEROP_SMOKE.md`
+and must not be treated as schema validation.
+
+Current package-validation snapshot, after schema-order fixture repairs:
+
+| Scope | Result |
+|---|---|
+| default representative fixtures | `ok: 19` |
+| all generated fixtures | `ok: 5454`, `fail: 23` |
+| previous full-fixture baseline | `ok: 5365`, `fail: 120` |
+
+Remaining full-fixture failures are intentionally visible rather than skipped:
+
+| Failure class | Count | Meaning |
+|---|---:|---|
+| `transitional/wml.xsd` | 10 | WordprocessingML fixtures using the Microsoft Office 2010 `wordprocessingShape` extension namespace (`wsp`) hit strict wildcard validation without an extension schema or MC preprocessing strategy. |
+| `(none)` | 11 | Diagram package fixtures contain `http://schemas.microsoft.com/office/drawing/2008/diagram` parts that have no vendored ECMA-376 schema mapping. |
+| `transitional/sml.xsd` | 2 | SpreadsheetML data-bar fixtures emit x14-style extension features (`axisPosition`, `negativeFillColor`) as core `dataBar` content. They need extension packaging or ECMA-only fixture separation. |
+
+The next conformance work should reduce these categories through explicit
+extension/Markup Compatibility handling or by separating non-ECMA extension
+fixtures from ECMA schema-valid fixtures. Do not count the remaining failures
+as covered ECMA-376 schema conformance.
+
 ## ECMA-376 Part 1 Strict XSD
 
 Source: `references/raw/ecma376-1/OfficeOpenXML-XMLSchema-Strict`.

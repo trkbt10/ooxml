@@ -371,7 +371,7 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
     format: "docx",
     category: "table",
     content: body_of(
-      tbl([std_borders(), tbl_ind("1440", "dxa")], tbl_grid(["2000", "2000"]), [
+      tbl([tbl_ind("1440", "dxa"), std_borders()], tbl_grid(["2000", "2000"]), [
         tr([tc_w_text("2000", "Indented"), tc_w_text("2000", "1 inch")]),
         tr([tc_w_text("2000", "from"), tc_w_text("2000", "margin")]),
       ]),
@@ -386,7 +386,7 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
     format: "docx",
     category: "table",
     content: body_of(
-      tbl([std_borders(), tbl_w("5000", "pct")], tbl_grid(["3000", "3000"]), [
+      tbl([tbl_w("5000", "pct"), std_borders()], tbl_grid(["3000", "3000"]), [
         tr([tc_w_text("3000", "50% wide"), tc_w_text("3000", "table")]),
         tr([tc_w_text("3000", "via tblW"), tc_w_text("3000", "pct=5000")]),
       ]),
@@ -800,7 +800,7 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
     format: "docx",
     category: "table",
     content: body_of(
-      tbl([std_borders(), tbl_w("0", "auto")], tbl_grid(["2000", "2000"]), [
+      tbl([tbl_w("0", "auto"), std_borders()], tbl_grid(["2000", "2000"]), [
         tr([tc_w_text("2000", "auto"), tc_w_text("2000", "width")]),
         tr([tc_w_text("2000", "tblW"), tc_w_text("2000", "type=auto")]),
       ]),
@@ -820,8 +820,8 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
   {
     let coloured_borders = xe(NS_W, "tcBorders", [], [
       Element(bdr("top", "single", "16", "C00000")),
-      Element(bdr("bottom", "single", "16", "00B050")),
       Element(bdr("left", "single", "16", "0070C0")),
+      Element(bdr("bottom", "single", "16", "00B050")),
       Element(bdr("right", "single", "16", "000000")),
     ])
     // A second cell uses different border *styles* per side
@@ -829,8 +829,8 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
     // dash translator picks each up from the `<w:val>` attribute.
     let mixed_styles = xe(NS_W, "tcBorders", [], [
       Element(bdr("top", "single", "16", "C00000")),
-      Element(bdr("bottom", "double", "16", "00B050")),
       Element(bdr("left", "dashed", "16", "0070C0")),
+      Element(bdr("bottom", "double", "16", "00B050")),
       Element(bdr("right", "dotted", "16", "000000")),
     ])
     // The empty `<w:tblBorders>` block tells the renderer the table

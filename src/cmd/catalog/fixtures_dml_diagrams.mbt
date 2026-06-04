@@ -138,11 +138,11 @@ fn a_text_run(text : String) -> @xml.Element {
 }
 
 ///|
-/// `<a:t>` body with the given run — the SmartArt point's
-/// displayed label. §21.4.3.5 CT_Pt allows an `<a:t>` as the
-/// `<t>` child preserving the typed `CT_TextBody`.
+/// `<dgm:t>` text body with the given run — the SmartArt point's
+/// displayed label. §21.4.3.5 CT_Pt owns a diagram-namespace
+/// `<t>` element whose content is a DrawingML `a:CT_TextBody`.
 fn point_text_body(text : String) -> @xml.Element {
-  xe(NS_A, "t", [], [
+  dgm_elem("t", [], [
     Element(xe(NS_A, "bodyPr", [], [])),
     Element(xe(NS_A, "lstStyle", [], [])),
     Element(xe(NS_A, "p", [], [Element(a_text_run(text))])),
@@ -216,6 +216,29 @@ fn shared_data_model(labels : Array[String]) -> @xml.Element {
 }
 
 ///|
+/// `<dgm:scene3d>` is declared in the diagram namespace but uses the
+/// DrawingML `a:CT_Scene3D` content model, where both camera and
+/// lightRig are required.
+fn diagram_scene3d() -> @xml.Element {
+  dgm_elem("scene3d", [], [
+    Element(xe(NS_A, "camera", [xa("prst", "orthographicFront")], [])),
+    Element(xe(NS_A, "lightRig", [xa("rig", "threePt"), xa("dir", "t")], [])),
+  ])
+}
+
+///|
+/// `<dgm:style>` is declared in the diagram namespace but uses the
+/// DrawingML `a:CT_ShapeStyle` content model.
+fn diagram_shape_style() -> @xml.Element {
+  dgm_elem("style", [], [
+    Element(xe(NS_A, "lnRef", [xa("idx", "1")], [])),
+    Element(xe(NS_A, "fillRef", [xa("idx", "1")], [])),
+    Element(xe(NS_A, "effectRef", [xa("idx", "1")], [])),
+    Element(xe(NS_A, "fontRef", [xa("idx", "minor")], [])),
+  ])
+}
+
+///|
 /// Build a minimal `<dgm:layoutDef>` whose root `<dgm:layoutNode>`
 /// uses the given algorithm type. The layout-node nesting follows
 /// the §21.4.3 CT_LayoutNode shape:
@@ -250,7 +273,13 @@ fn make_layout_def(unique_id : String, root_alg : String) -> @xml.Element {
     Element(dgm_elem("alg", [xa("type", root_alg)], [])),
     Element(dgm_elem("shape", [], [])),
     Element(dgm_elem("presOf", [], [])),
-    Element(dgm_elem("choose", [xa("name", "Name0")], [])),
+    Element(
+      dgm_elem("choose", [xa("name", "Name0")], [
+        Element(
+          dgm_elem("if", [xa("func", "cnt"), xa("op", "gte"), xa("val", "0")], []),
+        ),
+      ]),
+    ),
     Element(dgm_elem("constrLst", [], [])),
     Element(for_each),
   ])
@@ -276,10 +305,10 @@ fn make_layout_def(unique_id : String, root_alg : String) -> @xml.Element {
 /// register with.
 fn make_style_def(unique_id : String) -> @xml.Element {
   let style_lbl = dgm_elem("styleLbl", [xa("name", "node1")], [
-    Element(dgm_elem("scene3d", [], [])),
+    Element(diagram_scene3d()),
     Element(dgm_elem("sp3d", [], [])),
     Element(dgm_elem("txPr", [], [])),
-    Element(dgm_elem("style", [], [])),
+    Element(diagram_shape_style()),
   ])
   dgm_elem(
     "styleDef",
@@ -291,7 +320,7 @@ fn make_style_def(unique_id : String) -> @xml.Element {
       Element(dgm_elem("title", [xa("val", unique_id)], [])),
       Element(dgm_elem("desc", [xa("val", unique_id)], [])),
       Element(dgm_elem("catLst", [], [])),
-      Element(dgm_elem("scene3d", [], [])),
+      Element(diagram_scene3d()),
       Element(style_lbl),
     ],
   )

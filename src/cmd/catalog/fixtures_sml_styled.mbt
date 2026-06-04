@@ -651,7 +651,7 @@ fn extras_sml_styled(xcases : Array[ExtendedCase]) -> Unit {
     doc_styles: None,
   })
 
-  // ---- 8. pattern fills (gray25 / 50 / 75) -----------------------
+  // ---- 8. pattern fills (gray0625 / gray125 / light / medium / dark) ----
   // Black ink + transparent bg; the engine should hatch each square.
   let pattern_fills_styles = ss_sheet(
     [],
@@ -661,9 +661,9 @@ fn extras_sml_styled(xcases : Array[ExtendedCase]) -> Unit {
       ss_fill_gray125(),
       ss_pattern_fill("gray0625", Some("FF000000"), Some("FFFFFFFF")),
       ss_pattern_fill("gray125", Some("FF000000"), Some("FFFFFFFF")),
-      ss_pattern_fill("gray25", Some("FF000000"), Some("FFFFFFFF")),
-      ss_pattern_fill("gray50", Some("FF000000"), Some("FFFFFFFF")),
-      ss_pattern_fill("gray75", Some("FF000000"), Some("FFFFFFFF")),
+      ss_pattern_fill("lightGray", Some("FF000000"), Some("FFFFFFFF")),
+      ss_pattern_fill("mediumGray", Some("FF000000"), Some("FFFFFFFF")),
+      ss_pattern_fill("darkGray", Some("FF000000"), Some("FFFFFFFF")),
     ],
     [ss_border_none()],
     [
@@ -684,9 +684,9 @@ fn extras_sml_styled(xcases : Array[ExtendedCase]) -> Unit {
         s_row_tall("1", "30", [
           s_inline_styled_x("A1", "g0625", "1"),
           s_inline_styled_x("B1", "g125", "2"),
-          s_inline_styled_x("C1", "g25", "3"),
-          s_inline_styled_x("D1", "g50", "4"),
-          s_inline_styled_x("E1", "g75", "5"),
+          s_inline_styled_x("C1", "light", "3"),
+          s_inline_styled_x("D1", "medium", "4"),
+          s_inline_styled_x("E1", "dark", "5"),
         ]),
       ),
     ]),

@@ -17,10 +17,18 @@ fn m_r(text : String) -> @xml.Element {
 }
 
 ///|
-/// OMML wrapper element with one inner content element — e.g. `<m:e>`,
-/// `<m:num>`, `<m:den>`, `<m:sub>`, `<m:sup>`.
+/// OMML argument wrapper — e.g. `<m:e>`, `<m:num>`, `<m:den>`,
+/// `<m:sub>`, `<m:sup>`.  If the caller already assembled an
+/// `<m:e>` argument, move its math children into the requested
+/// argument container instead of nesting `<m:e>` inside another
+/// `CT_OMathArg` container.
 fn m_arg(name : String, inner : @xml.Element) -> @xml.Element {
-  xe(NS_M, name, [], [Element(inner)])
+  let children = if inner.name.local_name == "e" {
+    inner.children
+  } else {
+    [Element(inner)]
+  }
+  xe(NS_M, name, [], children)
 }
 
 ///|

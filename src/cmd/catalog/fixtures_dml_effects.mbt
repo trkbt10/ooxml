@@ -163,18 +163,6 @@ fn fill_overlay_effect(blend : String, hex : String) -> @xml.Element {
 }
 
 ///|
-/// `<a:effectLst>` wrapping a §20.1.8 lumMod *effect* — luminance
-/// modulation applied to the rendered raster.  Distinct from the
-/// §20.1.4.1.21 lumMod colour transform, which operates on the
-/// colour pipeline.  Renderer does not currently implement this
-/// effect; fixture exercises the parse path.
-fn lum_mod_effect(val_100000 : String) -> @xml.Element {
-  xe(NS_A, "effectLst", [], [
-    Element(xe(NS_A, "lumMod", [xa("val", val_100000)], [])),
-  ])
-}
-
-///|
 fn extras_dml_effects(cases : Array[VisualCase]) -> Unit {
   // ===== §20.1.8.45 outerShdw variations ===========================
   // Existing fixture covers a basic centred-shadow.  Add the
@@ -352,21 +340,23 @@ fn extras_dml_effects(cases : Array[VisualCase]) -> Unit {
     ),
   })
 
-  // ===== §20.1.8 lumMod (as effect) ==============================
-  // Luminance modulation as a raster effect — distinct from the
-  // §20.1.4.1.21 colour-pipeline lumMod.  50000 = darken to 50 %.
+  // ===== §20.1.8.54 softEdge =====================================
+  // A schema-valid effectList member that attenuates the edge of the
+  // shape. Colour-pipeline lumMod is covered by DrawingML colour
+  // fixtures; it is not an effectList child in ECMA-376.
   cases.push({
-    id: "effect-lumMod-50",
+    id: "effect-softEdge-6pt",
     format: "pptx",
     category: "shape",
     content: effect_with_reference(
-      effect_shape("3", "LumModEffect50", "4472C4", [lum_mod_effect("50000")]),
+      effect_shape("3", "SoftEdge6pt", "4472C4", [soft_edge_effect("76200")]),
     ),
   })
 
   // ===== Effect stacks ============================================
-  // Combine outerShdw + glow in one effectLst — exercises the
-  // renderer's effect-priority logic (outerShdw should win).
+  // Combine glow + outerShdw in one effectLst — exercises the
+  // renderer's effect-priority logic while preserving the ECMA-376
+  // CT_EffectList child sequence.
   cases.push({
     id: "effect-stack-shadow-glow",
     format: "pptx",
@@ -374,6 +364,11 @@ fn extras_dml_effects(cases : Array[VisualCase]) -> Unit {
     content: effect_with_reference(
       effect_shape("3", "ShadowAndGlow", "4472C4", [
         xe(NS_A, "effectLst", [], [
+          Element(
+            xe(NS_A, "glow", [xa("rad", "76200")], [
+              Element(xe(NS_A, "srgbClr", [xa("val", "FFC000")], [])),
+            ]),
+          ),
           Element(
             xe(
               NS_A,
@@ -387,11 +382,6 @@ fn extras_dml_effects(cases : Array[VisualCase]) -> Unit {
               ],
               [Element(xe(NS_A, "srgbClr", [xa("val", "404040")], []))],
             ),
-          ),
-          Element(
-            xe(NS_A, "glow", [xa("rad", "76200")], [
-              Element(xe(NS_A, "srgbClr", [xa("val", "FFC000")], [])),
-            ]),
           ),
         ]),
       ]),

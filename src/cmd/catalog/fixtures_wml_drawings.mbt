@@ -725,13 +725,14 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   })
 
   // ============================================================
-  // 12. Inline drawing — empty `<pic:pic>` (no children at all)
+  // 12. Inline drawing — schema-minimal picture placeholder
   // ============================================================
   //
-  // Most-minimal placeholder: `<pic:pic/>` with no nvPicPr,
-  // blipFill, or spPr.  Tests that the renderer survives a
-  // completely empty picture body and falls back gracefully to the
-  // wp:extent-sized placeholder.
+  // Minimal package-valid placeholder: `<pic:pic>` carries the
+  // required nvPicPr, blipFill, and spPr children, but the blip has
+  // no `r:embed` relationship. Tests that the renderer falls back
+  // gracefully to the wp:extent-sized placeholder without shipping
+  // binary media in the fixture catalogue.
   cases.push({
     id: "drawing-inline-bare-pic",
     format: "docx",
@@ -741,7 +742,17 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
         w_p(None, [
           w_run(None, "Bare "),
           drawing_run(
-            inline("1828800", "914400", "1", "BarePic", pic_graphic([])),
+            inline(
+              "1828800",
+              "914400",
+              "1",
+              "BarePic",
+              pic_graphic([
+                Element(pic_nv("2", "BarePic")),
+                Element(pic_blipfill_empty),
+                Element(pic_sppr("1828800", "914400", "rect")),
+              ]),
+            ),
           ),
           w_run(None, " trailing."),
         ]),

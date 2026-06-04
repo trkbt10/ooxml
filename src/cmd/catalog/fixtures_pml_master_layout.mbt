@@ -150,21 +150,24 @@ fn pml_ml_body_bullets(
 }
 
 ///|
-/// Build a slide-level `<p:cSld>` that wraps `shapes` AND embeds the
-/// supplied extras (e.g. `<p:hf>`, `<p:timing>`) as additional
-/// children of `<p:cSld>`.  Strictly speaking `<p:timing>` and
-/// `<p:hf>` are siblings of `<p:cSld>` inside `<p:sld>` (§19.3.1.38),
-/// but the shared `pptx_package` builder accepts only a single child
-/// of `<p:sld>`.  Embedding the extras inside `<p:cSld>` keeps the
-/// payload visible to the parser while reusing the same host package
-/// helper as every other PML fixture; renderers tolerate unknown
-/// child elements there.  Mirrors the transition fixtures'
-/// convention (see `fixtures_pml_transitions.mbt`).
+/// Build a slide root that wraps `shapes` in `<p:cSld>` and places
+/// slide-level extras such as `<p:timing>` as siblings after it.
+/// `<p:hf>` is valid on slide layouts / masters, not on ordinary
+/// slides, so header-footer visual fixtures keep their placeholder
+/// shapes but do not emit the toggle into `ppt/slides/slide1.xml`.
 fn pml_ml_cSld_with_extras(
   shapes : Array[@xml.Element],
   extras : Array[@xml.Element],
 ) -> @xml.Element {
-  pptx_common_slide_data_with_children(NS_PML, [], shapes, extras)
+  let kids : Array[@xml.Node] = [
+    Element(pptx_common_slide_data_with_children(NS_PML, [], shapes, [])),
+  ]
+  for extra in extras {
+    if extra.name.local_name != "hf" {
+      kids.push(Element(extra))
+    }
+  }
+  xep("p", NS_PML, "sld", [], kids)
 }
 
 ///|
@@ -208,15 +211,39 @@ fn pml_ml_timing_with_effect(effect_kind : String) -> @xml.Element {
     "p",
     NS_PML,
     "animEffect",
+    [xa("transition", "in"), xa("filter", effect_kind)],
     [
-      xa("transition", "in"),
-      xa("filter", effect_kind),
-      xa("presetID", preset_id),
-      xa("presetClass", "entr"),
+      Element(
+        xep("p", NS_PML, "cBhvr", [], [
+          Element(
+            xep(
+              "p",
+              NS_PML,
+              "cTn",
+              [
+                xa("id", "2"),
+                xa("presetID", preset_id),
+                xa("presetClass", "entr"),
+              ],
+              [],
+            ),
+          ),
+          Element(
+            xep("p", NS_PML, "tgtEl", [], [
+              Element(xep("p", NS_PML, "spTgt", [xa("spid", "2")], [])),
+            ]),
+          ),
+        ]),
+      ),
     ],
-    [],
   )
-  let par_inner = xep("p", NS_PML, "par", [], [Element(anim_effect)])
+  let par_inner = xep("p", NS_PML, "par", [], [
+    Element(
+      xep("p", NS_PML, "cTn", [xa("id", "1")], [
+        Element(xep("p", NS_PML, "childTnLst", [], [Element(anim_effect)])),
+      ]),
+    ),
+  ])
   let tn_lst = xep("p", NS_PML, "tnLst", [], [Element(par_inner)])
   xep("p", NS_PML, "timing", [], [Element(tn_lst)])
 }

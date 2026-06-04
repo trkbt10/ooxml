@@ -623,13 +623,13 @@ fn xlsx_package_with_tables(
 }
 
 ///|
-/// `.xlsx` package whose `<worksheet>` carries a
-/// `<pivotTableDefinitions>` carrier plus a relationship pointing at a
-/// pivot table part, fully wired into the workbook's `<pivotCaches>`,
-/// the per-part `_rels` for the worksheet + the pivot table + the pivot
+/// `.xlsx` package whose worksheet relationship points at a pivot
+/// table part, fully wired into the workbook's `<pivotCaches>`, the
+/// per-part `_rels` for the worksheet + the pivot table + the pivot
 /// cache definition, and the three new `[Content_Types]` overrides
 /// (pivotTable, pivotCacheDefinition, pivotCacheRecords).  Mirrors
-/// §18.10 PivotTable plumbing as produced by Excel.
+/// §18.10 PivotTable plumbing while keeping `xl/worksheets/sheet1.xml`
+/// valid against the ECMA-376 worksheet schema.
 ///
 /// The caller supplies the four `<…>` element trees:
 ///
@@ -722,11 +722,10 @@ fn xlsx_package_with_pivot(
       ),
     ),
   ])
-  // Worksheet payload — wrap in `<worksheet>` if it isn't already,
-  // then append the in-worksheet carrier that points at the pivotTable
-  // relationship. The worksheet relationship alone leaves the pivot
-  // part orphaned for Excel, which then repairs the workbook by
-  // removing the PivotTable view.
+  // Worksheet payload — wrap in `<worksheet>` if it isn't already.
+  // PivotTable parts are linked through `sheet1.xml.rels`; ECMA-376
+  // exposes `<pivotTableDefinition>` as a part root, not as a
+  // `<worksheet>` child.
   let worksheet_body : @xml.Element = if content.name.local_name == "worksheet" {
     content
   } else {
@@ -736,21 +735,6 @@ fn xlsx_package_with_pivot(
       children: [Element(content)],
     }
   }
-  let pivot_defs = xe(ns_s, "pivotTableDefinitions", [xa("count", "1")], [
-    Element(
-      xe(
-        ns_s,
-        "pivotTableDefinition",
-        [
-          {
-            name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-            value: "rId1",
-          },
-        ],
-        [],
-      ),
-    ),
-  ])
   let worksheet_children : Array[@xml.Node] = []
   let ext_children : Array[@xml.Node] = []
   for n in worksheet_body.children {
@@ -759,7 +743,6 @@ fn xlsx_package_with_pivot(
       _ => worksheet_children.push(n)
     }
   }
-  worksheet_children.push(Element(pivot_defs))
   for n in ext_children {
     worksheet_children.push(n)
   }

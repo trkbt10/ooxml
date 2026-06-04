@@ -205,18 +205,17 @@ fn pmltr_textbox(
 }
 
 ///|
-/// Wrap a `<p:transition>` element together with the shape tree
-/// (spTree) inside a `<p:cSld>`.  ECMA-376 §19.3.1.38 puts
-/// `<p:transition>` as a sibling of `<p:cSld>`, but the shared
-/// `pptx_package` builder accepts only a single child element of
-/// `<p:sld>`, so we embed the transition inside `<p:cSld>`.
-/// Renderers tolerate unknown child elements; visual fidelity is
-/// measured on the rendered shapes alone.
+/// Wrap a `<p:transition>` element together with the shape tree in a
+/// schema-valid `<p:sld>` root. ECMA-376 §19.3.1.38 puts
+/// `<p:transition>` as a sibling after `<p:cSld>`.
 fn pmltr_cSld_with_transition(
   transition : @xml.Element,
   shapes : Array[@xml.Element],
 ) -> @xml.Element {
-  pptx_common_slide_data_with_children(NS_PML, [], shapes, [transition])
+  xep("p", NS_PML, "sld", [], [
+    Element(pptx_common_slide_data_with_children(NS_PML, [], shapes, [])),
+    Element(transition),
+  ])
 }
 
 ///|

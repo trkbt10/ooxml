@@ -390,7 +390,7 @@ fn extras_omml(cases : Array[VisualCase]) -> Unit {
   ])
   let quad_frac = xe(NS_M, "f", [], [
     Element(xe(NS_M, "fPr", [], [])),
-    Element(xe(NS_M, "num", [], [Element(quad_num)])),
+    Element(m_arg("num", quad_num)),
     Element(m_arg("den", m_r("2a"))),
   ])
   cases.push({
