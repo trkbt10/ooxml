@@ -263,6 +263,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animMotion rAng=\"bad\"><cBhvr><cTn id=\"5\"/></cBhvr></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(motion)
+  let empty_anim_clr_from = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"11\"/></cBhvr><from/></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(empty_anim_clr_from)
+  let multiple_anim_clr_to = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><srgbClr val=\"000000\"/><schemeClr val=\"accent1\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(multiple_anim_clr_to)
+  let malformed_anim_clr_by = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"13\"/></cBhvr><by><rgb r=\"100%\" g=\"0%\"/></by></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_by)
   let condition = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><tn val=\"bad\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
@@ -354,6 +366,35 @@ test "§19.5 animation variants reject missing required val attributes" {
   assert_timing_schema_violation(
     before + "<strVal val=\"visible\"/><intVal val=\"1\"/>" + after,
   )
+}
+
+///|
+test "§19.5.2 animClr preserves endpoint payloads" {
+  let node = try! decode_anim_clr(
+    parse_root(
+      "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><from><srgbClr val=\"000000\"/></from><to><schemeClr val=\"accent1\"/></to><by><rgb r=\"100%\" g=\"0%\" b=\"0%\"/></by></animClr>",
+    ),
+  )
+  match node.node_kind {
+    @domain.TimeNodeAnimateColor(behavior) => {
+      match behavior.common.from_value {
+        Some(@domain.AnimVariantColor(payload)) =>
+          assert_eq(payload, "srgbClr:000000")
+        _ => fail("expected from color")
+      }
+      match behavior.common.to_value {
+        Some(@domain.AnimVariantColor(payload)) =>
+          assert_eq(payload, "schemeClr:accent1")
+        _ => fail("expected to color")
+      }
+      match behavior.common.by_value {
+        Some(@domain.AnimVariantColor(payload)) =>
+          assert_eq(payload, "rgb:r=100%,g=0%,b=0%")
+        _ => fail("expected by transform")
+      }
+    }
+    _ => fail("expected animate color node")
+  }
 }
 
 ///|

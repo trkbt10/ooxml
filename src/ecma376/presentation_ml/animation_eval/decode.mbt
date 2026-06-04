@@ -1042,11 +1042,16 @@ fn with_endpoint_color(
   common : @domain.CT_TLCommonBehaviorData,
   element : @xml.Element,
   local_name : String,
-) -> @domain.CT_TLCommonBehaviorData {
+) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
   let endpoint = first_child_by_local_name(element, local_name)
   match endpoint {
     None => common
     Some(e) => {
+      if local_name == "by" {
+        validate_by_color_transform(e, local_name)
+      } else {
+        validate_color_choice_endpoint(e, local_name)
+      }
       let payload = serialise_color_endpoint(e)
       match local_name {
         "from" =>
@@ -1115,13 +1120,33 @@ fn serialise_color_endpoint(endpoint : @xml.Element) -> String {
         let val = attr_local(element, "val")
         match val {
           Some(v) => return tag + ":" + v
-          None => return tag
+          None => {
+            let attrs = serialise_element_attributes(element)
+            if attrs.length() == 0 {
+              return tag
+            }
+            return tag + ":" + attrs
+          }
         }
       }
       _ => ()
     }
   }
   ""
+}
+
+///|
+fn serialise_element_attributes(element : @xml.Element) -> String {
+  let buf = StringBuilder::new()
+  for i, attr in element.attributes {
+    if i > 0 {
+      buf.write_string(",")
+    }
+    buf.write_string(attr.name.local_name)
+    buf.write_string("=")
+    buf.write_string(attr.value)
+  }
+  buf.to_string()
 }
 
 ///|
@@ -1318,6 +1343,34 @@ fn validate_color_choice_endpoint(
 }
 
 ///|
+fn validate_by_color_transform(
+  endpoint : @xml.Element,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let element_count = count_element_children(endpoint)
+  let choice_count = count_by_color_transform_children(endpoint)
+  if choice_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="missing required rgb|hsl choice",
+    )
+  }
+  if element_count != 1 || choice_count != 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="expected exactly one rgb|hsl choice",
+    )
+  }
+  try @domain.CT_TLByAnimateColorTransform::from_element(endpoint) catch {
+    e => raise_domain_schema(path, e)
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 fn count_color_choice_children(element : @xml.Element) -> Int {
   let mut count = 0
   for child in element.children {
@@ -1330,6 +1383,22 @@ fn count_color_choice_children(element : @xml.Element) -> Int {
           | "sysClr"
           | "schemeClr"
           | "prstClr" => count = count + 1
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  count
+}
+
+///|
+fn count_by_color_transform_children(element : @xml.Element) -> Int {
+  let mut count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "rgb" | "hsl" => count = count + 1
           _ => ()
         }
       _ => ()
