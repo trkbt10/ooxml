@@ -311,6 +311,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<set><cBhvr><cTn id=\"8\"/><attrNameLst/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(empty_attr_name_list)
+  let unexpected_condition_child = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tn val=\"2\"/></cond><bogus/></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_condition_child)
+  let unexpected_tav_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"9\"/></cBhvr><tavLst><tav tm=\"0\"/><bogus/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_tav_child)
+  let unexpected_attr_name_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"10\"/><attrNameLst><attrName>style.visibility</attrName><bogus/></attrNameLst></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_attr_name_child)
 }
 
 ///|

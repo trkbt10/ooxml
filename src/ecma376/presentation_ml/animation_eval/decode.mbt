@@ -593,6 +593,7 @@ fn decode_condition_list(
   let result : Array[@domain.CT_TLTimeCondition] = []
   match first_child_by_local_name(parent, local_name) {
     Some(list) => {
+      validate_list_element_children(list, local_name, "cond")
       for child in list.children {
         match child {
           @xml.Element(element) =>
@@ -613,6 +614,27 @@ fn decode_condition_list(
     None => ()
   }
   result
+}
+
+///|
+fn validate_list_element_children(
+  list : @xml.Element,
+  path : String,
+  expected_local_name : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  for child in list.children {
+    match child {
+      @xml.Element(element) =>
+        if element.name.local_name != expected_local_name {
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path~,
+            reason="unsupported child element: " + element.name.local_name,
+          )
+        }
+      _ => ()
+    }
+  }
 }
 
 ///|
@@ -865,7 +887,8 @@ fn decode_attr_name_list(
   cbhvr : @xml.Element,
 ) -> Array[String] raise @opc_errors.SchemaViolation {
   match first_child_by_local_name(cbhvr, "attrNameLst") {
-    Some(list) =>
+    Some(list) => {
+      validate_list_element_children(list, "attrNameLst", "attrName")
       try @domain.CT_TLBehaviorAttributeNameList::from_element(list) catch {
         e => {
           raise_domain_schema("attrNameLst", e)
@@ -874,6 +897,7 @@ fn decode_attr_name_list(
       } noraise {
         attr_list => attr_list.attr_names
       }
+    }
     None => []
   }
 }
@@ -1108,7 +1132,8 @@ fn decode_tav_list(
   let list = first_child_by_local_name(element, "tavLst")
   let result : Array[@domain.CT_TLTimeAnimateValue] = []
   match list {
-    Some(l) =>
+    Some(l) => {
+      validate_list_element_children(l, "tavLst", "tav")
       for child in l.children {
         match child {
           @xml.Element(e) =>
@@ -1118,6 +1143,7 @@ fn decode_tav_list(
           _ => ()
         }
       }
+    }
     None => ()
   }
   result
