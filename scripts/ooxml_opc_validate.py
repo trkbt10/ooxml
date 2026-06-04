@@ -239,6 +239,48 @@ def content_type_for_item(
     return defaults.get(extension)
 
 
+def decode_xml_prolog(xml_bytes: bytes) -> str:
+    prefix = xml_bytes[:4096]
+    if prefix.startswith(b"\xff\xfe") or prefix.startswith(b"\xfe\xff"):
+        return prefix.decode("utf-16", errors="ignore")
+    if prefix.startswith(b"\xef\xbb\xbf"):
+        return prefix.decode("utf-8-sig", errors="ignore")
+    if prefix.startswith(b"\x00<"):
+        return prefix.decode("utf-16-be", errors="ignore")
+    if prefix.startswith(b"<\x00"):
+        return prefix.decode("utf-16-le", errors="ignore")
+    return prefix.decode("utf-8", errors="ignore")
+
+
+def has_dtd_declaration(xml_bytes: bytes) -> bool:
+    text = decode_xml_prolog(xml_bytes)
+    position = 0
+    if text.startswith("\ufeff"):
+        position = 1
+    while True:
+        while position < len(text) and text[position].isspace():
+            position += 1
+        if text.startswith("<!--", position):
+            end = text.find("-->", position + 4)
+            if end < 0:
+                return False
+            position = end + 3
+            continue
+        if text.startswith("<?", position):
+            end = text.find("?>", position + 2)
+            if end < 0:
+                return False
+            position = end + 2
+            continue
+        return text.startswith("<!DOCTYPE", position)
+
+
+def validate_opc_xml_usage(xml_bytes: bytes) -> str | None:
+    if has_dtd_declaration(xml_bytes):
+        return "OPC XML markup must not include a DTD declaration"
+    return None
+
+
 def parse_content_types(
     package: Path,
     archive: zipfile.ZipFile,
@@ -247,9 +289,16 @@ def parse_content_types(
     defaults: dict[str, str] = {}
     overrides: dict[str, str] = {}
     try:
-        root = ET.fromstring(archive.read(CONTENT_TYPES_PART))
+        content_types_xml = archive.read(CONTENT_TYPES_PART)
     except KeyError:
         return defaults, overrides, [fail(package, CONTENT_TYPES_PART, "content-types", "missing")]
+    xml_usage_error = validate_opc_xml_usage(content_types_xml)
+    if xml_usage_error:
+        return defaults, overrides, [
+            fail(package, CONTENT_TYPES_PART, "xml-usage", xml_usage_error)
+        ]
+    try:
+        root = ET.fromstring(content_types_xml)
     except ET.ParseError as error:
         return defaults, overrides, [
             fail(package, CONTENT_TYPES_PART, "content-types", f"xml parse: {error}")
@@ -406,8 +455,12 @@ def validate_relationships_part(
     ordinary_parts: set[str],
 ) -> list[ValidationResult]:
     results: list[ValidationResult] = []
+    relationships_xml = archive.read(item_name)
+    xml_usage_error = validate_opc_xml_usage(relationships_xml)
+    if xml_usage_error:
+        return [fail(package, item_name, "xml-usage", xml_usage_error)]
     try:
-        root = ET.fromstring(archive.read(item_name))
+        root = ET.fromstring(relationships_xml)
     except ET.ParseError as error:
         return [fail(package, item_name, "relationships", f"xml parse: {error}")]
 

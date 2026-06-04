@@ -106,6 +106,8 @@ The validator checks:
 - `[Content_Types].xml` structure: `Default` / `Override` children only,
   required non-empty `Extension`, `PartName`, and `ContentType` attributes, and
   parameter-free media-type syntax for every `ContentType`.
+- OPC XML usage for the Media Types stream and Relationships parts, including
+  rejection of DTD declarations.
 - Relationship part ownership: package relationships and part relationships
   must map to existing sources.
 - Relationship part structure: `Relationship` children only, required non-empty
