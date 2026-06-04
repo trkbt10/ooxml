@@ -1048,6 +1048,17 @@ test "§19.5.79 tavLst keypoints lerp between adjacent entries" {
 }
 
 ///|
+test "§19.5.33 accel without decel reaches final progress" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim from=\"0\" to=\"100\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"33\" dur=\"1000\" accel=\"100000\" fill=\"hold\"/><tgtEl><spTgt spid=\"4\"/></tgtEl><attrNameLst><attrName>opacity</attrName></attrNameLst></cBhvr></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  let timeline = try! decode_timing(build_timing(xml))
+  let engine = TimingEngine::new(timeline)
+  let value = engine.animate(1000)[0].value.as_double().unwrap()
+  assert_true(value > 99.0 && value <= 100.001)
+}
+
+///|
 test "§19.5.33 repeatCount=3000 cycles three iterations" {
   let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim from=\"0\" to=\"1\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"9\" dur=\"1000\" repeatCount=\"3000\" fill=\"hold\"/><tgtEl><spTgt spid=\"2\"/></tgtEl><attrNameLst><attrName>opacity</attrName></attrNameLst></cBhvr></anim>" +

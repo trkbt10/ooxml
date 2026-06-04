@@ -34,7 +34,7 @@ pub fn ease_progress(
     // the first `a` units of normalised time.
     let phase = clamped / a
     0.5 * r * a * phase * phase
-  } else if clamped < 1.0 - d {
+  } else if d == 0.0 || clamped < 1.0 - d {
     // Constant phase: full rate r.
     0.5 * r * a + r * (clamped - a)
   } else {
