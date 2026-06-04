@@ -32,6 +32,10 @@ REPO = Path(__file__).resolve().parents[1]
 CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 RELATIONSHIPS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 RELATIONSHIPS_CONTENT_TYPE = "application/vnd.openxmlformats-package.relationships+xml"
+CORE_PROPERTIES_CONTENT_TYPE = "application/vnd.openxmlformats-package.core-properties+xml"
+DIGITAL_SIGNATURE_XML_SIGNATURE_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml"
+)
 RELATIONSHIPS_ROOT = "_rels/.rels"
 CONTENT_TYPES_PART = "[Content_Types].xml"
 
@@ -55,6 +59,10 @@ MEDIA_TYPE_TOKEN = r"[A-Za-z0-9!#$%&'*+\-.^_`{|}~]+"
 MEDIA_TYPE = re.compile(rf"^{MEDIA_TYPE_TOKEN}/{MEDIA_TYPE_TOKEN}$")
 XML_ENCODING_DECL = re.compile(r"""<\?xml\s+[^?]*\bencoding\s*=\s*(['"])([^'"]+)\1""")
 ALLOWED_OPC_XML_ENCODINGS = {"utf-8", "utf-16"}
+OPC_DEFINED_XML_CONTENT_TYPES = {
+    CORE_PROPERTIES_CONTENT_TYPE,
+    DIGITAL_SIGNATURE_XML_SIGNATURE_CONTENT_TYPE,
+}
 
 
 @dataclass(frozen=True)
@@ -600,6 +608,20 @@ def validate_relationships_part(
     return results
 
 
+def validate_opc_defined_xml_part(
+    package: Path,
+    archive: zipfile.ZipFile,
+    item_name: str,
+    content_type: str,
+) -> list[ValidationResult]:
+    if content_type not in OPC_DEFINED_XML_CONTENT_TYPES:
+        return []
+    xml_usage_error = validate_opc_xml_usage(archive.read(item_name))
+    if xml_usage_error is None:
+        return []
+    return [fail(package, item_name, "xml-usage", xml_usage_error)]
+
+
 def validate_package(package: Path) -> list[ValidationResult]:
     results: list[ValidationResult] = []
     try:
@@ -694,13 +716,23 @@ def validate_package(package: Path) -> list[ValidationResult]:
                     )
 
             for item_name in sorted(ordinary_items):
-                if content_type_for_item(item_name, defaults, overrides) is None:
+                content_type = content_type_for_item(item_name, defaults, overrides)
+                if content_type is None:
                     results.append(
                         fail(
                             package,
                             item_name,
                             "content-types",
                             "missing content type Default/Override",
+                        )
+                    )
+                else:
+                    results.extend(
+                        validate_opc_defined_xml_part(
+                            package,
+                            archive,
+                            item_name,
+                            content_type,
                         )
                     )
 
