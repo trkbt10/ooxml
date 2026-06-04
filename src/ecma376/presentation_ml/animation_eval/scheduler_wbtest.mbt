@@ -493,6 +493,30 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><srgbClr val=\"000000\"/><schemeClr val=\"accent1\"/></to></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(multiple_anim_clr_to)
+  let missing_anim_clr_from_val = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><from><srgbClr/></from></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_anim_clr_from_val)
+  let malformed_anim_clr_from_hex = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><from><srgbClr val=\"zzzzzz\"/></from></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_from_hex)
+  let malformed_anim_clr_to_scheme = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><schemeClr val=\"bogus\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_to_scheme)
+  let malformed_anim_clr_to_hsl = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><hslClr hue=\"1.5\" sat=\"0%\" lum=\"0%\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_to_hsl)
+  let malformed_anim_clr_from_scrgb = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><from><scrgbClr r=\"bad\" g=\"0%\" b=\"0%\"/></from></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_from_scrgb)
+  let malformed_anim_clr_to_sys_last = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><sysClr val=\"windowText\" lastClr=\"12345z\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_to_sys_last)
   let malformed_anim_clr_by = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animClr><cBhvr><cTn id=\"13\"/></cBhvr><by><rgb r=\"100%\" g=\"0%\"/></by></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
@@ -691,6 +715,13 @@ test "§19.5 animation variants reject missing required val attributes" {
   )
   assert_timing_schema_violation(before + "<fltVal val=\"1.2.3\"/>" + after)
   assert_timing_schema_violation(before + "<clrVal><bogus/></clrVal>" + after)
+  assert_timing_schema_violation(before + "<clrVal><srgbClr/></clrVal>" + after)
+  assert_timing_schema_violation(
+    before + "<clrVal><srgbClr val=\"12345z\"/></clrVal>" + after,
+  )
+  assert_timing_schema_violation(
+    before + "<clrVal><schemeClr val=\"notAColor\"/></clrVal>" + after,
+  )
   assert_timing_schema_violation(
     before +
     "<clrVal><srgbClr val=\"ff00aa\"/><schemeClr val=\"accent1\"/></clrVal>" +

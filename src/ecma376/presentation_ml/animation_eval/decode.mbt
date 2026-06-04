@@ -1889,6 +1889,250 @@ fn validate_color_choice_endpoint(
       reason="expected exactly one color choice",
     )
   }
+  for child in endpoint.children {
+    match child {
+      @xml.Element(e) => validate_color_choice_child_attrs(e)
+      _ => ()
+    }
+  }
+}
+
+///|
+fn validate_color_choice_child_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  match element.name.local_name {
+    "scrgbClr" => validate_scrgb_color_attrs(element)
+    "srgbClr" => validate_srgb_color_attrs(element)
+    "hslClr" => validate_hsl_color_choice_attrs(element)
+    "sysClr" => validate_system_color_attrs(element)
+    "schemeClr" => validate_scheme_color_attrs(element)
+    "prstClr" => validate_preset_color_attrs(element)
+    _ => ()
+  }
+}
+
+///|
+fn validate_scrgb_color_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  validate_required_percentage_color_attr(element, "r", "scrgbClr/@r")
+  validate_required_percentage_color_attr(element, "g", "scrgbClr/@g")
+  validate_required_percentage_color_attr(element, "b", "scrgbClr/@b")
+}
+
+///|
+fn validate_srgb_color_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let text = require_color_attr(element, "val", "srgbClr/@val")
+  validate_hex_rgb_attr(text, "srgbClr/@val")
+}
+
+///|
+fn validate_hsl_color_choice_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let hue = require_color_attr(element, "hue", "hslClr/@hue")
+  validate_positive_fixed_angle_attr(hue, "hslClr/@hue")
+  validate_required_percentage_color_attr(element, "sat", "hslClr/@sat")
+  validate_required_percentage_color_attr(element, "lum", "hslClr/@lum")
+}
+
+///|
+fn validate_system_color_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let text = require_color_attr(element, "val", "sysClr/@val")
+  if !is_system_color_value(text) {
+    raise_invalid_color_enum("sysClr/@val", text)
+  }
+  match attr_local(element, "lastClr") {
+    Some(last) => validate_hex_rgb_attr(last, "sysClr/@lastClr")
+    None => ()
+  }
+}
+
+///|
+fn validate_scheme_color_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let text = require_color_attr(element, "val", "schemeClr/@val")
+  if !is_scheme_color_value(text) {
+    raise_invalid_color_enum("schemeClr/@val", text)
+  }
+}
+
+///|
+fn validate_preset_color_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let text = require_color_attr(element, "val", "prstClr/@val")
+  if text.length() == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="prstClr/@val",
+      reason="empty ST_PresetColorVal",
+    )
+  }
+}
+
+///|
+fn validate_required_percentage_color_attr(
+  element : @xml.Element,
+  name : String,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let text = require_color_attr(element, name, path)
+  validate_percentage_attr(text, path)
+}
+
+///|
+fn require_color_attr(
+  element : @xml.Element,
+  name : String,
+  path : String,
+) -> String raise @opc_errors.SchemaViolation {
+  match attr_local(element, name) {
+    Some(text) => text
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="missing required @" + name + " attribute",
+      )
+  }
+}
+
+///|
+fn validate_hex_rgb_attr(
+  text : String,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  if !is_hex_rgb_token(text) {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="malformed ST_HexColorRGB: " + text,
+    )
+  }
+}
+
+///|
+fn validate_positive_fixed_angle_attr(
+  text : String,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  match parse_unsigned_int(trim_whitespace(text)) {
+    Some(value) =>
+      if value >= 21600000 {
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path~,
+          reason="ST_PositiveFixedAngle out of range: " + text,
+        )
+      }
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="malformed ST_PositiveFixedAngle: " + text,
+      )
+  }
+}
+
+///|
+fn raise_invalid_color_enum(
+  path : String,
+  text : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  raise @opc_errors.SchemaViolation(
+    section=animation_section,
+    path~,
+    reason="invalid enumeration value: " + text,
+  )
+}
+
+///|
+fn is_hex_rgb_token(text : String) -> Bool {
+  if text.length() != 6 {
+    return false
+  }
+  for i in 0..<text.length() {
+    if !is_hex_digit_at(text, i) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn is_hex_digit_at(text : String, index : Int) -> Bool {
+  let unit = text.code_unit_at(index).to_int()
+  (unit >= 0x30 && unit <= 0x39) ||
+  (unit >= 0x41 && unit <= 0x46) ||
+  (unit >= 0x61 && unit <= 0x66)
+}
+
+///|
+fn is_scheme_color_value(text : String) -> Bool {
+  match text {
+    "bg1"
+    | "tx1"
+    | "bg2"
+    | "tx2"
+    | "accent1"
+    | "accent2"
+    | "accent3"
+    | "accent4"
+    | "accent5"
+    | "accent6"
+    | "hlink"
+    | "folHlink"
+    | "phClr"
+    | "dk1"
+    | "lt1"
+    | "dk2"
+    | "lt2" => true
+    _ => false
+  }
+}
+
+///|
+fn is_system_color_value(text : String) -> Bool {
+  match text {
+    "scrollBar"
+    | "background"
+    | "activeCaption"
+    | "inactiveCaption"
+    | "menu"
+    | "window"
+    | "windowFrame"
+    | "menuText"
+    | "windowText"
+    | "captionText"
+    | "activeBorder"
+    | "inactiveBorder"
+    | "appWorkspace"
+    | "highlight"
+    | "highlightText"
+    | "btnFace"
+    | "btnShadow"
+    | "grayText"
+    | "btnText"
+    | "inactiveCaptionText"
+    | "btnHighlight"
+    | "3dDkShadow"
+    | "3dLight"
+    | "infoText"
+    | "infoBk"
+    | "hotLight"
+    | "gradientActiveCaption"
+    | "gradientInactiveCaption"
+    | "menuHighlight"
+    | "menuBar" => true
+    _ => false
+  }
 }
 
 ///|
