@@ -619,6 +619,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tn val=\"2147483648\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(nonrepresentable_tn_val)
+  let malformed_condition_event = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond evt=\"hover\"><tn val=\"2\"/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_condition_event)
   let missing_tn_val = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><tn/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
