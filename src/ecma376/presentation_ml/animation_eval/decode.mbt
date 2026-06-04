@@ -854,6 +854,7 @@ fn decode_behavior_common(
 fn decode_cbhvr_inner(
   cbhvr : @xml.Element,
 ) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
+  validate_cbhvr_children(cbhvr)
   let additive = match attr_local(cbhvr, "additive") {
     Some(text) => Some(parse_st_additive_type(text))
     None => None
@@ -891,6 +892,79 @@ fn decode_cbhvr_inner(
     override_behavior,
     runtime_context,
     transform_type,
+  }
+}
+
+///|
+fn validate_cbhvr_children(
+  cbhvr : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut ctn_count = 0
+  let mut target_count = 0
+  let mut attr_name_list_count = 0
+  let mut last_rank = 0
+  for child in cbhvr.children {
+    match child {
+      @xml.Element(e) => {
+        let rank = match e.name.local_name {
+          "cTn" => {
+            ctn_count = ctn_count + 1
+            0
+          }
+          "tgtEl" => {
+            target_count = target_count + 1
+            1
+          }
+          "attrNameLst" => {
+            attr_name_list_count = attr_name_list_count + 1
+            2
+          }
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path="cBhvr",
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+        if rank < last_rank {
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path="cBhvr",
+            reason="child element out of sequence: " + e.name.local_name,
+          )
+        }
+        last_rank = rank
+      }
+      _ => ()
+    }
+  }
+  if ctn_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cBhvr/cTn",
+      reason="missing required <cTn> child",
+    )
+  }
+  if ctn_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cBhvr/cTn",
+      reason="allows exactly one <cTn> child",
+    )
+  }
+  if target_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cBhvr/tgtEl",
+      reason="allows at most one <tgtEl> child",
+    )
+  }
+  if attr_name_list_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cBhvr/attrNameLst",
+      reason="allows at most one <attrNameLst> child",
+    )
   }
 }
 
