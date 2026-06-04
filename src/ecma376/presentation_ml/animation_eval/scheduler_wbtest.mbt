@@ -293,6 +293,10 @@ test "§19.5.33 cTn rejects malformed scalar attributes" {
   assert_timing_schema_violation(
     "<timing><tnLst><par><cTn id=\"2147483648\"/></par></tnLst></timing>",
   )
+  assert_timing_schema_violation(before + "dur=\"bad\"" + after)
+  assert_timing_schema_violation(before + "dur=\"-1\"" + after)
+  assert_timing_schema_violation(before + "repeatCount=\"bad\"" + after)
+  assert_timing_schema_violation(before + "repeatDur=\"-1\"" + after)
   assert_timing_schema_violation(before + "accel=\"bad\"" + after)
   assert_timing_schema_violation(before + "accel=\"-1%\"" + after)
   assert_timing_schema_violation(before + "accel=\"100001\"" + after)
@@ -629,6 +633,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tn val=\"2147483648\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(nonrepresentable_tn_val)
+  let malformed_condition_delay = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond delay=\"bad\"><tn val=\"2\"/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_condition_delay)
   let malformed_condition_event = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond evt=\"hover\"><tn val=\"2\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
