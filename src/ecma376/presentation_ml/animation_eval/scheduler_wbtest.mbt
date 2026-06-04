@@ -233,6 +233,16 @@ test "§19.5 media nodes reject malformed direct children" {
   )
   assert_timing_schema_violation(
     before +
+    "<audio isNarration=\"maybe\"><cMediaNode><cTn id=\"66\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<video fullScrn=\"maybe\"><cMediaNode><cTn id=\"67\"/><tgtEl><spTgt spid=\"1\"/></tgtEl></cMediaNode></video>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
     "<audio><cMediaNode vol=\"bad\"><cTn id=\"58\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
     after,
   )
