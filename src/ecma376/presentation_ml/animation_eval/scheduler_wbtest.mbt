@@ -258,7 +258,11 @@ test "§19.5.33 cTn rejects malformed scalar attributes" {
   let before = "<timing><tnLst><par><cTn id=\"1\" "
   let after = "/></par></tnLst></timing>"
   assert_timing_schema_violation(before + "accel=\"bad\"" + after)
+  assert_timing_schema_violation(before + "accel=\"-1%\"" + after)
+  assert_timing_schema_violation(before + "accel=\"100001\"" + after)
   assert_timing_schema_violation(before + "decel=\"bad\"" + after)
+  assert_timing_schema_violation(before + "decel=\"0.5\"" + after)
+  assert_timing_schema_violation(before + "decel=\"100.1%\"" + after)
   assert_timing_schema_violation(before + "autoRev=\"maybe\"" + after)
   assert_timing_schema_violation(before + "afterEffect=\"maybe\"" + after)
   assert_timing_schema_violation(before + "display=\"maybe\"" + after)
@@ -274,10 +278,12 @@ test "§19.5.33 cTn rejects malformed scalar attributes" {
 }
 
 ///|
-test "§19.5.12 cTn preserves master relation, speed, and sync type" {
-  let xml = "<timing><tnLst><par><cTn id=\"1\" masterRel=\"lastClick\" spd=\"-12.5%\" syncBehavior=\"locked\"/></par></tnLst></timing>"
+test "§19.5.12 cTn decodes scalar timing metadata" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\" accel=\"25000\" decel=\"12.5%\" masterRel=\"lastClick\" spd=\"-12.5%\" syncBehavior=\"locked\"/></par></tnLst></timing>"
   let timeline = try! decode_timing(build_timing(xml))
   let root = root_node(timeline)
+  assert_true(root.accel > 0.249 && root.accel < 0.251)
+  assert_true(root.decel > 0.124 && root.decel < 0.126)
   assert_true(root.master_rel == Some("lastClick"))
   assert_true(root.spd == Some("-12.5%"))
   assert_true(root.sync_behavior == Some("locked"))

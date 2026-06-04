@@ -422,7 +422,7 @@ fn decode_common_time_node_data(
   let accel = match c_tn {
     Some(t) =>
       match attr_local(t, "accel") {
-        Some(text) => parse_percentage_attr(text, "cTn/@accel")
+        Some(text) => parse_positive_fixed_percentage_attr(text, "cTn/@accel")
         None => 0.0
       }
     None => 0.0
@@ -430,7 +430,7 @@ fn decode_common_time_node_data(
   let decel = match c_tn {
     Some(t) =>
       match attr_local(t, "decel") {
-        Some(text) => parse_percentage_attr(text, "cTn/@decel")
+        Some(text) => parse_positive_fixed_percentage_attr(text, "cTn/@decel")
         None => 0.0
       }
     None => 0.0
@@ -2049,18 +2049,39 @@ fn parse_tav_time(text : String) -> Double? raise @opc_errors.SchemaViolation {
 }
 
 ///|
-fn parse_percentage_attr(
+fn parse_positive_fixed_percentage_attr(
   text : String,
   path : String,
 ) -> Double raise @opc_errors.SchemaViolation {
-  match parse_percentage(text) {
-    Some(value) => value
-    None =>
-      raise @opc_errors.SchemaViolation(
-        section=animation_section,
-        path~,
-        reason="malformed ST_PositiveFixedPercentage: " + text,
-      )
+  let trimmed = trim_whitespace(text)
+  if !is_positive_fixed_percentage_token(trimmed) {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="malformed ST_PositiveFixedPercentage: " + text,
+    )
+  }
+  if trimmed.code_unit_at(trimmed.length() - 1).to_int() == 0x25 {
+    let body = trimmed.unsafe_substring(start=0, end=trimmed.length() - 1)
+    match parse_double(body) {
+      Some(value) => value / 100.0
+      None =>
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path~,
+          reason="malformed ST_PositiveFixedPercentage: " + text,
+        )
+    }
+  } else {
+    match parse_unsigned_int(trimmed) {
+      Some(value) => value.to_double() / 100000.0
+      None =>
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path~,
+          reason="malformed ST_PositiveFixedPercentage: " + text,
+        )
+    }
   }
 }
 
@@ -2140,28 +2161,6 @@ fn parse_unsigned_int_attr(
         path~,
         reason="malformed xsd:unsignedInt: " + text,
       )
-  }
-}
-
-///|
-fn parse_percentage(text : String) -> Double? {
-  let trimmed = trim_whitespace(text)
-  if trimmed.length() == 0 {
-    return None
-  }
-  let last = trimmed.code_unit_at(trimmed.length() - 1).to_int()
-  if last == 0x25 {
-    let body = trimmed.unsafe_substring(start=0, end=trimmed.length() - 1)
-    match parse_double(body) {
-      Some(d) => return Some(d / 100.0)
-      None => return None
-    }
-  }
-  // ST_PositiveFixedPercentage is stored as thousandths of a percent
-  // (1000 = 1%). Cap at 1.0 because accel/decel are 0..1.
-  match parse_unsigned_int(trimmed) {
-    Some(n) => Some((n.to_double() / 100000.0).min(1.0))
-    None => parse_double(trimmed)
   }
 }
 
