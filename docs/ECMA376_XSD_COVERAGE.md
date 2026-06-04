@@ -141,6 +141,8 @@ The validator checks:
   content type matching its root element. Standard OOXML roots emitted as
   generic `application/xml`, and standardized OOXML XML content types with no
   registered root contract, fail this gate.
+- Bitmap image parts with known OOXML image content types declare content types
+  matching their payload signatures (`bmp`, `gif`, `jpeg`, `png`, `tiff`).
 - Internal Office document relationship types resolve to target parts with the
   expected content type and, for XML targets, the expected root element. The
   gate covers the generated fixture set's ECMA relationship contracts,

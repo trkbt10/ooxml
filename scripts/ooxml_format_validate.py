@@ -120,6 +120,13 @@ IMAGE_CONTENT_TYPES = {
     "image/x-emf",
     "image/x-wmf",
 }
+IMAGE_SIGNATURES = {
+    "image/bmp": (b"BM",),
+    "image/gif": (b"GIF87a", b"GIF89a"),
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "image/tiff": (b"II*\x00", b"MM\x00*"),
+}
 
 DEFAULT_FIXTURES = [
     REPO / ".snapshots" / "fixtures" / "docx" / "paragraph" / "paragraph-alignment.docx",
@@ -989,6 +996,38 @@ def validate_xml_part_content_type_roots(
     return results
 
 
+def validate_binary_part_content_types(
+    package: Path,
+    archive: zipfile.ZipFile,
+    ordinary_parts: set[str],
+    defaults: dict[str, str],
+    overrides: dict[str, str],
+) -> list[ValidationResult]:
+    results: list[ValidationResult] = []
+    for part_name in sorted(ordinary_parts):
+        content_type = content_type_for_part(part_name, defaults, overrides)
+        signatures = IMAGE_SIGNATURES.get(content_type or "")
+        if signatures is None:
+            continue
+
+        try:
+            data = archive.read(item_name_for_part(part_name))
+        except KeyError:
+            results.append(fail(package, part_name, "binary-content-type", "missing"))
+            continue
+
+        if not any(data.startswith(signature) for signature in signatures):
+            results.append(
+                fail(
+                    package,
+                    part_name,
+                    "binary-content-type",
+                    f"{content_type}: payload signature does not match declared content type",
+                )
+            )
+    return results
+
+
 def validate_linked_part(
     package: Path,
     archive: zipfile.ZipFile,
@@ -1448,6 +1487,16 @@ def validate_package(package: Path) -> list[ValidationResult]:
                     defaults,
                     overrides,
                     xml_roots,
+                )
+            )
+
+            results.extend(
+                validate_binary_part_content_types(
+                    package,
+                    archive,
+                    ordinary_parts,
+                    defaults,
+                    overrides,
                 )
             )
 
