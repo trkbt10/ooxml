@@ -205,6 +205,33 @@ test "§19.5.49 audio and §19.5.85 video decode as media time-node leaves" {
 }
 
 ///|
+test "§19.5 media nodes reject malformed direct children" {
+  let before = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>"
+  let after = "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(before + "<audio><bogus/></audio>" + after)
+  assert_timing_schema_violation(
+    before +
+    "<audio><cMediaNode><cTn id=\"52\"/><tgtEl><sndTgt/></tgtEl></cMediaNode><cMediaNode><cTn id=\"53\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<audio><cMediaNode><tgtEl><sndTgt/></tgtEl><cTn id=\"54\"/></cMediaNode></audio>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<video><cMediaNode><cTn id=\"55\"/><cTn id=\"56\"/><tgtEl><spTgt spid=\"1\"/></tgtEl></cMediaNode></video>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<video><cMediaNode><cTn id=\"57\"/><tgtEl><spTgt spid=\"1\"/></tgtEl><bogus/></cMediaNode></video>" +
+    after,
+  )
+}
+
+///|
 test "§19.5.33 cTn rejects malformed percentage and boolean attributes" {
   let before = "<timing><tnLst><par><cTn id=\"1\" "
   let after = "/></par></tnLst></timing>"

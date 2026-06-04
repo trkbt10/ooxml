@@ -290,6 +290,7 @@ pub fn decode_cmd(
 pub fn decode_audio(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_media_leaf_children(element, "audio")
   let media = try @domain.CT_TLMediaNodeAudio::from_element(element) catch {
     e => {
       raise_schema("audio", e)
@@ -309,6 +310,7 @@ pub fn decode_audio(
 pub fn decode_video(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_media_leaf_children(element, "video")
   let media = try @domain.CT_TLMediaNodeVideo::from_element(element) catch {
     e => {
       raise_schema("video", e)
@@ -1168,6 +1170,115 @@ fn validate_required_child(
       section=animation_section,
       path=path + "/" + required_local_name,
       reason="allows exactly one <" + required_local_name + "> child",
+    )
+  }
+}
+
+///|
+fn validate_media_leaf_children(
+  element : @xml.Element,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut media_count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "cMediaNode" => {
+            media_count = media_count + 1
+            validate_common_media_node_children(e)
+          }
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path~,
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+      _ => ()
+    }
+  }
+  if media_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/cMediaNode",
+      reason="missing required <cMediaNode> child",
+    )
+  }
+  if media_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/cMediaNode",
+      reason="allows exactly one <cMediaNode> child",
+    )
+  }
+}
+
+///|
+fn validate_common_media_node_children(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut ctn_count = 0
+  let mut target_count = 0
+  let mut last_rank = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let rank = match e.name.local_name {
+          "cTn" => {
+            ctn_count = ctn_count + 1
+            0
+          }
+          "tgtEl" => {
+            validate_time_target_element(e)
+            target_count = target_count + 1
+            1
+          }
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path="cMediaNode",
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+        if rank < last_rank {
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path="cMediaNode",
+            reason="child element out of sequence: " + e.name.local_name,
+          )
+        }
+        last_rank = rank
+      }
+      _ => ()
+    }
+  }
+  if ctn_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cMediaNode/cTn",
+      reason="missing required <cTn> child",
+    )
+  }
+  if ctn_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cMediaNode/cTn",
+      reason="allows exactly one <cTn> child",
+    )
+  }
+  if target_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cMediaNode/tgtEl",
+      reason="missing required <tgtEl> child",
+    )
+  }
+  if target_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cMediaNode/tgtEl",
+      reason="allows exactly one <tgtEl> child",
     )
   }
 }
