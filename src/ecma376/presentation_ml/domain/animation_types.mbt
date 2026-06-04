@@ -117,8 +117,8 @@ pub(all) struct CT_TLCommonBehaviorData {
   /// §19.5.6 @override (ST_TLBehaviorOverride) — "normal" /
   /// "childStyle"; `None` when absent.
   override_behavior : String?
-  /// §19.5.6 @rctx (ST_TLBehaviorRuntimeContext) — runtime context
-  /// ("DOM" / "session"); `None` when absent.
+  /// §19.5.6 @rctx (xsd:string) — runtime context; `None` when
+  /// absent.
   runtime_context : String?
   /// §19.5.6 @xfrmType (ST_TLBehaviorTransformType) — "pt" / "img";
   /// `None` when absent.

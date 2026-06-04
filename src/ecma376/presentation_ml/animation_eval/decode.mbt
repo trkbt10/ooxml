@@ -1108,9 +1108,9 @@ fn with_to_variant(
     tav_list: [],
     calc_mode: None,
     value_type: None,
-    override_behavior: None,
-    runtime_context: None,
-    transform_type: None,
+    override_behavior: common.override_behavior,
+    runtime_context: common.runtime_context,
+    transform_type: common.transform_type,
   }
 }
 

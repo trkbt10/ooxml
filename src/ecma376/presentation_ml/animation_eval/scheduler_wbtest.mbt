@@ -502,6 +502,26 @@ test "§19.5.22 cBhvr preserves enum-backed behavior attributes" {
 }
 
 ///|
+test "§19.5.66 set preserves cBhvr behavior metadata" {
+  let node = try! decode_set(
+    parse_root(
+      "<set><cBhvr override=\"childStyle\" xfrmType=\"img\" rctx=\"session\"><cTn id=\"18\"/></cBhvr><to><strVal val=\"visible\"/></to></set>",
+    ),
+  )
+  match node.node_kind {
+    @domain.TimeNodeSet(behavior) => {
+      assert_true(behavior.common.override_behavior == Some("childStyle"))
+      assert_true(behavior.common.transform_type == Some("img"))
+      assert_true(behavior.common.runtime_context == Some("session"))
+      assert_true(
+        behavior.common.to_value is Some(@domain.AnimVariantString(_)),
+      )
+    }
+    _ => fail("expected set behavior")
+  }
+}
+
+///|
 test "§19.5 animation variants reject missing required val attributes" {
   let before = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<set><cBhvr><cTn id=\"6\"/></cBhvr><to>"
