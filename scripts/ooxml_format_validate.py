@@ -35,6 +35,7 @@ PACKAGE_RELS_PART = "_rels/.rels"
 OD_REL_NS_TRANSITIONAL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 OD_REL_NS_STRICT = "http://purl.oclc.org/ooxml/officeDocument/relationships"
 OD_REL_NAMESPACES = {OD_REL_NS_TRANSITIONAL, OD_REL_NS_STRICT}
+PACKAGE_CORE_PROPERTIES_REL_TYPE = f"{RELATIONSHIPS_NS}/metadata/core-properties"
 
 WML_NS_TRANSITIONAL = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 WML_NS_STRICT = "http://purl.oclc.org/ooxml/wordprocessingml/main"
@@ -417,6 +418,23 @@ for contracts in [
             (PML_NS_TRANSITIONAL, "presentation"),
             (PML_NS_STRICT, "presentation"),
         },
+    ),
+    {
+        PACKAGE_CORE_PROPERTIES_REL_TYPE: PartContract(
+            {PACKAGE_CORE_PROPERTIES_REL_TYPE},
+            {CORE_PROPERTIES_CT},
+            CONTENT_TYPE_ROOT_TAGS[CORE_PROPERTIES_CT],
+        )
+    },
+    relationship_contract(
+        "extended-properties",
+        {EXTENDED_PROPERTIES_CT},
+        CONTENT_TYPE_ROOT_TAGS[EXTENDED_PROPERTIES_CT],
+    ),
+    relationship_contract(
+        "custom-properties",
+        {CUSTOM_PROPERTIES_CT},
+        CONTENT_TYPE_ROOT_TAGS[CUSTOM_PROPERTIES_CT],
     ),
     relationship_contract(
         "worksheet",

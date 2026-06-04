@@ -154,6 +154,9 @@ The validator checks:
   pivot parts, styles, shared strings, comments, numbering, headers/footers,
   and media image parts. Unknown internal Office relationship types fail so new
   generated coverage cannot silently bypass this contract.
+- Package metadata relationships for core, extended, and custom properties
+  resolve to `docProps`-style parts with the matching content type and XML
+  root.
 - SpreadsheetML workbook `<sheet r:id="...">` references resolve to worksheet,
   chartsheet, or dialogsheet parts with matching content type and XML root.
 - PresentationML `<sldId r:id="...">` and `<sldMasterId r:id="...">`
