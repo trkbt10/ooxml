@@ -335,11 +335,14 @@ test "§19.5.33 cTn rejects malformed scalar attributes" {
 
 ///|
 test "§19.5.12 cTn decodes scalar timing metadata" {
-  let xml = "<timing><tnLst><par><cTn id=\"1\" accel=\"25000\" decel=\"12.5%\" masterRel=\"lastClick\" spd=\"-12.5%\" syncBehavior=\"locked\"/></par></tnLst></timing>"
+  let xml = "<timing><tnLst><par><cTn id=\"1\" accel=\"25000\" decel=\"12.5%\" presetID=\"+00000000001\" bldLvl=\"-00000000001\" presetSubtype=\"00000000002\" masterRel=\"lastClick\" spd=\"-12.5%\" syncBehavior=\"locked\"/></par></tnLst></timing>"
   let timeline = try! decode_timing(build_timing(xml))
   let root = root_node(timeline)
   assert_true(root.accel > 0.249 && root.accel < 0.251)
   assert_true(root.decel > 0.124 && root.decel < 0.126)
+  assert_true(root.preset_id == Some(1))
+  assert_true(root.bld_lvl == Some(-1))
+  assert_true(root.preset_subtype == Some(2))
   assert_true(root.master_rel == Some("lastClick"))
   assert_true(root.spd == Some("-12.5%"))
   assert_true(root.sync_behavior == Some("locked"))

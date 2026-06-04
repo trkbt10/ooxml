@@ -2705,27 +2705,22 @@ fn parse_signed_int(text : String) -> Int? {
   if start >= trimmed.length() {
     return None
   }
-  let digit_count = trimmed.length() - start
-  if digit_count > 10 {
-    return None
-  }
+  let limit = if negative { 2147483648L } else { 2147483647L }
   let mut value : Int64 = 0L
   for i in start..<trimmed.length() {
     let unit = trimmed.code_unit_at(i).to_int()
     if unit < 0x30 || unit > 0x39 {
       return None
     }
-    value = value * 10L + (unit - 0x30).to_int64()
+    let digit = (unit - 0x30).to_int64()
+    if value > (limit - digit) / 10L {
+      return None
+    }
+    value = value * 10L + digit
   }
   if negative {
-    if value > 2147483648L {
-      return None
-    }
     Some((-value).to_int())
   } else {
-    if value > 2147483647L {
-      return None
-    }
     Some(value.to_int())
   }
 }
