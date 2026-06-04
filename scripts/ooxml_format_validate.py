@@ -56,6 +56,15 @@ DML_SPREADSHEET_DRAWING_NS_TRANSITIONAL = (
     "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
 )
 DML_SPREADSHEET_DRAWING_NS_STRICT = "http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing"
+OPC_CORE_PROPERTIES_NS = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+EXTENDED_PROPERTIES_NS_TRANSITIONAL = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
+)
+EXTENDED_PROPERTIES_NS_STRICT = "http://purl.oclc.org/ooxml/officeDocument/extendedProperties"
+CUSTOM_PROPERTIES_NS_TRANSITIONAL = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
+)
+CUSTOM_PROPERTIES_NS_STRICT = "http://purl.oclc.org/ooxml/officeDocument/customProperties"
 
 DOCX_MAIN_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
 XLSX_MAIN_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"
@@ -99,6 +108,9 @@ WORD_FOOTNOTES_CT = "application/vnd.openxmlformats-officedocument.wordprocessin
 WORD_ENDNOTES_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml"
 WORD_HEADER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"
 WORD_FOOTER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"
+CORE_PROPERTIES_CT = "application/vnd.openxmlformats-package.core-properties+xml"
+EXTENDED_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.extended-properties+xml"
+CUSTOM_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
 IMAGE_CONTENT_TYPES = {
     "image/bmp",
     "image/gif",
@@ -218,6 +230,161 @@ PRESENTATION_SLIDE_MASTER_CONTRACT = PartContract(
         (PML_NS_STRICT, "sldMaster"),
     },
 )
+
+
+CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
+    DOCX_MAIN_CT: {
+        (WML_NS_TRANSITIONAL, "document"),
+        (WML_NS_STRICT, "document"),
+    },
+    WORD_STYLES_CT: {
+        (WML_NS_TRANSITIONAL, "styles"),
+        (WML_NS_STRICT, "styles"),
+    },
+    WORD_NUMBERING_CT: {
+        (WML_NS_TRANSITIONAL, "numbering"),
+        (WML_NS_STRICT, "numbering"),
+    },
+    WORD_SETTINGS_CT: {
+        (WML_NS_TRANSITIONAL, "settings"),
+        (WML_NS_STRICT, "settings"),
+    },
+    WORD_FONT_TABLE_CT: {
+        (WML_NS_TRANSITIONAL, "fonts"),
+        (WML_NS_STRICT, "fonts"),
+    },
+    WORD_COMMENTS_CT: {
+        (WML_NS_TRANSITIONAL, "comments"),
+        (WML_NS_STRICT, "comments"),
+    },
+    WORD_FOOTNOTES_CT: {
+        (WML_NS_TRANSITIONAL, "footnotes"),
+        (WML_NS_STRICT, "footnotes"),
+    },
+    WORD_ENDNOTES_CT: {
+        (WML_NS_TRANSITIONAL, "endnotes"),
+        (WML_NS_STRICT, "endnotes"),
+    },
+    WORD_HEADER_CT: {
+        (WML_NS_TRANSITIONAL, "hdr"),
+        (WML_NS_STRICT, "hdr"),
+    },
+    WORD_FOOTER_CT: {
+        (WML_NS_TRANSITIONAL, "ftr"),
+        (WML_NS_STRICT, "ftr"),
+    },
+    XLSX_MAIN_CT: {
+        (SML_NS_TRANSITIONAL, "workbook"),
+        (SML_NS_STRICT, "workbook"),
+    },
+    WORKSHEET_CT: {
+        (SML_NS_TRANSITIONAL, "worksheet"),
+        (SML_NS_STRICT, "worksheet"),
+    },
+    CHARTSHEET_CT: {
+        (SML_NS_TRANSITIONAL, "chartsheet"),
+        (SML_NS_STRICT, "chartsheet"),
+    },
+    DIALOGSHEET_CT: {
+        (SML_NS_TRANSITIONAL, "dialogsheet"),
+        (SML_NS_STRICT, "dialogsheet"),
+    },
+    SPREADSHEET_STYLES_CT: {
+        (SML_NS_TRANSITIONAL, "styleSheet"),
+        (SML_NS_STRICT, "styleSheet"),
+    },
+    SHARED_STRINGS_CT: {
+        (SML_NS_TRANSITIONAL, "sst"),
+        (SML_NS_STRICT, "sst"),
+    },
+    SPREADSHEET_COMMENTS_CT: {
+        (SML_NS_TRANSITIONAL, "comments"),
+        (SML_NS_STRICT, "comments"),
+    },
+    SPREADSHEET_TABLE_CT: {
+        (SML_NS_TRANSITIONAL, "table"),
+        (SML_NS_STRICT, "table"),
+    },
+    PIVOT_TABLE_CT: {
+        (SML_NS_TRANSITIONAL, "pivotTableDefinition"),
+        (SML_NS_STRICT, "pivotTableDefinition"),
+    },
+    PIVOT_CACHE_DEFINITION_CT: {
+        (SML_NS_TRANSITIONAL, "pivotCacheDefinition"),
+        (SML_NS_STRICT, "pivotCacheDefinition"),
+    },
+    PIVOT_CACHE_RECORDS_CT: {
+        (SML_NS_TRANSITIONAL, "pivotCacheRecords"),
+        (SML_NS_STRICT, "pivotCacheRecords"),
+    },
+    SPREADSHEET_EXTERNAL_LINK_CT: {
+        (SML_NS_TRANSITIONAL, "externalLink"),
+        (SML_NS_STRICT, "externalLink"),
+    },
+    SPREADSHEET_DRAWING_CT: {
+        (DML_SPREADSHEET_DRAWING_NS_TRANSITIONAL, "wsDr"),
+        (DML_SPREADSHEET_DRAWING_NS_STRICT, "wsDr"),
+    },
+    PPTX_MAIN_CT: {
+        (PML_NS_TRANSITIONAL, "presentation"),
+        (PML_NS_STRICT, "presentation"),
+    },
+    SLIDE_CT: {
+        (PML_NS_TRANSITIONAL, "sld"),
+        (PML_NS_STRICT, "sld"),
+    },
+    SLIDE_LAYOUT_CT: {
+        (PML_NS_TRANSITIONAL, "sldLayout"),
+        (PML_NS_STRICT, "sldLayout"),
+    },
+    SLIDE_MASTER_CT: {
+        (PML_NS_TRANSITIONAL, "sldMaster"),
+        (PML_NS_STRICT, "sldMaster"),
+    },
+    THEME_CT: {
+        (DML_NS_TRANSITIONAL, "theme"),
+        (DML_NS_STRICT, "theme"),
+    },
+    CHART_CT: {
+        (DML_CHART_NS_TRANSITIONAL, "chartSpace"),
+        (DML_CHART_NS_STRICT, "chartSpace"),
+    },
+    CHART_USER_SHAPES_CT: {
+        (DML_CHART_DRAWING_NS_TRANSITIONAL, "userShapes"),
+        (DML_CHART_DRAWING_NS_STRICT, "userShapes"),
+    },
+    DIAGRAM_DATA_CT: {
+        (DML_DIAGRAM_NS_TRANSITIONAL, "dataModel"),
+        (DML_DIAGRAM_NS_STRICT, "dataModel"),
+    },
+    DIAGRAM_LAYOUT_CT: {
+        (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDef"),
+        (DML_DIAGRAM_NS_STRICT, "layoutDef"),
+    },
+    DIAGRAM_STYLE_CT: {
+        (DML_DIAGRAM_NS_TRANSITIONAL, "styleDef"),
+        (DML_DIAGRAM_NS_STRICT, "styleDef"),
+    },
+    DIAGRAM_COLORS_CT: {
+        (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDef"),
+        (DML_DIAGRAM_NS_STRICT, "colorsDef"),
+    },
+    CORE_PROPERTIES_CT: {
+        (OPC_CORE_PROPERTIES_NS, "coreProperties"),
+    },
+    EXTENDED_PROPERTIES_CT: {
+        (EXTENDED_PROPERTIES_NS_TRANSITIONAL, "Properties"),
+        (EXTENDED_PROPERTIES_NS_STRICT, "Properties"),
+    },
+    CUSTOM_PROPERTIES_CT: {
+        (CUSTOM_PROPERTIES_NS_TRANSITIONAL, "Properties"),
+        (CUSTOM_PROPERTIES_NS_STRICT, "Properties"),
+    },
+}
+
+STANDARD_XML_ROOT_NAMESPACES = {
+    namespace for root_tags in CONTENT_TYPE_ROOT_TAGS.values() for namespace, _ in root_tags
+}
 
 
 def relationship_contract(
@@ -754,6 +921,74 @@ def office_relationship_local_name(relationship_type: str) -> str | None:
     return None
 
 
+def is_standardized_ooxml_xml_content_type(content_type: str) -> bool:
+    if not content_type.endswith("+xml"):
+        return False
+    return content_type.startswith("application/vnd.openxmlformats-officedocument.") or (
+        content_type.startswith("application/vnd.openxmlformats-package.")
+    )
+
+
+def validate_xml_part_content_type_roots(
+    package: Path,
+    archive: zipfile.ZipFile,
+    ordinary_parts: set[str],
+    defaults: dict[str, str],
+    overrides: dict[str, str],
+    xml_roots: dict[str, ET.Element],
+) -> list[ValidationResult]:
+    results: list[ValidationResult] = []
+    for part_name in sorted(ordinary_parts):
+        if not part_name.endswith(".xml"):
+            continue
+
+        content_type = content_type_for_part(part_name, defaults, overrides)
+        root = xml_roots.get(part_name)
+        if root is None:
+            root, root_results = parse_xml_root(package, archive, part_name)
+            results.extend(root_results)
+            if root is None:
+                continue
+            xml_roots[part_name] = root
+
+        root_tag = split_tag(root.tag)
+        expected_root_tags = CONTENT_TYPE_ROOT_TAGS.get(content_type or "")
+        if expected_root_tags is not None:
+            if root_tag not in expected_root_tags:
+                results.append(
+                    fail(
+                        package,
+                        part_name,
+                        "content-type-root",
+                        f"{content_type}: unexpected root element: {tag_display(root.tag)}",
+                    )
+                )
+            continue
+
+        if content_type is None:
+            continue
+        if content_type == "application/xml" and root_tag[0] in STANDARD_XML_ROOT_NAMESPACES:
+            results.append(
+                fail(
+                    package,
+                    part_name,
+                    "content-type-root",
+                    f"standard OOXML root uses generic application/xml content type: {tag_display(root.tag)}",
+                )
+            )
+            continue
+        if is_standardized_ooxml_xml_content_type(content_type):
+            results.append(
+                fail(
+                    package,
+                    part_name,
+                    "content-type-root",
+                    f"unmapped standardized OOXML XML content type: {content_type}",
+                )
+            )
+    return results
+
+
 def validate_linked_part(
     package: Path,
     archive: zipfile.ZipFile,
@@ -1204,6 +1439,17 @@ def validate_package(package: Path) -> list[ValidationResult]:
                 xml_roots,
             )
             results.extend(main_results)
+
+            results.extend(
+                validate_xml_part_content_type_roots(
+                    package,
+                    archive,
+                    ordinary_parts,
+                    defaults,
+                    overrides,
+                    xml_roots,
+                )
+            )
 
             results.extend(
                 validate_relationship_target_contracts(

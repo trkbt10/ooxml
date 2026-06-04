@@ -131,6 +131,10 @@ The validator checks:
 - Every XML attribute in the Office document relationship-reference namespace
   (`r:id`, `r:embed`, `r:link`, and peers) resolves to an Id in the source
   part's own `.rels` part.
+- Every standardized OOXML XML part in the generated fixture set declares a
+  content type matching its root element. Standard OOXML roots emitted as
+  generic `application/xml`, and standardized OOXML XML content types with no
+  registered root contract, fail this gate.
 - Internal Office document relationship types resolve to target parts with the
   expected content type and, for XML targets, the expected root element. The
   gate covers the generated fixture set's ECMA relationship contracts,
