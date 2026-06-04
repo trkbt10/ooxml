@@ -156,6 +156,9 @@ pub fn decode_anim_clr(
 pub fn decode_anim_effect(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_required_optional_child_pair(
+    element, "animEffect", "cBhvr", "progress",
+  )
   let common = decode_behavior_common(element)
   let progress = match first_child_by_local_name(element, "progress") {
     Some(p) => decode_anim_variant(p)
@@ -249,7 +252,7 @@ pub fn decode_anim_scale(
 pub fn decode_set(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
-  validate_set_children(element)
+  validate_required_optional_child_pair(element, "set", "cBhvr", "to")
   let common0 = decode_behavior_common(element)
   let common = with_to_variant(common0, element)
   let behaviour : @domain.CT_TLSetBehavior = { common, }
@@ -1035,46 +1038,62 @@ fn with_to_variant(
 }
 
 ///|
-fn validate_set_children(
+fn validate_required_optional_child_pair(
   element : @xml.Element,
+  path : String,
+  required_local_name : String,
+  optional_local_name : String,
 ) -> Unit raise @opc_errors.SchemaViolation {
-  let mut cbhvr_count = 0
-  let mut to_count = 0
+  let mut required_count = 0
+  let mut optional_count = 0
+  let mut seen_optional = false
   for child in element.children {
     match child {
       @xml.Element(e) =>
         match e.name.local_name {
-          "cBhvr" => cbhvr_count = cbhvr_count + 1
-          "to" => to_count = to_count + 1
+          name if name == required_local_name => {
+            if seen_optional {
+              raise @opc_errors.SchemaViolation(
+                section=animation_section,
+                path~,
+                reason="child element out of sequence: " + name,
+              )
+            }
+            required_count = required_count + 1
+          }
+          name if name == optional_local_name => {
+            seen_optional = true
+            optional_count = optional_count + 1
+          }
           _ =>
             raise @opc_errors.SchemaViolation(
               section=animation_section,
-              path="set",
+              path~,
               reason="unsupported child element: " + e.name.local_name,
             )
         }
       _ => ()
     }
   }
-  if cbhvr_count == 0 {
+  if required_count == 0 {
     raise @opc_errors.SchemaViolation(
       section=animation_section,
-      path="set/cBhvr",
-      reason="missing required <cBhvr> child",
+      path=path + "/" + required_local_name,
+      reason="missing required <" + required_local_name + "> child",
     )
   }
-  if cbhvr_count > 1 {
+  if required_count > 1 {
     raise @opc_errors.SchemaViolation(
       section=animation_section,
-      path="set/cBhvr",
-      reason="allows exactly one <cBhvr> child",
+      path=path + "/" + required_local_name,
+      reason="allows exactly one <" + required_local_name + "> child",
     )
   }
-  if to_count > 1 {
+  if optional_count > 1 {
     raise @opc_errors.SchemaViolation(
       section=animation_section,
-      path="set/to",
-      reason="allows at most one <to> child",
+      path=path + "/" + optional_local_name,
+      reason="allows at most one <" + optional_local_name + "> child",
     )
   }
 }
