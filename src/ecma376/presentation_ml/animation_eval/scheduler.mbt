@@ -166,11 +166,9 @@ fn place_node(
   }
   events.push({ node_id: node.node_id, at_ms: start_ms, kind: EventStart })
   let single_dur = single_duration(node)
-  let total_dur = total_duration_ms(node, single_dur)
-  let mut end_ms = if single_dur <= 0 {
-    None
-  } else {
-    Some(start_ms + total_dur)
+  let mut end_ms = match total_duration_ms(node, single_dur) {
+    Some(total_dur) => Some(start_ms + total_dur)
+    None => None
   }
   let child_end = place_children(node, start_ms, events, false, placements)
   match (end_ms, child_end) {
@@ -416,20 +414,18 @@ fn single_duration(node : @domain.CT_TLCommonTimeNodeData) -> Int {
 fn total_duration_ms(
   node : @domain.CT_TLCommonTimeNodeData,
   single_dur : Int,
-) -> Int {
+) -> Int? {
   if single_dur <= 0 {
-    return 0
+    return None
   }
   let iterations = @domain.ct_tl_common_time_node_repeat_iterations(
     node.repeat_count,
   )
-  let normalised_iters = if iterations < 0 { 1 } else { iterations }
-  let cycles = if node.auto_reverse {
-    normalised_iters * 2
-  } else {
-    normalised_iters
+  if iterations < 0 {
+    return None
   }
-  single_dur * cycles
+  let cycles = if node.auto_reverse { iterations * 2 } else { iterations }
+  Some(single_dur * cycles)
 }
 
 ///|

@@ -1065,6 +1065,33 @@ test "§19.5.33 repeatCount=3000 cycles three iterations" {
 }
 
 ///|
+test "§19.5.33 repeatCount=indefinite remains open ended" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim from=\"0\" to=\"1\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"32\" dur=\"1000\" repeatCount=\"indefinite\" fill=\"remove\"/><tgtEl><spTgt spid=\"2\"/></tgtEl><attrNameLst><attrName>opacity</attrName></attrNameLst></cBhvr></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  let timeline = try! decode_timing(build_timing(xml))
+  let engine = TimingEngine::new(timeline)
+  let events = engine.schedule()
+  let mut saw_start = false
+  let mut saw_end = false
+  for event in events {
+    if event.node_id == 32 {
+      match event.kind {
+        EventStart => saw_start = true
+        EventEnd => saw_end = true
+        _ => ()
+      }
+    }
+  }
+  assert_true(saw_start)
+  assert_true(!saw_end)
+  let snap5500 = engine.animate(5500)
+  assert_eq(snap5500.length(), 1)
+  let v5500 = snap5500[0].value.as_double().unwrap()
+  assert_true(v5500 > 0.45 && v5500 < 0.55)
+}
+
+///|
 test "§19.5.33 autoRev returns to the start value before fill hold" {
   let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim from=\"0\" to=\"100\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"31\" dur=\"1000\" autoRev=\"true\" fill=\"hold\"/><tgtEl><spTgt spid=\"1\"/></tgtEl><attrNameLst><attrName>opacity</attrName></attrNameLst></cBhvr></anim>" +
