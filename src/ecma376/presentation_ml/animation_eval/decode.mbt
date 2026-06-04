@@ -801,16 +801,7 @@ fn decode_sp_tgt_shape_id(
   match first_child_by_local_name(tgt_el, "spTgt") {
     Some(sp) =>
       match attr_local(sp, "spid") {
-        Some(text) =>
-          match parse_signed_int(text) {
-            Some(n) => Some(n)
-            None =>
-              raise @opc_errors.SchemaViolation(
-                section=animation_section,
-                path="spTgt/@spid",
-                reason="malformed ST_DrawingElementId: " + text,
-              )
-          }
+        Some(text) => Some(parse_unsigned_int_attr(text, "spTgt/@spid"))
         None =>
           raise @opc_errors.SchemaViolation(
             section=animation_section,

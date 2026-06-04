@@ -476,6 +476,14 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tgtEl><spTgt/></tgtEl></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(missing_spid)
+  let negative_spid = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tgtEl><spTgt spid=\"-5\"/></tgtEl></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(negative_spid)
+  let malformed_spid = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tgtEl><spTgt spid=\"bad\"/></tgtEl></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_spid)
   let missing_rtn_val = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><rtn/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
