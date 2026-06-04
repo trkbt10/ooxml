@@ -291,6 +291,14 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tgtEl><sldTgt/><spTgt spid=\"5\"/></tgtEl></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(multiple_target_choices)
+  let missing_behavior_target_choice = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"6\"/><tgtEl/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_behavior_target_choice)
+  let multiple_behavior_target_choices = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"7\"/><tgtEl><sldTgt/><spTgt spid=\"5\"/></tgtEl></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(multiple_behavior_target_choices)
 }
 
 ///|

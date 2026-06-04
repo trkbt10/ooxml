@@ -807,7 +807,10 @@ fn decode_cbhvr_inner(
     None => None
   }
   let target_shape_id = match first_child_by_local_name(cbhvr, "tgtEl") {
-    Some(t) => decode_sp_tgt_shape_id(t)
+    Some(t) => {
+      validate_time_target_element(t)
+      decode_sp_tgt_shape_id(t)
+    }
     None => None
   }
   let attr_names = decode_attr_name_list(cbhvr)
