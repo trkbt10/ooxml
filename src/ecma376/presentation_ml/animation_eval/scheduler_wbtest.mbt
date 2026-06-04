@@ -471,6 +471,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animScale><cBhvr><cTn id=\"27\"/></cBhvr><rCtr x=\"0\" y=\"0\"/></animScale>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(scale_rejects_r_ctr)
+  let malformed_scale_point = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animScale><cBhvr><cTn id=\"45\"/></cBhvr><to x=\"100%\" y=\"1e2%\"/></animScale>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_scale_point)
   let scale_rejects_from_attr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animScale from=\"1\"><cBhvr><cTn id=\"41\"/></cBhvr></animScale>" +
     "</childTnLst></cTn></par></tnLst></timing>"
@@ -595,6 +599,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animMotion><cBhvr><cTn id=\"28\"/></cBhvr><by x=\"0\"/></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(missing_motion_point_y)
+  let malformed_motion_point_x = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animMotion><cBhvr><cTn id=\"46\"/></cBhvr><by x=\"bad\" y=\"0%\"/></animMotion>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_motion_point_x)
   let duplicate_motion_to = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animMotion><cBhvr><cTn id=\"29\"/></cBhvr><to x=\"0\" y=\"0\"/><to x=\"1\" y=\"1\"/></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"

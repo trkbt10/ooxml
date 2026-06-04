@@ -1647,7 +1647,10 @@ fn validate_tl_point_child(
   try @domain.CT_TLPoint::from_element(element) catch {
     e => raise_domain_schema(path, e)
   } noraise {
-    _ => ()
+    point => {
+      validate_percentage_attr(point.x, path + "/@x")
+      validate_percentage_attr(point.y, path + "/@y")
+    }
   }
 }
 
