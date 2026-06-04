@@ -102,6 +102,12 @@ class ValidationResult:
     message: str
 
 
+@dataclass(frozen=True)
+class SchemaBinding:
+    report_schema: Path
+    validation_schema: Path
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", help="OOXML package files to validate")
@@ -196,7 +202,31 @@ def patch_xml_imports(xsd: Path) -> None:
         xsd.write_text(patched, encoding="utf-8")
 
 
-def copy_schema_set(source: Path, target: Path) -> dict[str, Path]:
+def write_schema_set_wrapper(
+    target: Path,
+    namespace_to_schema: dict[str, Path],
+) -> Path:
+    imports: list[str] = []
+    for namespace, schema in sorted(namespace_to_schema.items()):
+        imports.append(
+            f'  <xs:import namespace="{namespace}" schemaLocation="{schema.name}"/>'
+        )
+    wrapper = target / "__all__.xsd"
+    wrapper.write_text(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">\n"
+        + "\n".join(imports)
+        + "\n</xs:schema>\n",
+        encoding="utf-8",
+    )
+    return wrapper
+
+
+def copy_schema_set(
+    source: Path,
+    target: Path,
+    use_wrapper: bool,
+) -> dict[str, SchemaBinding]:
     target.mkdir(parents=True, exist_ok=True)
     for xsd in source.glob("*.xsd"):
         shutil.copy2(xsd, target / xsd.name)
@@ -211,14 +241,23 @@ def copy_schema_set(source: Path, target: Path) -> dict[str, Path]:
         namespace = root.get("targetNamespace")
         if namespace:
             namespace_to_schema[namespace] = xsd
-    return namespace_to_schema
+    wrapper = write_schema_set_wrapper(target, namespace_to_schema) if use_wrapper else None
+    return {
+        namespace: SchemaBinding(
+            report_schema=schema,
+            validation_schema=wrapper if wrapper is not None else schema,
+        )
+        for namespace, schema in namespace_to_schema.items()
+    }
 
 
-def prepare_schemas(tmp_root: Path) -> dict[str, Path]:
-    namespace_to_schema: dict[str, Path] = {}
-    namespace_to_schema.update(copy_schema_set(STRICT_XSD, tmp_root / "strict"))
-    namespace_to_schema.update(copy_schema_set(TRANSITIONAL_XSD, tmp_root / "transitional"))
-    namespace_to_schema.update(copy_schema_set(OPC_XSD, tmp_root / "opc"))
+def prepare_schemas(tmp_root: Path) -> dict[str, SchemaBinding]:
+    namespace_to_schema: dict[str, SchemaBinding] = {}
+    namespace_to_schema.update(copy_schema_set(STRICT_XSD, tmp_root / "strict", use_wrapper=True))
+    namespace_to_schema.update(
+        copy_schema_set(TRANSITIONAL_XSD, tmp_root / "transitional", use_wrapper=True)
+    )
+    namespace_to_schema.update(copy_schema_set(OPC_XSD, tmp_root / "opc", use_wrapper=False))
     return namespace_to_schema
 
 
@@ -243,14 +282,21 @@ def validate_part(
     package: Path,
     part: str,
     xml_bytes: bytes,
-    schema: Path,
+    binding: SchemaBinding,
     parts_root: Path,
 ) -> ValidationResult:
     part_file = part_output_path(parts_root, package, part)
     part_file.write_bytes(xml_bytes)
-    command = [xmllint, "--noout", "--nonet", "--schema", str(schema), str(part_file)]
+    command = [
+        xmllint,
+        "--noout",
+        "--nonet",
+        "--schema",
+        str(binding.validation_schema),
+        str(part_file),
+    ]
     completed = subprocess.run(command, capture_output=True, text=True)
-    schema_name = str(schema.relative_to(schema.parents[1]))
+    schema_name = str(binding.report_schema.relative_to(binding.report_schema.parents[1]))
     if completed.returncode == 0:
         return ValidationResult(
             package=str(package.relative_to(REPO) if package.is_relative_to(REPO) else package),
@@ -272,7 +318,7 @@ def validate_part(
 def validate_package(
     xmllint: str,
     package: Path,
-    namespace_to_schema: dict[str, Path],
+    namespace_to_schema: dict[str, SchemaBinding],
     parts_root: Path,
     allow_unknown: bool,
 ) -> list[ValidationResult]:
@@ -296,8 +342,8 @@ def validate_package(
                     )
                     continue
 
-                schema = namespace_to_schema.get(namespace or "")
-                if not schema:
+                binding = namespace_to_schema.get(namespace or "")
+                if not binding:
                     status = "skip" if allow_unknown else "fail"
                     results.append(
                         ValidationResult(
@@ -311,7 +357,7 @@ def validate_package(
                     continue
 
                 results.append(
-                    validate_part(xmllint, package, part, xml_bytes, schema, parts_root)
+                    validate_part(xmllint, package, part, xml_bytes, binding, parts_root)
                 )
     except zipfile.BadZipFile as error:
         results.append(ValidationResult(package_label, "", "fail", "", f"zip: {error}"))

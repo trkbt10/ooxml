@@ -7,10 +7,9 @@
 //
 //   * extra `iconSet` set-names from ECMA-376 §18.18.42 ST_IconSetType
 //     (4Arrows, 5Arrows, 5Rating, 3Symbols) and `3TrafficLights2`;
-//   * a `<dataBar>` with explicit `<negativeFillColor>` over a
-//     positive+negative population (§18.3.1.28);
-//   * a `<dataBar>` with explicit `@axisPosition="middle"` and an
-//     `<axisColor>` (§18.3.1.28);
+//   * a `<dataBar>` with explicit `@minLength` / `@maxLength`
+//     (§18.3.1.28);
+//   * a `<dataBar>` with explicit `@showValue="0"` (§18.3.1.28);
 //   * extra colorScale gradients (blue→white 2-stop; percentile-anchored
 //     3-stop) — variants beyond the default Excel palette.
 //
@@ -333,42 +332,24 @@ fn cf_rule_duplicate_values(dxf_id : String, priority : String) -> @xml.Element 
 }
 
 ///|
-/// `<dataBar>` with explicit child elements beyond the basic 3 (cfvo
-/// min / cfvo max / color): `axisPosition` / `direction` /
-/// `negativeFillColor` / `axisColor`.  Pass `None` for any axis /
-/// direction / negative-fill that should be omitted, so the resulting
-/// element is the minimum spec payload plus the requested extras.
-/// §18.3.1.28 dataBar.
-fn cf_rule_data_bar_extended(
+/// `<dataBar>` with explicit ECMA-376 core attributes.
+/// §18.3.1.28 / CT_DataBar allows two `<cfvo>` children, one
+/// `<color>` child, and optional `minLength`, `maxLength`,
+/// `showValue` attributes.
+fn cf_rule_data_bar_with_attrs(
   priority : String,
   cfvo_min : @xml.Element,
   cfvo_max : @xml.Element,
   bar_color : @xml.Element,
-  axis_position : String?,
-  axis_color : String?,
-  negative_color : String?,
+  attrs : Array[@xml.Attribute],
 ) -> @xml.Element {
-  let bar_attrs : Array[@xml.Attribute] = []
-  match axis_position {
-    Some(p) => bar_attrs.push(xa("axisPosition", p))
-    None => ()
-  }
   let bar_kids : Array[@xml.Node] = [
     Element(cfvo_min),
     Element(cfvo_max),
     Element(bar_color),
   ]
-  match negative_color {
-    Some(c) =>
-      bar_kids.push(Element(xe(NS_S, "negativeFillColor", [xa("rgb", c)], [])))
-    None => ()
-  }
-  match axis_color {
-    Some(c) => bar_kids.push(Element(xe(NS_S, "axisColor", [xa("rgb", c)], [])))
-    None => ()
-  }
   xe(NS_S, "cfRule", [xa("type", "dataBar"), xa("priority", priority)], [
-    Element(xe(NS_S, "dataBar", bar_attrs, bar_kids)),
+    Element(xe(NS_S, "dataBar", attrs, bar_kids)),
   ])
 }
 
@@ -385,7 +366,7 @@ fn extras_sml_cf_complete(cases : Array[VisualCase]) -> Unit {
   // rule below (mirrors the reference column of fixtures_sml_cf.mbt).
   let v10_inc = ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"]
   // 10-row range mixing negatives and positives for the dataBar
-  // variants with axis / negative fill.
+  // variants that exercise ECMA core CT_DataBar attributes.
   let v_neg_pos = [
     "-50", "-30", "-10", "0", "10", "30", "50", "70", "90", "100",
   ]
@@ -482,53 +463,47 @@ fn extras_sml_cf_complete(cases : Array[VisualCase]) -> Unit {
     ]),
   })
 
-  // ---- 5. dataBar with explicit negativeFillColor — §18.3.1.28 ----
-  // Range crossing zero, with the bar coloured blue for positives and
-  // red for negatives.  The renderer should split bar direction at the
-  // zero-axis so negatives extend left of the axis.
+  // ---- 5. dataBar with minLength / maxLength — §18.3.1.28 ---------
+  // Range crossing zero with an explicit bar length envelope.  The
+  // ECMA core CT_DataBar attributes are schema-valid without relying
+  // on x14 extension elements.
   cases.push({
-    id: "cf-databar-negative-fill",
+    id: "cf-databar-minmax-length",
     format: "xlsx",
     category: "cf",
     content: xe(NS_S, "worksheet", [], [
       Element(xe(NS_S, "sheetData", [], cf_ramp_rows_a(v_neg_pos))),
       Element(
         s_conditional_formatting("A1:A10", [
-          cf_rule_data_bar_extended(
+          cf_rule_data_bar_with_attrs(
             "1",
             s_cfvo("min", None),
             s_cfvo("max", None),
             s_color("FF638EC6"),
-            None,
-            None,
-            Some("FFFF555A"),
+            [xa("minLength", "0"), xa("maxLength", "100")],
           ),
         ]),
       ),
     ]),
   })
 
-  // ---- 6. dataBar with axisPosition="middle" + axisColor ----------
-  // Same neg+pos range, with the axis forced to the column midpoint
-  // (instead of the data-driven "automatic" position) and tinted dark
-  // grey.  Exercises the explicit `@axisPosition` and `<axisColor>`
-  // pair of §18.3.1.28.
+  // ---- 6. dataBar with hidden values — §18.3.1.28 -----------------
+  // Same neg+pos range, with cell text hidden by the ECMA core
+  // `showValue` attribute while the dataBar remains visible.
   cases.push({
-    id: "cf-databar-axis-middle",
+    id: "cf-databar-hide-values",
     format: "xlsx",
     category: "cf",
     content: xe(NS_S, "worksheet", [], [
       Element(xe(NS_S, "sheetData", [], cf_ramp_rows_a(v_neg_pos))),
       Element(
         s_conditional_formatting("A1:A10", [
-          cf_rule_data_bar_extended(
+          cf_rule_data_bar_with_attrs(
             "1",
             s_cfvo("min", None),
             s_cfvo("max", None),
             s_color("FF638EC6"),
-            Some("middle"),
-            Some("FF000000"),
-            Some("FFFF555A"),
+            [xa("showValue", "0")],
           ),
         ]),
       ),

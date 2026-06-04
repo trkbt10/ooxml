@@ -190,18 +190,9 @@ struct DiagrammedCase {
   layout_def : @xml.Element
   style_def : @xml.Element
   colors_def : @xml.Element
-  // Optional cached `<dsp:drawing>` part — §[MS-OOXML]
-  // `diagram-layout-extensions` (drawingml 2008 namespace
-  // `http://schemas.microsoft.com/office/drawing/2008/diagram`).
-  // PowerPoint renders SmartArt from this pre-laid-out cache;
-  // without it consumers must re-run the layout engine themselves,
-  // which not every reader supports.  Supplied by the fixture and
-  // emitted at `ppt/diagrams/drawing1.xml` by
-  // `pptx_package_with_diagram` when present, with the data model
-  // patched to carry the matching `<dgm:extLst>/<dsp:dataModelExt>`
-  // reference. Wired by the layout engine running at fixture-build
-  // time so the cached coordinates agree with our own renderer's
-  // engine-driven output.
+  // Optional Microsoft cached drawing extension. ECMA schema-valid
+  // fixtures leave this as `None`; extension fixtures may supply a
+  // non-ECMA `dsp:drawing` part when testing MS-OOXML interop.
   drawing : @xml.Element?
 }
 

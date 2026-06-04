@@ -393,257 +393,6 @@ fn diagram_graphic_frame(id_ : String, name : String) -> @xml.Element {
   ])
 }
 
-// ---- cached drawing helpers ----------------------------------------------
-
-///|
-/// Microsoft DrawingML 2008 SmartArt-extension namespace
-/// (`dsp:` prefix). The `<dsp:drawing>` part lives at
-/// `ppt/diagrams/drawing1.xml` and pre-positions one `<dsp:sp>`
-/// per data-model point so consumers can skip running the layout
-/// engine. The §[MS-OOXML] `diagram-layout-extensions` schema
-/// (Microsoft "Office 2010+") uses this namespace exclusively.
-const NS_DSP : String = "http://schemas.microsoft.com/office/drawing/2008/diagram"
-
-///|
-/// Frame extent (EMU) the `<p:graphicFrame>` carrying
-/// `<dgm:relIds>` uses for every fixture in this file. Mirrors the
-/// `<a:ext cx="…" cy="…"/>` written by `diagram_graphic_frame`;
-/// the layout engine receives this rectangle (translated to local
-/// `(0, 0)` coordinates) so the cached `<dsp:sp>` shapes land
-/// inside the frame consumers paint.
-const DIAGRAM_FRAME_CX : Double = 5486400.0
-
-///|
-const DIAGRAM_FRAME_CY : Double = 5029200.0
-
-///|
-/// Default SmartArt accent palette — the six PowerPoint 2013
-/// accent colours that the viewer's `diagram_render` module falls
-/// back to when the `<dgm:colorsDef>` does not list per-node
-/// fills. Caching the same palette here keeps the rendered SVG
-/// (engine-driven) and the reference render (cached-drawing driven)
-/// on the same colour cycle.
-fn default_accent_palette() -> Array[String] {
-  ["4472C4", "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47"]
-}
-
-///|
-/// Cycle through the palette by index, wrapping when exhausted.
-fn pick_palette(palette : Array[String], index : Int) -> String {
-  if palette.length() == 0 {
-    return "4472C4"
-  }
-  palette[index % palette.length()]
-}
-
-///|
-/// §20.1.10.56 ST_ShapeType — map the engine's `PresetShape` to
-/// the `<a:prstGeom @prst>` attribute value. Mirrors the renderer's
-/// `emit_node_shape` so the cached drawing draws the same shape
-/// primitives our viewer does.
-fn preset_to_prst(shape : @preset_geometry.PresetShape) -> String {
-  match shape {
-    @preset_geometry.ShapeEllipse => "ellipse"
-    @preset_geometry.ShapeRoundRect => "roundRect"
-    @preset_geometry.ShapeTriangle => "triangle"
-    _ => "rect"
-  }
-}
-
-///|
-/// Build a `<dsp:sp modelId="…">` for one laid-out diagram node.
-/// Mirrors the shape primitives + accent palette the viewer emits
-/// per-point so the cached render and the engine-driven render
-/// agree on geometry + colour.
-fn dsp_sp(
-  nb : @diagram_layout.NodeBounds,
-  label : String?,
-  fill_hex : String,
-) -> @xml.Element {
-  let x = nb.bounds.x
-  let y = nb.bounds.y
-  let cx = nb.bounds.width
-  let cy = nb.bounds.height
-  let xfrm = xep("a", NS_A, "xfrm", [], [
-    Element(xep("a", NS_A, "off", [xa("x", emu(x)), xa("y", emu(y))], [])),
-    Element(xep("a", NS_A, "ext", [xa("cx", emu(cx)), xa("cy", emu(cy))], [])),
-  ])
-  let prst_geom = xep(
-    "a",
-    NS_A,
-    "prstGeom",
-    [xa("prst", preset_to_prst(nb.shape))],
-    [Element(xep("a", NS_A, "avLst", [], []))],
-  )
-  let solid_fill = xep("a", NS_A, "solidFill", [], [
-    Element(xep("a", NS_A, "srgbClr", [xa("val", fill_hex)], [])),
-  ])
-  let sp_pr = xep("dsp", NS_DSP, "spPr", [], [
-    Element(xfrm),
-    Element(prst_geom),
-    Element(solid_fill),
-  ])
-  let nv_sp_pr = xep("dsp", NS_DSP, "nvSpPr", [], [
-    Element(xep("dsp", NS_DSP, "cNvPr", [xa("id", "0"), xa("name", "")], [])),
-    Element(xep("dsp", NS_DSP, "cNvSpPr", [], [])),
-  ])
-  let tx_body_kids : Array[@xml.Node] = [
-    Element(xep("a", NS_A, "bodyPr", [], [])),
-    Element(xep("a", NS_A, "lstStyle", [], [])),
-  ]
-  match label {
-    None => tx_body_kids.push(Element(xep("a", NS_A, "p", [], [])))
-    Some(text) => {
-      let run = xep("a", NS_A, "r", [], [
-        Element(xep("a", NS_A, "rPr", [xa("lang", "en-US")], [])),
-        Element(xep("a", NS_A, "t", [], [Text(text)])),
-      ])
-      let para = xep("a", NS_A, "p", [], [Element(run)])
-      tx_body_kids.push(Element(para))
-    }
-  }
-  let tx_body = xep("dsp", NS_DSP, "txBody", [], tx_body_kids)
-  xep("dsp", NS_DSP, "sp", [xa("modelId", nb.point_id)], [
-    Element(nv_sp_pr),
-    Element(sp_pr),
-    Element(tx_body),
-  ])
-}
-
-///|
-/// Format an EMU value as an integer attribute string (the OOXML
-/// spec requires `ST_Coordinate` / `ST_PositiveCoordinate` values
-/// to be integers).
-fn emu(value : Double) -> String {
-  // Round-half-to-positive-infinity by adding 0.5 before truncating;
-  // negative coords should never appear in our engine output so the
-  // simple add-and-truncate is faithful.
-  let rounded = if value >= 0.0 {
-    (value + 0.5).to_int()
-  } else {
-    (value - 0.5).to_int()
-  }
-  rounded.to_string()
-}
-
-///|
-/// Build the §[MS-OOXML] cached `<dsp:drawing>` part by running
-/// the same `@diagram_layout` engine our viewer runs at render
-/// time. The cached coordinates therefore agree with the
-/// engine-driven SVG render — both sides produce shapes at the
-/// same positions, with the same accent colours, carrying the
-/// same labels.
-///
-/// Returns `None` when the data model / layout cannot be decoded —
-/// the fixture then ships without a cached drawing and the
-/// reference renderer falls back to its own (currently blank)
-/// rendering. The catalog's
-/// snapshot harness treats `None` as "out-of-band rendered by the
-/// engine only", matching the pre-Round 13 baseline.
-fn cached_drawing(
-  data_model_root : @xml.Element,
-  layout_def_root : @xml.Element,
-  labels : Array[String],
-) -> @xml.Element? {
-  // Decode the data model + layout definition. Any decode error
-  // produces an empty drawing — the fixture remains valid OPC
-  // because the drawing field is optional from the schema's
-  // perspective.
-  let data_model_typed = try
-    @dgm_domain.CT_DataModel::new(data_model_root)
-  catch {
-    _ => return None
-  } noraise {
-    t => t
-  }
-  let definition_typed = try
-    @dgm_domain.CT_DiagramDefinition::new(layout_def_root)
-  catch {
-    _ => return None
-  } noraise {
-    t => t
-  }
-  let data_model = try
-    @diagram_layout.decode_data_model(data_model_typed)
-  catch {
-    _ => return None
-  } noraise {
-    t => t
-  }
-  let definition = try
-    @diagram_layout.decode_diagram_definition(definition_typed)
-  catch {
-    _ => return None
-  } noraise {
-    t => t
-  }
-  let engine = @diagram_layout.DiagramLayoutEngine::new()
-  let bounds : @diagram_layout.BoundsRect = {
-    x: 0.0,
-    y: 0.0,
-    width: DIAGRAM_FRAME_CX,
-    height: DIAGRAM_FRAME_CY,
-  }
-  let node_bounds = engine.apply(definition, data_model, bounds)
-  if node_bounds.length() == 0 {
-    return None
-  }
-  let palette = default_accent_palette()
-  // Pre-build a (modelId → label) map. The shared_data_model
-  // helper assigns labels in document order to model ids 1..N;
-  // the document-root point (id "0") carries no label.
-  let labels_by_id : Map[String, String] = {}
-  for i, label in labels {
-    labels_by_id[(i + 1).to_string()] = label
-  }
-  let sp_nodes : Array[@xml.Node] = []
-  // The cached drawing's spTree opens with `<dsp:nvGrpSpPr>` +
-  // `<dsp:grpSpPr>` — the spec's `CT_Drawing` requires both,
-  // independent of how many `<dsp:sp>` children follow.
-  let group_xfrm = xep("a", NS_A, "xfrm", [], [
-    Element(xep("a", NS_A, "off", [xa("x", "0"), xa("y", "0")], [])),
-    Element(
-      xep(
-        "a",
-        NS_A,
-        "ext",
-        [xa("cx", emu(DIAGRAM_FRAME_CX)), xa("cy", emu(DIAGRAM_FRAME_CY))],
-        [],
-      ),
-    ),
-    Element(xep("a", NS_A, "chOff", [xa("x", "0"), xa("y", "0")], [])),
-    Element(
-      xep(
-        "a",
-        NS_A,
-        "chExt",
-        [xa("cx", emu(DIAGRAM_FRAME_CX)), xa("cy", emu(DIAGRAM_FRAME_CY))],
-        [],
-      ),
-    ),
-  ])
-  sp_nodes.push(
-    Element(
-      xep("dsp", NS_DSP, "nvGrpSpPr", [], [
-        Element(
-          xep("dsp", NS_DSP, "cNvPr", [xa("id", "0"), xa("name", "")], []),
-        ),
-        Element(xep("dsp", NS_DSP, "cNvGrpSpPr", [], [])),
-      ]),
-    ),
-  )
-  sp_nodes.push(
-    Element(xep("dsp", NS_DSP, "grpSpPr", [], [Element(group_xfrm)])),
-  )
-  for i, nb in node_bounds {
-    let label = labels_by_id.get(nb.point_id)
-    let fill = pick_palette(palette, i)
-    sp_nodes.push(Element(dsp_sp(nb, label, fill)))
-  }
-  let sp_tree = xep("dsp", NS_DSP, "spTree", [], sp_nodes)
-  Some(xep("dsp", NS_DSP, "drawing", [], [Element(sp_tree)]))
-}
-
 // ---- DiagrammedCase extender ---------------------------------------------
 
 ///|
@@ -669,7 +418,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: org_layout,
     style_def: make_style_def("urn:test:diagram:orgChart:style"),
     colors_def: make_colors_def("urn:test:diagram:orgChart:colors"),
-    drawing: cached_drawing(org_data, org_layout, org_labels),
+    drawing: None,
   })
 
   // ---- hierarchy (§21.4 hierChild deeper recursion) -------------
@@ -686,7 +435,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: hier_layout,
     style_def: make_style_def("urn:test:diagram:hierarchy:style"),
     colors_def: make_colors_def("urn:test:diagram:hierarchy:colors"),
-    drawing: cached_drawing(hier_data, hier_layout, hier_labels),
+    drawing: None,
   })
 
   // ---- list (§21.4 linear algorithm) ----------------------------
@@ -703,7 +452,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: list_layout,
     style_def: make_style_def("urn:test:diagram:list:style"),
     colors_def: make_colors_def("urn:test:diagram:list:colors"),
-    drawing: cached_drawing(list_data, list_layout, list_labels),
+    drawing: None,
   })
 
   // ---- cycle (§21.4 cycle algorithm) ----------------------------
@@ -720,7 +469,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: cycle_layout,
     style_def: make_style_def("urn:test:diagram:cycle:style"),
     colors_def: make_colors_def("urn:test:diagram:cycle:colors"),
-    drawing: cached_drawing(cycle_data, cycle_layout, cycle_labels),
+    drawing: None,
   })
 
   // ---- process (§21.4 snake algorithm) --------------------------
@@ -737,7 +486,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: proc_layout,
     style_def: make_style_def("urn:test:diagram:process:style"),
     colors_def: make_colors_def("urn:test:diagram:process:colors"),
-    drawing: cached_drawing(proc_data, proc_layout, proc_labels),
+    drawing: None,
   })
 
   // ---- orgChart with connectors (§21.4.2.7 cxn) -----------------
@@ -752,9 +501,6 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
   // nested `hierRoot` so the engine recurses into each VP subtree.
   let org3_data = three_level_orgchart_data_model()
   let org3_layout = three_level_orgchart_layout_def()
-  let org3_labels_for_palette = [
-    "CEO", "VP A", "VP B", "Manager A", "Manager B",
-  ]
   dcases.push({
     id: "diagram-orgChart-with-connectors",
     format: "pptx",
@@ -764,7 +510,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: org3_layout,
     style_def: make_style_def("urn:test:diagram:org3:style"),
     colors_def: make_colors_def("urn:test:diagram:org3:colors"),
-    drawing: cached_drawing(org3_data, org3_layout, org3_labels_for_palette),
+    drawing: None,
   })
 
   // ---- pyramid WITHOUT extra constraints (gate-closed regression) --
@@ -788,9 +534,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: pyra_basic_layout,
     style_def: make_style_def("urn:test:diagram:pyramid:style"),
     colors_def: make_colors_def("urn:test:diagram:pyramid:colors"),
-    drawing: cached_drawing(
-      pyra_basic_data, pyra_basic_layout, pyra_basic_labels,
-    ),
+    drawing: None,
   })
 
   // ---- pyramid WITH explicit constraints (gate-open, solver path) --
@@ -825,9 +569,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: pyra_constr_layout,
     style_def: make_style_def("urn:test:diagram:pyramid:constr:style"),
     colors_def: make_colors_def("urn:test:diagram:pyramid:constr:colors"),
-    drawing: cached_drawing(
-      pyra_constr_data, pyra_constr_layout, pyra_constr_labels,
-    ),
+    drawing: None,
   })
 
   // ---- list WITH explicit constraints (gate-open, solver path) --
@@ -858,7 +600,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: cstr_layout,
     style_def: make_style_def("urn:test:diagram:list:constr:style"),
     colors_def: make_colors_def("urn:test:diagram:list:constr:colors"),
-    drawing: cached_drawing(cstr_data, cstr_layout, cstr_labels),
+    drawing: None,
   })
 
   // ---- list WITH cross-node refForName constraints --------------
@@ -886,7 +628,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: xref_layout,
     style_def: make_style_def("urn:test:diagram:list:xref:style"),
     colors_def: make_colors_def("urn:test:diagram:list:xref:colors"),
-    drawing: cached_drawing(xref_data, xref_layout, xref_labels),
+    drawing: None,
   })
 
   // ---- hierarchy WITH self-targeting w/h constraints ------------
@@ -914,9 +656,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: hier_constr_layout,
     style_def: make_style_def("urn:test:diagram:hier:constr:style"),
     colors_def: make_colors_def("urn:test:diagram:hier:constr:colors"),
-    drawing: cached_drawing(
-      hier_constr_data, hier_constr_layout, hier_constr_labels,
-    ),
+    drawing: None,
   })
 }
 
@@ -1266,8 +1006,7 @@ fn make_layout_def_with_pyra_constraint(
 /// Format a `Double` as an integer attribute string suitable for
 /// the `<dgm:constr @val>` attribute. The schema (`xsd:double`)
 /// accepts decimals but EMU constants are always integers in
-/// practice, so we round-half-to-positive for consistency with the
-/// `emu` helper used by `dsp_sp`.
+/// practice, so we round-half-to-positive for stable fixture output.
 fn double_to_emu_attr(value : Double) -> String {
   let rounded = if value >= 0.0 {
     (value + 0.5).to_int()

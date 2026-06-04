@@ -30,6 +30,11 @@ The validator unzips `.docx`, `.xlsx`, and `.pptx` packages, maps each XML
 part's root namespace to the locally vendored ECMA-376 Strict, Transitional,
 or OPC XSD set, and runs `xmllint --schema` on the part. This checks known
 namespace child sequences, cardinality, attributes, and simple type values.
+For Strict and Transitional ML schemas the validator uses a generated
+schema-set wrapper that imports every local schema in that set. This is needed
+for strict wildcards such as DrawingML `graphicData`, where a WML part can
+legitimately contain a globally declared VML, picture, chart, or diagram
+payload from another ECMA schema file.
 
 This gate does not prove complete OPC graph conformance, relationship/content
 type semantics beyond the XSD-covered XML parts, Markup Compatibility
@@ -37,26 +42,28 @@ preprocessing, visual fidelity, or Microsoft Office / LibreOffice openability.
 Application-open checks are covered separately by `docs/OOXML_INTEROP_SMOKE.md`
 and must not be treated as schema validation.
 
-Current package-validation snapshot, after schema-order fixture repairs:
+Current package-validation snapshot, after ECMA/VML fixture repairs and
+schema-set wildcard validation:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5454`, `fail: 23` |
-| previous full-fixture baseline | `ok: 5365`, `fail: 120` |
+| all generated fixtures | `ok: 5455`, `fail: 0` |
+| previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
+| earlier full-fixture baseline before schema-order repairs | `ok: 5365`, `fail: 120` |
 
-Remaining full-fixture failures are intentionally visible rather than skipped:
+The former full-fixture failures were resolved as follows:
 
-| Failure class | Count | Meaning |
+| Failure class | Count | Resolution |
 |---|---:|---|
-| `transitional/wml.xsd` | 10 | WordprocessingML fixtures using the Microsoft Office 2010 `wordprocessingShape` extension namespace (`wsp`) hit strict wildcard validation without an extension schema or MC preprocessing strategy. |
-| `(none)` | 11 | Diagram package fixtures contain `http://schemas.microsoft.com/office/drawing/2008/diagram` parts that have no vendored ECMA-376 schema mapping. |
-| `transitional/sml.xsd` | 2 | SpreadsheetML data-bar fixtures emit x14-style extension features (`axisPosition`, `negativeFillColor`) as core `dataBar` content. They need extension packaging or ECMA-only fixture separation. |
+| `transitional/wml.xsd` | 10 | Replaced Microsoft Office 2010 `wordprocessingShape` (`wps`) payloads with ECMA Transitional VML payloads and validated them through the schema-set wrapper. |
+| `(none)` | 11 | Removed optional Microsoft `http://schemas.microsoft.com/office/drawing/2008/diagram` cached drawing parts from core diagram fixtures, leaving the ECMA `dgm:*` diagram parts. |
+| `transitional/sml.xsd` | 2 | Replaced x14-style data-bar features (`axisPosition`, `negativeFillColor`) with ECMA core `CT_DataBar` attributes (`minLength`, `maxLength`, `showValue`). |
 
-The next conformance work should reduce these categories through explicit
-extension/Markup Compatibility handling or by separating non-ECMA extension
-fixtures from ECMA schema-valid fixtures. Do not count the remaining failures
-as covered ECMA-376 schema conformance.
+Do not infer from the zero-failure XSD sweep that application interop is
+complete. Microsoft and LibreOffice open/repair checks, Markup Compatibility
+processing, package relationship semantics, and visual fidelity remain
+separate gates.
 
 ## ECMA-376 Part 1 Strict XSD
 

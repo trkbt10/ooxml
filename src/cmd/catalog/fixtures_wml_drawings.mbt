@@ -16,18 +16,17 @@
 // placeholder box for an unresolved picture, so the
 // visual-comparison pipeline can
 // still measure drawing-wrapper geometry (extent, position, anchor
-// distances) even without a real image.  The few "shape" fixtures
-// (`<wps:wsp>` wordprocessing-shape) carry their own renderable
-// content (a preset-geometry + text body), so they exercise the
-// `<w:drawing>` → DML shape path that DOES have visible output even
-// without media.
+// distances) even without a real image.  Shape/text-box fixtures use
+// ECMA Transitional VML payloads under `<a:graphicData>` so they
+// remain schema-valid without depending on Microsoft Office 2010
+// `wps` extension schemas.
 //
 // Helpers `w_p`, `w_run`, `xe`, `xa`, and the constants `NS_W`,
 // `NS_A` come from the catalog's shared modules
 // (`fixtures.mbt`, `fixtures_helpers.mbt`, `verify.mbt`).  The three
 // drawing-specific namespaces are declared locally per ECMA-376
-// §20.4 (wordprocessing-drawing wrapper) and §20.2 (DrawingML
-// picture).
+// §20.4 (wordprocessing-drawing wrapper), §20.2 (DrawingML
+// picture), and Part 4 §19 (VML).
 
 ///|
 fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
@@ -37,17 +36,14 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   // DrawingML-picture namespace — `<pic:pic>`, `<pic:nvPicPr>`,
   // `<pic:blipFill>`, `<pic:spPr>` (§20.2).
   let ns_pic = "http://schemas.openxmlformats.org/drawingml/2006/picture"
-  // wordprocessing-shape namespace — `<wps:wsp>`, `<wps:bodyPr>`,
-  // `<wps:txbx>` (§20.5).  Used for text-frame fixtures where the
-  // shape carries its own renderable run content instead of an
-  // image reference.
-  let ns_wps = "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+  // VML namespace — Transitional ECMA-376 §19 legacy shapes.
+  let ns_vml = "urn:schemas-microsoft-com:vml"
 
   // ---- Element-builder helpers ---------------------------------
   //
   // `wp_*` builds an element in the dml-wordprocessingDrawing
-  // namespace; `pic_*` in the DrawingML-picture namespace; `wps_*`
-  // in the wordprocessing-shape namespace.  Centralising the
+  // namespace; `pic_*` in the DrawingML-picture namespace; `vml_*`
+  // in the VML namespace.  Centralising the
   // namespace plumbing keeps the cases below readable.
   let wp_el = fn(
     name : String,
@@ -63,12 +59,12 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   ) -> @xml.Element {
     xe(ns_pic, name, attrs, kids)
   }
-  let wps_el = fn(
+  let vml_el = fn(
     name : String,
     attrs : Array[@xml.Attribute],
     kids : Array[@xml.Node],
   ) -> @xml.Element {
-    xe(ns_wps, name, attrs, kids)
+    xe(ns_vml, name, attrs, kids)
   }
   let a_el = fn(
     name : String,
@@ -107,21 +103,13 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       ),
     ])
   }
-  // `<a:graphic><a:graphicData uri="…/wordprocessingShape"><wps:wsp>`
-  // — the wordprocessing-shape graphic-data branch.
-  let wps_graphic = fn(inner : Array[@xml.Node]) -> @xml.Element {
+  // `<a:graphic><a:graphicData uri="urn:schemas-microsoft-com:vml"><v:*…/>`
+  // — Transitional VML branch. The vendored VML XSD declares the
+  // payload roots globally, so DML's strict `graphicData` wildcard
+  // can validate them.
+  let vml_graphic = fn(inner : Array[@xml.Node]) -> @xml.Element {
     a_el("graphic", [], [
-      Element(
-        a_el(
-          "graphicData",
-          [
-            xa(
-              "uri", "http://schemas.microsoft.com/office/word/2010/wordprocessingShape",
-            ),
-          ],
-          [Element(wps_el("wsp", [], inner))],
-        ),
-      ),
+      Element(a_el("graphicData", [xa("uri", ns_vml)], inner)),
     ])
   }
   // `<wp:inline distT="0" distB="0" distL="0" distR="0">extent docPr graphic</wp:inline>`
@@ -240,70 +228,53 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       ),
     ])
   }
-  // `<a:p><a:r><a:t>…</a:t></a:r></a:p>` — single DrawingML paragraph
-  // with one run carrying the given text, used inside `<wps:txbx>`
-  // text boxes.
-  let a_text_para = fn(text : String) -> @xml.Element {
-    a_el("p", [], [
-      Element(a_el("r", [], [Element(a_el("t", [], [Text(text)]))])),
-    ])
-  }
-  // `<wps:txbx><w:txbxContent><w:p>…</w:p></w:txbxContent></wps:txbx>` —
-  // WordprocessingML text-box content embedded inside a shape.  The
-  // `<w:txbxContent>` element is in the `w:` namespace (not `wps:`).
-  let wps_txbx = fn(text : String) -> @xml.Element {
-    wps_el("txbx", [], [
+  // `<v:textbox><w:txbxContent><w:p>…</w:p></w:txbxContent></v:textbox>` —
+  // WordprocessingML text-box content embedded inside a VML shape.
+  let vml_txbx = fn(text : String) -> @xml.Element {
+    vml_el("textbox", [], [
       Element(
         xe(NS_W, "txbxContent", [], [Element(w_p(None, [w_run(None, text)]))]),
       ),
     ])
   }
-  // `<wps:wsp>` body = nvSpPr + spPr (with prstGeom & solidFill) +
-  // optional txbx + bodyPr.  When `text` is empty no txbx is
-  // emitted, and the shape is rendered as a pure filled preset
-  // (useful for "empty shape" placeholders).
-  let wps_shape_body = fn(
+  let vml_shape_with_children = fn(
     id_ : String,
-    name : String,
-    cx : String,
-    cy : String,
+    prst : String,
+    fill_hex : String,
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    let attrs : Array[@xml.Attribute] = [
+      xa("id", id_),
+      xa("fillcolor", "#" + fill_hex),
+      xa("strokecolor", "#666666"),
+    ]
+    match prst {
+      "ellipse" => vml_el("oval", attrs, kids)
+      "roundRect" => vml_el("roundrect", attrs, kids)
+      "triangle" =>
+        vml_el(
+          "shape",
+          attrs +
+          [
+            xa("coordsize", "21600,21600"),
+            xa("path", "m 10800,0 l 21600,21600 0,21600 x e"),
+          ],
+          kids,
+        )
+      _ => vml_el("rect", attrs, kids)
+    }
+  }
+  let vml_shape = fn(
+    id_ : String,
     prst : String,
     fill_hex : String,
     text : String,
-  ) -> Array[@xml.Node] {
-    let body : Array[@xml.Node] = [
-      Element(wps_el("cNvSpPr", [], [])),
-      Element(
-        wps_el("spPr", [], [
-          Element(
-            a_el("xfrm", [], [
-              Element(a_el("off", [xa("x", "0"), xa("y", "0")], [])),
-              Element(a_el("ext", [xa("cx", cx), xa("cy", cy)], [])),
-            ]),
-          ),
-          Element(
-            a_el("prstGeom", [xa("prst", prst)], [
-              Element(a_el("avLst", [], [])),
-            ]),
-          ),
-          Element(solid_fill(fill_hex)),
-        ]),
-      ),
-    ]
+  ) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
     if text != "" {
-      body.push(Element(wps_txbx(text)))
+      kids.push(Element(vml_txbx(text)))
     }
-    body.push(
-      Element(wps_el("bodyPr", [xa("rtlCol", "0"), xa("anchor", "ctr")], [])),
-    )
-    // Insert cNvPr at the head so that wsp = cNvPr + cNvSpPr + spPr + …
-    let head : Array[@xml.Node] = [
-      Element(wps_el("cNvPr", [xa("id", id_), xa("name", name)], [])),
-    ]
-    for n in body {
-      head.push(n)
-    }
-    head
+    vml_shape_with_children(id_, prst, fill_hex, kids)
   }
 
   // Wrap a `<w:drawing>` element as a paragraph child via a `<w:r>`
@@ -392,14 +363,13 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   })
 
   // ============================================================
-  // 3. Inline wps:wsp filled rectangle — renderable shape (no media)
+  // 3. Inline VML filled rectangle — renderable shape (no media)
   // ============================================================
   //
-  // §20.5.2.30 — `<wps:wsp>` carrying preset geometry + solid fill
-  // gives an inline shape with VISIBLE content even without external
-  // media.  Useful baseline for verifying the WML → DML shape path.
+  // Transitional §19 VML `<v:rect>` gives an inline shape with
+  // visible content even without external media.
   cases.push({
-    id: "drawing-inline-wps-rect-fill",
+    id: "drawing-inline-vml-rect-fill",
     format: "docx",
     category: "drawing",
     content: xe(NS_W, "body", [], [
@@ -412,11 +382,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "1371600",
               "1",
               "RectShape",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "Rect1", "1828800", "1371600", "rect", "4F81BD", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v2", "rect", "4F81BD", ""))]),
             ),
           ),
           w_run(None, " trailing text"),
@@ -426,14 +392,14 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   })
 
   // ============================================================
-  // 4. Inline wps:wsp text-box rectangle — text inside shape
+  // 4. Inline VML text-box rectangle — text inside shape
   // ============================================================
   //
-  // §20.5.2.30 + §17.3.5 — `<wps:wsp>` with a `<wps:txbx>` carrying
-  // a `<w:txbxContent>` paragraph.  Exercises the embedded-WML
-  // text-frame rendering path.
+  // §19 VML `<v:rect>` with `<v:textbox>` carrying a
+  // `<w:txbxContent>` paragraph. Exercises the embedded-WML
+  // text-frame path while staying inside ECMA Transitional schemas.
   cases.push({
-    id: "drawing-textbox-rect",
+    id: "drawing-vml-textbox-rect",
     format: "docx",
     category: "drawing",
     content: xe(NS_W, "body", [], [
@@ -446,11 +412,9 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "914400",
               "1",
               "TextBox",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "TBox1", "2286000", "914400", "rect", "FFFFCC", "Boxed text",
-                ),
-              ),
+              vml_graphic([
+                Element(vml_shape("v2", "rect", "FFFFCC", "Boxed text")),
+              ]),
             ),
           ),
           w_run(None, " trailing."),
@@ -460,14 +424,14 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   })
 
   // ============================================================
-  // 5. Inline wps:wsp rounded-rectangle text-box
+  // 5. Inline VML rounded-rectangle text-box
   // ============================================================
   //
   // §20.1.9.30 `prst="roundRect"` — same as above but with a rounded
   // corner preset.  Visually distinct from rect so a fidelity bug in
   // either geometry surface is easy to spot.
   cases.push({
-    id: "drawing-textbox-rounded",
+    id: "drawing-vml-textbox-rounded",
     format: "docx",
     category: "drawing",
     content: xe(NS_W, "body", [], [
@@ -480,11 +444,9 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "914400",
               "1",
               "RoundBox",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "RBox", "2286000", "914400", "roundRect", "DDEBF7", "Rounded text",
-                ),
-              ),
+              vml_graphic([
+                Element(vml_shape("v2", "roundRect", "DDEBF7", "Rounded text")),
+              ]),
             ),
           ),
           w_run(None, " label."),
@@ -494,7 +456,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   })
 
   // ============================================================
-  // 6. Inline wps:wsp ellipse shape
+  // 6. Inline VML ellipse shape
   // ============================================================
   //
   // §20.1.9.18 `prst="ellipse"` — non-rectangular geometry, no
@@ -514,11 +476,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "1371600",
               "1",
               "Ellipse",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "Ell", "1828800", "1371600", "ellipse", "C5E0B4", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v2", "ellipse", "C5E0B4", ""))]),
             ),
           ),
           w_run(None, " inline."),
@@ -619,11 +577,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "square",
               "1",
               "WrapSquare",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "WS", "1828800", "1371600", "rect", "F4B084", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v2", "rect", "F4B084", ""))]),
             ),
           ),
           w_run(
@@ -662,11 +616,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "topBottom",
               "1",
               "WrapTB",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "WTB", "2286000", "914400", "rect", "8FAADC", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v2", "rect", "8FAADC", ""))]),
             ),
           ),
         ]),
@@ -707,11 +657,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "none",
               "1",
               "Behind",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "Bg", "3657600", "914400", "rect", "F2F2F2", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v2", "rect", "F2F2F2", ""))]),
             ),
           ),
           w_run(
@@ -781,11 +727,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "1371600",
               "1",
               "Tri",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "Tri1", "1371600", "1371600", "triangle", "FFC000", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v2", "triangle", "FFC000", ""))]),
             ),
           ),
           w_run(None, " inline."),
@@ -815,11 +757,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "914400",
               "1",
               "A",
-              wps_graphic(
-                wps_shape_body(
-                  "2", "ShapeA", "914400", "914400", "rect", "C00000", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v2", "rect", "C00000", ""))]),
             ),
           ),
           w_run(None, " "),
@@ -829,11 +767,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "914400",
               "3",
               "B",
-              wps_graphic(
-                wps_shape_body(
-                  "4", "ShapeB", "914400", "914400", "ellipse", "00B050", "",
-                ),
-              ),
+              vml_graphic([Element(vml_shape("v4", "ellipse", "00B050", ""))]),
             ),
           ),
           w_run(None, " end."),
@@ -846,10 +780,9 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   // 15. Inline text-box — multiline content
   // ============================================================
   //
-  // `<wps:txbx>` carrying TWO `<w:p>` paragraphs — exercises the
-  // multi-paragraph text-frame layout pathway.  Built inline because
-  // `wps_txbx` only takes a single text string.
-  let txbx_multi : @xml.Element = wps_el("txbx", [], [
+  // `<v:textbox>` carrying TWO `<w:p>` paragraphs — exercises the
+  // multi-paragraph text-frame layout pathway.
+  let txbx_multi : @xml.Element = vml_el("textbox", [], [
     Element(
       xe(NS_W, "txbxContent", [], [
         Element(w_p(None, [w_run(None, "Line one of the text box.")])),
@@ -857,30 +790,11 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       ]),
     ),
   ])
-  let multi_shape : Array[@xml.Node] = [
-    Element(wps_el("cNvPr", [xa("id", "2"), xa("name", "MultiTB")], [])),
-    Element(wps_el("cNvSpPr", [], [])),
-    Element(
-      wps_el("spPr", [], [
-        Element(
-          a_el("xfrm", [], [
-            Element(a_el("off", [xa("x", "0"), xa("y", "0")], [])),
-            Element(a_el("ext", [xa("cx", "2743200"), xa("cy", "1371600")], [])),
-          ]),
-        ),
-        Element(
-          a_el("prstGeom", [xa("prst", "rect")], [
-            Element(a_el("avLst", [], [])),
-          ]),
-        ),
-        Element(solid_fill("FFF2CC")),
-      ]),
-    ),
+  let multi_shape = vml_shape_with_children("v2", "rect", "FFF2CC", [
     Element(txbx_multi),
-    Element(wps_el("bodyPr", [xa("rtlCol", "0"), xa("anchor", "t")], [])),
-  ]
+  ])
   cases.push({
-    id: "drawing-textbox-multiline",
+    id: "drawing-vml-textbox-multiline",
     format: "docx",
     category: "drawing",
     content: xe(NS_W, "body", [], [
@@ -893,7 +807,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "1371600",
               "1",
               "MultiTB",
-              wps_graphic(multi_shape),
+              vml_graphic([Element(multi_shape)]),
             ),
           ),
           w_run(None, " after."),
@@ -901,9 +815,4 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       ),
     ]),
   })
-
-  // Reference the unused helpers so the MoonBit compiler doesn't
-  // emit unused-let warnings if a fixture above is removed.  These
-  // are all idempotent no-op identity bindings.
-  let _ = a_text_para
 }
