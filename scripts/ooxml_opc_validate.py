@@ -203,6 +203,19 @@ def validate_content_type_value(content_type: str) -> str | None:
     return None
 
 
+def validate_relationship_type_value(relationship_type: str) -> str | None:
+    if relationship_type == "":
+        return "relationship Type must be non-empty"
+    if any(character.isspace() for character in relationship_type):
+        return "relationship Type must not contain whitespace"
+    parsed = urlsplit(relationship_type)
+    if not parsed.scheme:
+        return "relationship Type must be an absolute URI"
+    if parsed.fragment:
+        return "relationship Type must not contain a fragment"
+    return None
+
+
 def content_type_for_item(
     item_name: str,
     defaults: dict[str, str],
@@ -404,11 +417,38 @@ def validate_relationships_part(
     ids: set[str] = set()
     for relationship in root:
         if relationship.tag != f"{{{RELATIONSHIPS_NS}}}Relationship":
+            results.append(
+                fail(
+                    package,
+                    item_name,
+                    "relationships",
+                    f"unexpected child element: {relationship.tag}",
+                )
+            )
             continue
         relationship_id = relationship.get("Id", "")
+        relationship_type = relationship.get("Type", "")
         target = relationship.get("Target", "")
         target_mode = relationship.get("TargetMode", "Internal")
-        if relationship_id in ids:
+        if list(relationship):
+            results.append(
+                fail(
+                    package,
+                    item_name,
+                    "relationships",
+                    f"{relationship_id or '(missing Id)'}: Relationship element must not have child elements",
+                )
+            )
+        if not relationship_id:
+            results.append(
+                fail(
+                    package,
+                    item_name,
+                    "relationships",
+                    "relationship Id must be non-empty",
+                )
+            )
+        elif relationship_id in ids:
             results.append(
                 fail(
                     package,
@@ -417,7 +457,30 @@ def validate_relationships_part(
                     f"duplicate relationship Id: {relationship_id}",
                 )
             )
-        ids.add(relationship_id)
+        if relationship_id:
+            ids.add(relationship_id)
+
+        type_error = validate_relationship_type_value(relationship_type)
+        if type_error:
+            results.append(
+                fail(
+                    package,
+                    item_name,
+                    "relationships",
+                    f"{relationship_id or '(missing Id)'}: {type_error}",
+                )
+            )
+
+        if target == "":
+            results.append(
+                fail(
+                    package,
+                    item_name,
+                    "relationships",
+                    f"{relationship_id or '(missing Id)'}: relationship Target must be non-empty",
+                )
+            )
+            continue
 
         if target_mode == "External":
             continue
