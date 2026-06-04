@@ -116,20 +116,23 @@ fn trim_whitespace(text : String) -> String {
 }
 
 ///|
-/// Parse a decimal unsignedInt string. Returns `None` on malformed
-/// input. Used in places where the spec value should already have
-/// been screened by an `ST_*` parser.
+/// Parse a decimal xsd:unsignedInt string into the evaluator's signed
+/// Int storage. Returns `None` on malformed input, UInt32 overflow, or
+/// values that cannot be represented by the existing evaluator fields.
 fn parse_unsigned_int(text : String) -> Int? {
   if text.length() == 0 {
     return None
   }
-  let mut value = 0
+  let mut value : UInt64 = 0UL
   for i in 0..<text.length() {
     let unit = text.code_unit_at(i).to_int()
     if unit < 0x30 || unit > 0x39 {
       return None
     }
-    value = value * 10 + (unit - 0x30)
+    value = value * 10UL + (unit - 0x30).to_uint64()
+    if value > 2147483647UL {
+      return None
+    }
   }
-  Some(value)
+  Some(value.to_int())
 }

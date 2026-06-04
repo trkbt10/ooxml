@@ -2141,7 +2141,7 @@ fn parse_unsigned_int_attr(
       raise @opc_errors.SchemaViolation(
         section=animation_section,
         path~,
-        reason="malformed xsd:unsignedInt: " + text,
+        reason="malformed or non-representable xsd:unsignedInt: " + text,
       )
   }
 }
@@ -2421,7 +2421,7 @@ fn parse_st_time_node_id_attr(
           raise @opc_errors.SchemaViolation(
             section=animation_section,
             path~,
-            reason="malformed ST_TLTimeNodeID: " + text,
+            reason="ST_TLTimeNodeID exceeds evaluator Int range: " + text,
           )
       }
   }

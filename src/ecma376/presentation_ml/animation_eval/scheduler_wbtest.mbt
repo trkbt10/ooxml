@@ -260,6 +260,9 @@ test "§19.5.33 cTn rejects malformed scalar attributes" {
   assert_timing_schema_violation(
     "<timing><tnLst><par><cTn id=\"4294967296\"/></par></tnLst></timing>",
   )
+  assert_timing_schema_violation(
+    "<timing><tnLst><par><cTn id=\"2147483648\"/></par></tnLst></timing>",
+  )
   assert_timing_schema_violation(before + "accel=\"bad\"" + after)
   assert_timing_schema_violation(before + "accel=\"-1%\"" + after)
   assert_timing_schema_violation(before + "accel=\"100001\"" + after)
@@ -275,6 +278,7 @@ test "§19.5.33 cTn rejects malformed scalar attributes" {
   assert_timing_schema_violation(before + "bldLvl=\"bad\"" + after)
   assert_timing_schema_violation(before + "bldLvl=\"-2147483649\"" + after)
   assert_timing_schema_violation(before + "grpId=\"-1\"" + after)
+  assert_timing_schema_violation(before + "grpId=\"2147483648\"" + after)
   assert_timing_schema_violation(before + "presetSubtype=\"bad\"" + after)
   assert_timing_schema_violation(before + "masterRel=\"bad\"" + after)
   assert_timing_schema_violation(before + "spd=\"bad\"" + after)
@@ -477,6 +481,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tn val=\"4294967296\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(out_of_range_tn_val)
+  let nonrepresentable_tn_val = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tn val=\"2147483648\"/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(nonrepresentable_tn_val)
   let missing_tn_val = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><tn/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
@@ -493,6 +501,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tgtEl><spTgt spid=\"bad\"/></tgtEl></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(malformed_spid)
+  let nonrepresentable_spid = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tgtEl><spTgt spid=\"2147483648\"/></tgtEl></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(nonrepresentable_spid)
   let missing_rtn_val = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><rtn/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
