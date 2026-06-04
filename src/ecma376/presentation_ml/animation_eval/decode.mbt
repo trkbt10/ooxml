@@ -188,6 +188,7 @@ pub fn decode_anim_effect(
 pub fn decode_anim_motion(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_anim_point_children(element, "animMotion", true)
   let common = decode_behavior_common(element)
   let origin = match attr_local(element, "origin") {
     Some(text) => Some(parse_st_motion_origin(text))
@@ -236,6 +237,7 @@ pub fn decode_anim_rot(
 pub fn decode_anim_scale(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_anim_point_children(element, "animScale", false)
   let common = decode_behavior_common(element)
   let merged = with_from_to_by(common, element)
   let zoom_contents = match attr_local(element, "zoomContents") {
@@ -1182,6 +1184,132 @@ fn validate_anim_clr_children(
       path="animClr/to",
       reason="allows at most one <to> child",
     )
+  }
+}
+
+///|
+fn validate_anim_point_children(
+  element : @xml.Element,
+  path : String,
+  allow_r_ctr : Bool,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut cbhvr_count = 0
+  let mut by_count = 0
+  let mut from_count = 0
+  let mut to_count = 0
+  let mut r_ctr_count = 0
+  let mut last_rank = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let rank = match e.name.local_name {
+          "cBhvr" => {
+            cbhvr_count = cbhvr_count + 1
+            0
+          }
+          "by" => {
+            validate_tl_point_child(e, path + "/by")
+            by_count = by_count + 1
+            1
+          }
+          "from" => {
+            validate_tl_point_child(e, path + "/from")
+            from_count = from_count + 1
+            2
+          }
+          "to" => {
+            validate_tl_point_child(e, path + "/to")
+            to_count = to_count + 1
+            3
+          }
+          "rCtr" if allow_r_ctr => {
+            validate_tl_point_child(e, path + "/rCtr")
+            r_ctr_count = r_ctr_count + 1
+            4
+          }
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path~,
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+        if rank < last_rank {
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path~,
+            reason="child element out of sequence: " + e.name.local_name,
+          )
+        }
+        last_rank = rank
+      }
+      _ => ()
+    }
+  }
+  if cbhvr_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/cBhvr",
+      reason="missing required <cBhvr> child",
+    )
+  }
+  if cbhvr_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/cBhvr",
+      reason="allows exactly one <cBhvr> child",
+    )
+  }
+  if by_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/by",
+      reason="allows at most one <by> child",
+    )
+  }
+  if from_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/from",
+      reason="allows at most one <from> child",
+    )
+  }
+  if to_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/to",
+      reason="allows at most one <to> child",
+    )
+  }
+  if r_ctr_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/rCtr",
+      reason="allows at most one <rCtr> child",
+    )
+  }
+}
+
+///|
+fn validate_tl_point_child(
+  element : @xml.Element,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path~,
+          reason="unsupported child element: " + e.name.local_name,
+        )
+      _ => ()
+    }
+  }
+  try @domain.CT_TLPoint::from_element(element) catch {
+    e => raise_domain_schema(path, e)
+  } noraise {
+    _ => ()
   }
 }
 

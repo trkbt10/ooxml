@@ -247,6 +247,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animScale zoomContents=\"maybe\"><cBhvr><cTn id=\"2\"/></cBhvr></animScale>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(scale)
+  let scale_rejects_r_ctr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animScale><cBhvr><cTn id=\"27\"/></cBhvr><rCtr x=\"0\" y=\"0\"/></animScale>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(scale_rejects_r_ctr)
   let bool_val = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<set><cBhvr><cTn id=\"3\"/></cBhvr><to><boolVal val=\"maybe\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
@@ -303,6 +307,22 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animMotion rAng=\"bad\"><cBhvr><cTn id=\"5\"/></cBhvr></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(motion)
+  let missing_motion_point_y = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animMotion><cBhvr><cTn id=\"28\"/></cBhvr><by x=\"0\"/></animMotion>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_motion_point_y)
+  let duplicate_motion_to = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animMotion><cBhvr><cTn id=\"29\"/></cBhvr><to x=\"0\" y=\"0\"/><to x=\"1\" y=\"1\"/></animMotion>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_motion_to)
+  let reversed_motion_points = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animMotion><cBhvr><cTn id=\"30\"/></cBhvr><to x=\"1\" y=\"1\"/><from x=\"0\" y=\"0\"/></animMotion>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(reversed_motion_points)
+  let motion_point_with_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animMotion><cBhvr><cTn id=\"31\"/></cBhvr><by x=\"0\" y=\"0\"><bogus/></by></animMotion>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(motion_point_with_child)
   let empty_anim_clr_from = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animClr><cBhvr><cTn id=\"11\"/></cBhvr><from/></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
