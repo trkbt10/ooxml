@@ -268,15 +268,18 @@ test "§19.5.33 cTn rejects malformed scalar attributes" {
   assert_timing_schema_violation(before + "grpId=\"-1\"" + after)
   assert_timing_schema_violation(before + "presetSubtype=\"bad\"" + after)
   assert_timing_schema_violation(before + "masterRel=\"bad\"" + after)
+  assert_timing_schema_violation(before + "spd=\"bad\"" + after)
+  assert_timing_schema_violation(before + "spd=\"1e2%\"" + after)
   assert_timing_schema_violation(before + "syncBehavior=\"bad\"" + after)
 }
 
 ///|
-test "§19.5.12 cTn preserves master relation and sync type" {
-  let xml = "<timing><tnLst><par><cTn id=\"1\" masterRel=\"lastClick\" syncBehavior=\"locked\"/></par></tnLst></timing>"
+test "§19.5.12 cTn preserves master relation, speed, and sync type" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\" masterRel=\"lastClick\" spd=\"-12.5%\" syncBehavior=\"locked\"/></par></tnLst></timing>"
   let timeline = try! decode_timing(build_timing(xml))
   let root = root_node(timeline)
   assert_true(root.master_rel == Some("lastClick"))
+  assert_true(root.spd == Some("-12.5%"))
   assert_true(root.sync_behavior == Some("locked"))
 }
 

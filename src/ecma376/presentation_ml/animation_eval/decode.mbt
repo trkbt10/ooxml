@@ -517,7 +517,13 @@ fn decode_common_time_node_data(
       }
     None => None
   }
-  let spd = cTn_str_opt("spd")
+  let spd = match cTn_str_opt("spd") {
+    Some(text) => {
+      validate_percentage_attr(text, "cTn/@spd")
+      Some(text)
+    }
+    None => None
+  }
   let sync_behavior = match cTn_str_opt("syncBehavior") {
     Some(text) => Some(parse_st_sync_type(text).to_string())
     None => None
@@ -2074,6 +2080,21 @@ fn validate_positive_fixed_percentage_attr(
 }
 
 ///|
+fn validate_percentage_attr(
+  text : String,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let trimmed = trim_whitespace(text)
+  if !is_percentage_token(trimmed) {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="malformed ST_Percentage: " + text,
+    )
+  }
+}
+
+///|
 fn parse_xsd_bool(
   text : String,
   path : String,
@@ -2145,6 +2166,17 @@ fn parse_percentage(text : String) -> Double? {
 }
 
 ///|
+fn is_percentage_token(text : String) -> Bool {
+  if text.length() == 0 {
+    false
+  } else if text.code_unit_at(text.length() - 1).to_int() == 0x25 {
+    is_decimal_token(text, 0, text.length() - 1)
+  } else {
+    is_signed_integer_token(text)
+  }
+}
+
+///|
 fn is_positive_fixed_percentage_token(text : String) -> Bool {
   if text.length() == 0 {
     false
@@ -2182,6 +2214,27 @@ fn is_unsigned_integer_at_most(text : String, max : Int) -> Bool {
     value = value * 10 + digit
   }
   value <= max
+}
+
+///|
+fn is_signed_integer_token(text : String) -> Bool {
+  if text.length() == 0 {
+    return false
+  }
+  let mut pos = 0
+  if text[0:1] == "-" || text[0:1] == "+" {
+    pos = 1
+  }
+  if pos >= text.length() {
+    return false
+  }
+  while pos < text.length() {
+    if !is_ascii_digit_at(text, pos) {
+      return false
+    }
+    pos = pos + 1
+  }
+  true
 }
 
 ///|
