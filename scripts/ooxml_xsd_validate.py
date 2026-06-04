@@ -34,6 +34,8 @@ REPO = Path(__file__).resolve().parents[1]
 XSD_NS = "http://www.w3.org/2001/XMLSchema"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
 MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+DC_NS = "http://purl.org/dc/elements/1.1/"
+DCTERMS_NS = "http://purl.org/dc/terms/"
 
 STRICT_XSD = (
     REPO
@@ -91,6 +93,69 @@ XML_XSD = f"""<?xml version="1.0" encoding="UTF-8"?>
     <xs:attribute ref="xml:space"/>
     <xs:attribute ref="xml:id"/>
   </xs:attributeGroup>
+</xs:schema>
+"""
+
+DC_XSD = f"""<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema targetNamespace="{DC_NS}"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:dc="{DC_NS}"
+  xmlns:xml="{XML_NS}"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+  <xs:import namespace="{XML_NS}" schemaLocation="xml.xsd"/>
+
+  <xs:complexType name="SimpleLiteral">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute ref="xml:lang" use="optional"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:element name="creator" type="dc:SimpleLiteral"/>
+  <xs:element name="description" type="dc:SimpleLiteral"/>
+  <xs:element name="identifier" type="dc:SimpleLiteral"/>
+  <xs:element name="language" type="dc:SimpleLiteral"/>
+  <xs:element name="subject" type="dc:SimpleLiteral"/>
+  <xs:element name="title" type="dc:SimpleLiteral"/>
+</xs:schema>
+"""
+
+DCTERMS_XSD = f"""<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema targetNamespace="{DCTERMS_NS}"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:dcterms="{DCTERMS_NS}"
+  xmlns:xml="{XML_NS}"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified">
+  <xs:import namespace="{XML_NS}" schemaLocation="xml.xsd"/>
+
+  <xs:complexType name="SimpleLiteral">
+    <xs:simpleContent>
+      <xs:extension base="xs:anySimpleType">
+        <xs:attribute ref="xml:lang" use="optional"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:simpleType name="W3CDTFValue">
+    <xs:union memberTypes="xs:gYear xs:gYearMonth xs:date xs:dateTime"/>
+  </xs:simpleType>
+
+  <xs:complexType name="W3CDTF">
+    <xs:simpleContent>
+      <xs:restriction base="dcterms:SimpleLiteral">
+        <xs:simpleType>
+          <xs:restriction base="dcterms:W3CDTFValue"/>
+        </xs:simpleType>
+        <xs:attribute ref="xml:lang" use="prohibited"/>
+      </xs:restriction>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:element name="created" type="dcterms:SimpleLiteral"/>
+  <xs:element name="modified" type="dcterms:SimpleLiteral"/>
 </xs:schema>
 """
 
@@ -195,20 +260,48 @@ def collect_packages(args: argparse.Namespace) -> list[Path]:
 
 def patch_xml_imports(xsd: Path) -> None:
     text = xsd.read_text(encoding="utf-8-sig")
+    patched = patch_import_location(text, XML_NS, "xml.xsd", replace_existing=False)
+    if patched != text:
+        xsd.write_text(patched, encoding="utf-8")
+
+
+def patch_import_location(
+    text: str,
+    namespace: str,
+    schema_location: str,
+    replace_existing: bool,
+) -> str:
     pattern = re.compile(
         r'(<(?:xsd|xs):import\s+namespace=["\']'
-        + re.escape(XML_NS)
+        + re.escape(namespace)
         + r'["\'])([^>]*?)(/?>)',
         re.DOTALL,
     )
 
-    def add_schema_location(match: re.Match[str]) -> str:
+    def patch_match(match: re.Match[str]) -> str:
         attrs = match.group(2)
         if "schemaLocation" in attrs:
-            return match.group(0)
-        return f'{match.group(1)}{attrs} schemaLocation="xml.xsd"{match.group(3)}'
+            if not replace_existing:
+                return match.group(0)
+            attrs = re.sub(
+                r'\s+schemaLocation=(["\'])(.*?)\1',
+                f' schemaLocation="{schema_location}"',
+                attrs,
+                count=1,
+                flags=re.DOTALL,
+            )
+            return f"{match.group(1)}{attrs}{match.group(3)}"
+        return f'{match.group(1)}{attrs} schemaLocation="{schema_location}"{match.group(3)}'
 
-    patched = pattern.sub(add_schema_location, text)
+    return pattern.sub(patch_match, text)
+
+
+def patch_dublin_core_imports(xsd: Path) -> None:
+    text = xsd.read_text(encoding="utf-8-sig")
+    patched = patch_import_location(text, DC_NS, "dc.xsd", replace_existing=True)
+    patched = patch_import_location(
+        patched, DCTERMS_NS, "dcterms.xsd", replace_existing=True
+    )
     if patched != text:
         xsd.write_text(patched, encoding="utf-8")
 
@@ -242,9 +335,12 @@ def copy_schema_set(
     for xsd in source.glob("*.xsd"):
         shutil.copy2(xsd, target / xsd.name)
     (target / "xml.xsd").write_text(XML_XSD, encoding="utf-8")
+    (target / "dc.xsd").write_text(DC_XSD, encoding="utf-8")
+    (target / "dcterms.xsd").write_text(DCTERMS_XSD, encoding="utf-8")
     namespace_to_schema: dict[str, Path] = {}
     for xsd in sorted(target.glob("*.xsd")):
         patch_xml_imports(xsd)
+        patch_dublin_core_imports(xsd)
         try:
             root = ET.parse(xsd).getroot()
         except ET.ParseError:

@@ -44,6 +44,12 @@ schema-set wrapper that imports every local schema in that set. This is needed
 for strict wildcards such as DrawingML `graphicData`, where a WML part can
 legitimately contain a globally declared VML, picture, chart, or diagram
 payload from another ECMA schema file.
+For OPC core properties, the validator rewrites the vendored
+`opc-coreProperties.xsd` Dublin Core imports to generated local `dc.xsd` and
+`dcterms.xsd` schemas, so `dc:*` and `dcterms:*` fields validate offline under
+`xmllint --nonet` instead of attempting HTTP schema fetches. The generated
+`dcterms:W3CDTF` type is restricted to W3C date/time lexical forms and forbids
+`xml:lang` when it is selected through `xsi:type`.
 
 This gate does not prove complete OPC graph conformance, full Markup
 Compatibility conformance beyond the preprocessing needed for schema
