@@ -607,14 +607,30 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><hslClr hue=\"1.5\" sat=\"0%\" lum=\"0%\"/></to></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(malformed_anim_clr_to_hsl)
+  let out_of_range_anim_clr_to_hsl = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><hslClr hue=\"21600000\" sat=\"0%\" lum=\"0%\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(out_of_range_anim_clr_to_hsl)
   let malformed_anim_clr_from_scrgb = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><from><scrgbClr r=\"bad\" g=\"0%\" b=\"0%\"/></from></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(malformed_anim_clr_from_scrgb)
+  let missing_anim_clr_from_scrgb = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><from><scrgbClr r=\"0%\" b=\"0%\"/></from></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_anim_clr_from_scrgb)
   let malformed_anim_clr_to_sys_last = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><sysClr val=\"windowText\" lastClr=\"12345z\"/></to></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(malformed_anim_clr_to_sys_last)
+  let malformed_anim_clr_to_sys = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><sysClr val=\"bogus\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_clr_to_sys)
+  let empty_anim_clr_to_preset = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><to><prstClr val=\"\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(empty_anim_clr_to_preset)
   let malformed_anim_clr_by = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animClr><cBhvr><cTn id=\"13\"/></cBhvr><by><rgb r=\"100%\" g=\"0%\"/></by></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
