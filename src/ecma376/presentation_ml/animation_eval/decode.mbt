@@ -7,6 +7,13 @@
 pub fn decode_timing(
   timing : @domain.CT_SlideTiming,
 ) -> Timeline raise @opc_errors.SchemaViolation {
+  if timing.tnLst_name is Some(_) && timing.tnLst.length() == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="timing/tnLst",
+      reason="requires at least one time-node child",
+    )
+  }
   let roots : Array[@domain.CT_TLCommonTimeNodeData] = []
   for element in timing.tnLst {
     roots.push(decode_time_node(element))
@@ -27,6 +34,13 @@ pub fn decode_time_node_list(
       @xml.Element(element) => result.push(decode_time_node(element))
       _ => ()
     }
+  }
+  if result.length() == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=list.name.local_name,
+      reason="requires at least one time-node child",
+    )
   }
   result
 }
@@ -578,7 +592,7 @@ fn decode_condition_list(
 ) -> Array[@domain.CT_TLTimeCondition] raise @opc_errors.SchemaViolation {
   let result : Array[@domain.CT_TLTimeCondition] = []
   match first_child_by_local_name(parent, local_name) {
-    Some(list) =>
+    Some(list) => {
       for child in list.children {
         match child {
           @xml.Element(element) =>
@@ -588,6 +602,14 @@ fn decode_condition_list(
           _ => ()
         }
       }
+      if result.length() == 0 {
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path=local_name,
+          reason="requires at least one <cond> child",
+        )
+      }
+    }
     None => ()
   }
   result
