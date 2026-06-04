@@ -221,6 +221,19 @@ test "§19.5.33 cTn rejects malformed percentage and boolean attributes" {
 }
 
 ///|
+test "§19.5.33 timing nodes reject missing required cTn children" {
+  assert_timing_schema_violation("<timing><tnLst><par/></tnLst></timing>")
+  let anim = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr/></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(anim)
+  let set = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><to><strVal val=\"hidden\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(set)
+}
+
+///|
 test "§19.5 animation variants reject malformed boolean and tav timing" {
   let scale = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animScale zoomContents=\"maybe\"><cBhvr><cTn id=\"2\"/></cBhvr></animScale>" +

@@ -315,6 +315,13 @@ fn decode_common_time_node_data(
     Some(t) => Some(t)
     None => first_child_by_local_name(element, "cTn")
   }
+  if c_tn is None {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=element.name.local_name + "/cTn",
+      reason="missing required <cTn> child",
+    )
+  }
   let node_id = match c_tn {
     Some(t) =>
       match attr_local(t, "id") {
