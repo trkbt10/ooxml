@@ -124,8 +124,10 @@ The validator checks:
 - Relationship part ownership: package relationships and part relationships
   must map to existing sources.
 - Relationship part structure: `Relationship` children only, required non-empty
-  `Id`, `Type`, and `Target` attributes, absolute-fragmentless relationship
-  type URIs, and childless `Relationship` elements.
+  `Id`, `Type`, and `Target` attributes, `xsd:ID` / XML NCName relationship
+  identifiers, absolute-fragmentless relationship type URIs, no attributes on
+  the `Relationships` root, no unexpected `Relationship` attributes, and
+  childless `Relationship` elements.
 - Internal relationship target resolution from the correct OPC base IRI, with
   missing targets and relationships-to-Relationships-parts rejected.
 

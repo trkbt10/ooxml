@@ -31,6 +31,7 @@ from xml.etree import ElementTree as ET
 REPO = Path(__file__).resolve().parents[1]
 CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 RELATIONSHIPS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+XML_NS = "http://www.w3.org/XML/1998/namespace"
 RELATIONSHIPS_CONTENT_TYPE = "application/vnd.openxmlformats-package.relationships+xml"
 CORE_PROPERTIES_RELATIONSHIP_TYPE = (
     "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
@@ -257,8 +258,65 @@ def validate_content_type_value(content_type: str) -> str | None:
     return None
 
 
+def xml_name_start_char(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        character == "_"
+        or "A" <= character <= "Z"
+        or "a" <= character <= "z"
+        or 0xC0 <= codepoint <= 0xD6
+        or 0xD8 <= codepoint <= 0xF6
+        or 0xF8 <= codepoint <= 0x2FF
+        or 0x370 <= codepoint <= 0x37D
+        or 0x37F <= codepoint <= 0x1FFF
+        or 0x200C <= codepoint <= 0x200D
+        or 0x2070 <= codepoint <= 0x218F
+        or 0x2C00 <= codepoint <= 0x2FEF
+        or 0x3001 <= codepoint <= 0xD7FF
+        or 0xF900 <= codepoint <= 0xFDCF
+        or 0xFDF0 <= codepoint <= 0xFFFD
+        or 0x10000 <= codepoint <= 0xEFFFF
+    )
+
+
+def xml_name_char(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        xml_name_start_char(character)
+        or character in "-."
+        or "0" <= character <= "9"
+        or codepoint == 0xB7
+        or 0x300 <= codepoint <= 0x36F
+        or 0x203F <= codepoint <= 0x2040
+    )
+
+
+def is_xml_ncname(value: str) -> bool:
+    if value == "" or not xml_name_start_char(value[0]):
+        return False
+    return all(xml_name_char(character) for character in value[1:])
+
+
+def validate_relationship_id_value(relationship_id: str) -> str | None:
+    if not is_xml_ncname(relationship_id):
+        return "relationship Id must be a valid xsd:ID / XML NCName"
+    return None
+
+
+def xml_attribute_label(attribute_name: str) -> str:
+    if attribute_name.startswith("{") and "}" in attribute_name:
+        namespace, local_name = attribute_name[1:].split("}", 1)
+        if namespace == XML_NS:
+            return "xml:" + local_name
+    return attribute_name
+
+
 def unexpected_attributes(element: ET.Element, allowed: set[str]) -> list[str]:
-    return sorted(attribute for attribute in element.attrib if attribute not in allowed)
+    return [
+        xml_attribute_label(attribute)
+        for attribute in sorted(element.attrib)
+        if attribute not in allowed
+    ]
 
 
 def validate_relationship_type_value(relationship_type: str) -> str | None:
@@ -600,6 +658,17 @@ def validate_relationships_part(
         )
         return results
 
+    root_unexpected_attributes = unexpected_attributes(root, set())
+    if root_unexpected_attributes:
+        results.append(
+            fail(
+                package,
+                item_name,
+                "relationships",
+                f"Relationships element must not have attributes: {', '.join(root_unexpected_attributes)}",
+            )
+        )
+
     ids: set[str] = set()
     for relationship in root:
         if relationship.tag != f"{{{RELATIONSHIPS_NS}}}Relationship":
@@ -616,6 +685,19 @@ def validate_relationships_part(
         relationship_type = relationship.get("Type", "")
         target = relationship.get("Target", "")
         target_mode = relationship.get("TargetMode", "Internal")
+        relationship_unexpected_attributes = unexpected_attributes(
+            relationship,
+            {"Id", "Type", "Target", "TargetMode"},
+        )
+        if relationship_unexpected_attributes:
+            results.append(
+                fail(
+                    package,
+                    item_name,
+                    "relationships",
+                    f"{relationship_id or '(missing Id)'}: Relationship element has unexpected attributes: {', '.join(relationship_unexpected_attributes)}",
+                )
+            )
         if list(relationship):
             results.append(
                 fail(
@@ -634,16 +716,26 @@ def validate_relationships_part(
                     "relationship Id must be non-empty",
                 )
             )
-        elif relationship_id in ids:
-            results.append(
-                fail(
-                    package,
-                    item_name,
-                    "relationships",
-                    f"duplicate relationship Id: {relationship_id}",
+        else:
+            relationship_id_error = validate_relationship_id_value(relationship_id)
+            if relationship_id_error:
+                results.append(
+                    fail(
+                        package,
+                        item_name,
+                        "relationships",
+                        f"{relationship_id}: {relationship_id_error}",
+                    )
                 )
-            )
-        if relationship_id:
+            if relationship_id in ids:
+                results.append(
+                    fail(
+                        package,
+                        item_name,
+                        "relationships",
+                        f"duplicate relationship Id: {relationship_id}",
+                    )
+                )
             ids.add(relationship_id)
 
         type_error = validate_relationship_type_value(relationship_type)
