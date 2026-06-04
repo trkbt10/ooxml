@@ -861,35 +861,21 @@ fn decode_cbhvr_inner(
 }
 
 ///|
-fn decode_attr_name_list(cbhvr : @xml.Element) -> Array[String] {
-  let result : Array[String] = []
+fn decode_attr_name_list(
+  cbhvr : @xml.Element,
+) -> Array[String] raise @opc_errors.SchemaViolation {
   match first_child_by_local_name(cbhvr, "attrNameLst") {
     Some(list) =>
-      for child in list.children {
-        match child {
-          @xml.Element(element) =>
-            if element.name.local_name == "attrName" {
-              result.push(text_of(element))
-            }
-          _ => ()
+      try @domain.CT_TLBehaviorAttributeNameList::from_element(list) catch {
+        e => {
+          raise_domain_schema("attrNameLst", e)
+          []
         }
+      } noraise {
+        attr_list => attr_list.attr_names
       }
-    None => ()
+    None => []
   }
-  result
-}
-
-///|
-fn text_of(element : @xml.Element) -> String {
-  let buf = StringBuilder::new()
-  for child in element.children {
-    match child {
-      @xml.Text(t) => buf.write_string(t)
-      @xml.CData(t) => buf.write_string(t)
-      _ => ()
-    }
-  }
-  buf.to_string()
 }
 
 ///|
