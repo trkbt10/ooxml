@@ -33,6 +33,10 @@ pub fn TargetMode::to_string(self : TargetMode) -> String {
 }
 
 ///|
+/// Schema-named alias for opc-relationships.xsd simple type ST_TargetMode.
+pub type ST_TargetMode = TargetMode
+
+///|
 /// §6.5 ST_RelationshipId — xsd:string identifier for OPC relationships.
 pub struct RelationshipId {
   value : String

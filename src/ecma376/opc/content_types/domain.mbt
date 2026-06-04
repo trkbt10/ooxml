@@ -27,6 +27,10 @@ pub fn ContentType::to_string(self : ContentType) -> String {
 }
 
 ///|
+/// Schema-named alias for opc-contentTypes.xsd simple type ST_ContentType.
+pub type ST_ContentType = ContentType
+
+///|
 /// ST_Extension simple type from schema bundle opc-contentTypes.xsd, the
 /// Default rule key for extension-based content-type lookup.
 pub(all) struct Extension {
@@ -53,6 +57,10 @@ pub fn Extension::parse(
 pub fn Extension::to_string(self : Extension) -> String {
   self.value
 }
+
+///|
+/// Schema-named alias for opc-contentTypes.xsd simple type ST_Extension.
+pub type ST_Extension = Extension
 
 ///|
 /// Part name used by CT_Override PartName attributes. The canonical

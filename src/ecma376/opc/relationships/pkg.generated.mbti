@@ -39,6 +39,7 @@ pub struct RelationshipId {
 pub fn RelationshipId::new(String) -> Self
 pub fn RelationshipId::to_string(Self) -> String
 
+#alias(ST_TargetMode)
 pub(all) enum TargetMode {
   Internal
   External

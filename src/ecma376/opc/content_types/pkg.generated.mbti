@@ -42,6 +42,7 @@ pub fn CT_Types::content_type_for_part(Self, @part_name.PartName) -> ContentType
 pub fn CT_Types::require_digital_signature_content_types(Self, @part_name.PartName, @part_name.PartName, @part_name.PartName?) -> Unit raise
 pub fn CT_Types::require_part_content_type(Self, @part_name.PartName, ContentType, section~ : String, path~ : String) -> Unit raise
 
+#alias(ST_ContentType)
 pub(all) struct ContentType {
   value : String
 } derive(Eq, @debug.Debug)
@@ -53,6 +54,7 @@ pub(all) enum ContentTypeRule {
   Override(CT_Override)
 } derive(Eq, @debug.Debug)
 
+#alias(ST_Extension)
 pub(all) struct Extension {
   value : String
 } derive(Eq, @debug.Debug)
