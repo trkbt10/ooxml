@@ -388,6 +388,15 @@ test "§19.5 animation leaves reject malformed enum attributes" {
     "<set><cBhvr accumulate=\"sometimes\"><cTn id=\"79\"/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     after,
   )
+  assert_timing_schema_violation(
+    "<timing><tnLst><seq concurrent=\"maybe\"><cTn id=\"80\"/></seq></tnLst></timing>",
+  )
+  assert_timing_schema_violation(
+    "<timing><tnLst><seq prevAc=\"skip\"><cTn id=\"81\"/></seq></tnLst></timing>",
+  )
+  assert_timing_schema_violation(
+    "<timing><tnLst><seq nextAc=\"advance\"><cTn id=\"82\"/></seq></tnLst></timing>",
+  )
 }
 
 ///|

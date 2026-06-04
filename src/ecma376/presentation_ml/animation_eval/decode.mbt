@@ -92,6 +92,7 @@ pub fn decode_seq(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   validate_container_time_node_children(element, "seq", true)
+  validate_seq_attrs(element)
   // seq carries prevCondLst / nextCondLst directly as siblings of
   // cTn. We merge them into the resulting node so consumers can
   // inspect the sequence-level navigation conditions.
@@ -188,6 +189,24 @@ fn validate_container_time_node_children(
       path=path + "/nextCondLst",
       reason="allows at most one <nextCondLst> child",
     )
+  }
+}
+
+///|
+fn validate_seq_attrs(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  match attr_local(element, "concurrent") {
+    Some(text) => parse_xsd_bool(text, "seq/@concurrent") |> ignore
+    None => ()
+  }
+  match attr_local(element, "prevAc") {
+    Some(text) => parse_st_previous_action_type(text) |> ignore
+    None => ()
+  }
+  match attr_local(element, "nextAc") {
+    Some(text) => parse_st_next_action_type(text) |> ignore
+    None => ()
   }
 }
 
@@ -3104,6 +3123,34 @@ fn parse_st_effect_transition(
     e => {
       raise_schema("animEffect/@transition", e)
       @domain.EffectTransitionIn
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_previous_action_type(
+  text : String,
+) -> @domain.ST_TLPreviousActionType raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLPreviousActionType::parse(text) catch {
+    e => {
+      raise_schema("seq/@prevAc", e)
+      @domain.PrevActionNone
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_next_action_type(
+  text : String,
+) -> @domain.ST_TLNextActionType raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLNextActionType::parse(text) catch {
+    e => {
+      raise_schema("seq/@nextAc", e)
+      @domain.NextActionNone
     }
   } noraise {
     v => v
