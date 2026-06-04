@@ -36,11 +36,11 @@ for strict wildcards such as DrawingML `graphicData`, where a WML part can
 legitimately contain a globally declared VML, picture, chart, or diagram
 payload from another ECMA schema file.
 
-This gate does not prove complete OPC graph conformance, relationship/content
-type semantics beyond the XSD-covered XML parts, Markup Compatibility
+This gate does not prove complete OPC graph conformance, Markup Compatibility
 preprocessing, visual fidelity, or Microsoft Office / LibreOffice openability.
-Application-open checks are covered separately by `docs/OOXML_INTEROP_SMOKE.md`
-and must not be treated as schema validation.
+OPC graph and content-type checks are covered separately by
+`scripts/ooxml_opc_validate.py`. Application-open checks are covered by
+`docs/OOXML_INTEROP_SMOKE.md` and must not be treated as schema validation.
 
 Current package-validation snapshot, after ECMA/VML fixture repairs and
 schema-set wildcard validation:
@@ -62,8 +62,42 @@ The former full-fixture failures were resolved as follows:
 
 Do not infer from the zero-failure XSD sweep that application interop is
 complete. Microsoft and LibreOffice open/repair checks, Markup Compatibility
-processing, package relationship semantics, and visual fidelity remain
-separate gates.
+processing, and visual fidelity remain separate gates.
+
+## OPC package graph validation gate
+
+Use `scripts/ooxml_opc_validate.py` for package-level Open Packaging
+Conventions checks that require looking across ZIP entries,
+`[Content_Types].xml`, and relationship parts:
+
+```bash
+python3 scripts/ooxml_opc_validate.py --summary
+python3 scripts/ooxml_opc_validate.py --all-fixtures --failures-only --summary
+python3 scripts/ooxml_opc_validate.py path/to/file.docx path/to/file.xlsx path/to/file.pptx
+```
+
+The validator checks:
+
+- ZIP duplicate entries and invalid ZIP item names.
+- OPC part-name syntax, reserved Relationships part names, ASCII
+  case-insensitive uniqueness, and derivable part-name collisions.
+- `[Content_Types].xml` Default/Override coverage for every part and
+  Relationships part.
+- Relationship part ownership: package relationships and part relationships
+  must map to existing sources.
+- Internal relationship target resolution from the correct OPC base IRI, with
+  missing targets and relationships-to-Relationships-parts rejected.
+
+Current OPC package-validation snapshot:
+
+| Scope | Result |
+|---|---|
+| default representative fixtures | `ok: 3` |
+| all generated fixtures | `ok: 837`, `fail: 0` |
+
+This is still not a Markup Compatibility preprocessor, application repair-dialog
+detector, or visual-fidelity check. It is a package-graph gate for the OPC
+invariants that part-level XSD validation intentionally cannot prove.
 
 ## ECMA-376 Part 1 Strict XSD
 
