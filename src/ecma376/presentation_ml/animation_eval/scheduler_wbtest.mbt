@@ -342,11 +342,30 @@ test "§19.5 animation variants reject missing required val attributes" {
   assert_timing_schema_violation(before + "<intVal/>" + after)
   assert_timing_schema_violation(before + "<fltVal/>" + after)
   assert_timing_schema_violation(before + "<strVal/>" + after)
+  assert_timing_schema_violation(before + "<clrVal/>" + after)
+  assert_timing_schema_violation(before + "<clrVal><bogus/></clrVal>" + after)
+  assert_timing_schema_violation(
+    before +
+    "<clrVal><srgbClr val=\"ff00aa\"/><schemeClr val=\"accent1\"/></clrVal>" +
+    after,
+  )
   assert_timing_schema_violation(before + after)
   assert_timing_schema_violation(before + "<bogusVal val=\"x\"/>" + after)
   assert_timing_schema_violation(
     before + "<strVal val=\"visible\"/><intVal val=\"1\"/>" + after,
   )
+}
+
+///|
+test "§19.5.92 clrVal preserves nested DML color choice" {
+  let decoded = try! decode_anim_variant(
+    parse_root("<val><clrVal><srgbClr val=\"ff00aa\"/></clrVal></val>"),
+  )
+  match decoded {
+    Some(@domain.AnimVariantColor(payload)) =>
+      assert_eq(payload, "srgbClr:ff00aa")
+    _ => fail("expected color variant")
+  }
 }
 
 ///|

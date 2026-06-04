@@ -1228,10 +1228,11 @@ pub fn decode_anim_variant(
             let text = require_anim_variant_val(value, "strVal/@val")
             return Some(@domain.AnimVariantString(text))
           }
-          "clrVal" =>
-            return Some(
-              @domain.AnimVariantColor(serialise_color_endpoint(val_element)),
-            )
+          "clrVal" => {
+            validate_color_choice_endpoint(element, "clrVal")
+            let payload = serialise_color_endpoint(element)
+            return Some(@domain.AnimVariantColor(payload))
+          }
           _ => ()
         }
       }
@@ -1285,6 +1286,50 @@ fn count_anim_variant_choices(element : @xml.Element) -> Int {
         match e.name.local_name {
           "boolVal" | "intVal" | "fltVal" | "strVal" | "clrVal" =>
             count = count + 1
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  count
+}
+
+///|
+fn validate_color_choice_endpoint(
+  endpoint : @xml.Element,
+  path : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let element_count = count_element_children(endpoint)
+  let choice_count = count_color_choice_children(endpoint)
+  if choice_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="missing required color choice",
+    )
+  }
+  if element_count != 1 || choice_count != 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="expected exactly one color choice",
+    )
+  }
+}
+
+///|
+fn count_color_choice_children(element : @xml.Element) -> Int {
+  let mut count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "scrgbClr"
+          | "srgbClr"
+          | "hslClr"
+          | "sysClr"
+          | "schemeClr"
+          | "prstClr" => count = count + 1
           _ => ()
         }
       _ => ()
