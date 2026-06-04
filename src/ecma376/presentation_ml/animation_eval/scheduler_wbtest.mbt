@@ -406,6 +406,11 @@ test "§19.5.33 timing nodes reject missing required cTn children" {
   let empty_child_list = "<timing><tnLst><par><cTn id=\"1\">" +
     "<childTnLst/></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(empty_child_list)
+  let unsupported_root_node = "<timing><tnLst><bogus/></tnLst></timing>"
+  assert_timing_schema_violation(unsupported_root_node)
+  let unsupported_child_node = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<childTnLst><bogus/></childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unsupported_child_node)
   let empty_condition_list = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst/></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(empty_condition_list)
