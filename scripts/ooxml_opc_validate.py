@@ -544,6 +544,12 @@ def validate_package(package: Path) -> list[ValidationResult]:
             names = [info.filename for info in archive.infolist()]
             file_names = [name for name in names if not name.endswith("/")]
 
+            for name in names:
+                if any(ord(character) > 0x7F for character in name):
+                    results.append(
+                        fail(package, name, "zip", "ZIP item name must use ASCII characters")
+                    )
+
             for name, count in Counter(file_names).items():
                 if count > 1:
                     results.append(fail(package, name, "zip", f"duplicate ZIP item: {count} entries"))
