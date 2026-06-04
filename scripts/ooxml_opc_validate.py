@@ -53,6 +53,8 @@ SUB_DELIMS = set("!$&'()*+,;=")
 ASCII_IPCHAR = UNRESERVED | SUB_DELIMS | set("%:@")
 MEDIA_TYPE_TOKEN = r"[A-Za-z0-9!#$%&'*+\-.^_`{|}~]+"
 MEDIA_TYPE = re.compile(rf"^{MEDIA_TYPE_TOKEN}/{MEDIA_TYPE_TOKEN}$")
+XML_ENCODING_DECL = re.compile(r"""<\?xml\s+[^?]*\bencoding\s*=\s*(['"])([^'"]+)\1""")
+ALLOWED_OPC_XML_ENCODINGS = {"utf-8", "utf-16"}
 
 
 @dataclass(frozen=True)
@@ -275,7 +277,15 @@ def has_dtd_declaration(xml_bytes: bytes) -> bool:
         return text.startswith("<!DOCTYPE", position)
 
 
+def declared_xml_encoding(xml_bytes: bytes) -> str | None:
+    match = XML_ENCODING_DECL.search(decode_xml_prolog(xml_bytes))
+    return match.group(2) if match else None
+
+
 def validate_opc_xml_usage(xml_bytes: bytes) -> str | None:
+    encoding = declared_xml_encoding(xml_bytes)
+    if encoding is not None and encoding.casefold() not in ALLOWED_OPC_XML_ENCODINGS:
+        return f"OPC XML encoding declaration must be UTF-8 or UTF-16, not {encoding!r}"
     if has_dtd_declaration(xml_bytes):
         return "OPC XML markup must not include a DTD declaration"
     return None
