@@ -275,6 +275,22 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><rtn val=\"middle\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(malformed_rtn_val)
+  let missing_condition_choice = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond/></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_condition_choice)
+  let multiple_condition_choices = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tn val=\"2\"/><rtn val=\"first\"/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(multiple_condition_choices)
+  let missing_target_choice = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tgtEl/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_target_choice)
+  let multiple_target_choices = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tgtEl><sldTgt/><spTgt spid=\"5\"/></tgtEl></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(multiple_target_choices)
 }
 
 ///|

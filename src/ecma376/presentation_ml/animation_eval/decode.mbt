@@ -614,9 +614,27 @@ pub fn decode_condition(
 fn decode_cond_target(
   element : @xml.Element,
 ) -> (Int?, Int?) raise @opc_errors.SchemaViolation {
+  let choice_count = count_cond_target_choices(element)
+  if choice_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cond",
+      reason="missing required tgtEl|tn|rtn choice",
+    )
+  }
+  if choice_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="cond",
+      reason="expected exactly one tgtEl|tn|rtn choice",
+    )
+  }
   let tgt_el = first_child_by_local_name(element, "tgtEl")
   let shape_id = match tgt_el {
-    Some(t) => decode_sp_tgt_shape_id(t)
+    Some(t) => {
+      validate_time_target_element(t)
+      decode_sp_tgt_shape_id(t)
+    }
     None => None
   }
   let tn = first_child_by_local_name(element, "tn")
@@ -647,6 +665,64 @@ fn decode_cond_target(
     None => ()
   }
   (shape_id, runtime_id)
+}
+
+///|
+fn count_cond_target_choices(element : @xml.Element) -> Int {
+  let mut count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "tgtEl" | "tn" | "rtn" => count = count + 1
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  count
+}
+
+///|
+fn validate_time_target_element(
+  tgt_el : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let choice_count = count_time_target_choices(tgt_el)
+  if choice_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="tgtEl",
+      reason="missing required sldTgt|sndTgt|spTgt|inkTgt choice",
+    )
+  }
+  if choice_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="tgtEl",
+      reason="expected exactly one sldTgt|sndTgt|spTgt|inkTgt choice",
+    )
+  }
+  try @domain.CT_TLTimeTargetElement::from_element(tgt_el) catch {
+    e => raise_domain_schema("tgtEl", e)
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
+fn count_time_target_choices(tgt_el : @xml.Element) -> Int {
+  let mut count = 0
+  for child in tgt_el.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "sldTgt" | "sndTgt" | "spTgt" | "inkTgt" => count = count + 1
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  count
 }
 
 ///|
@@ -1403,6 +1479,19 @@ fn raise_schema(
     section=animation_section,
     path~,
     reason=reason + " (ST=" + type_name + ", value=" + value + ")",
+  )
+}
+
+///|
+fn raise_domain_schema(
+  path : String,
+  err : @domain.SchemaViolation,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let @domain.SchemaViolation(type_name~, value~, reason~) = err
+  raise @opc_errors.SchemaViolation(
+    section=animation_section,
+    path~,
+    reason=reason + " (type=" + type_name + ", value=" + value + ")",
   )
 }
 
