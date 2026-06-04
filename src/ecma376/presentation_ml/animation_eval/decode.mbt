@@ -1992,41 +1992,20 @@ fn variant_from_attr(
 /// Parse a tav `tm` attribute. Recognised forms:
 ///   - the literal `indefinite` → `None`
 ///   - a percentage like `25%` → 0.25
-///   - an unsignedInt 0..100000 (ST_PositiveFixedPercentage in
-///     thousandths) → divided by 100000.
 fn parse_tav_time(text : String) -> Double? raise @opc_errors.SchemaViolation {
   let trimmed = trim_whitespace(text)
-  if trimmed == "indefinite" {
-    return None
-  }
-  if trimmed.length() == 0 {
-    raise @opc_errors.SchemaViolation(
-      section=animation_section,
-      path="tav/@tm",
-      reason="malformed ST_TLTimeAnimateValueTime: " + text,
-    )
-  }
-  let last = trimmed.code_unit_at(trimmed.length() - 1).to_int()
-  if last == 0x25 {
-    let body = trimmed.unsafe_substring(start=0, end=trimmed.length() - 1)
-    match parse_double(body) {
-      Some(d) => return Some(d / 100.0)
-      None =>
-        raise @opc_errors.SchemaViolation(
-          section=animation_section,
-          path="tav/@tm",
-          reason="malformed ST_TLTimeAnimateValueTime: " + text,
-        )
+  try @domain.ST_TLTimeAnimateValueTime::parse(trimmed) catch {
+    e => {
+      raise_schema("tav/@tm", e)
+      None
     }
-  }
-  match parse_unsigned_int(trimmed) {
-    Some(n) => Some(n.to_double() / 100000.0)
-    None =>
-      raise @opc_errors.SchemaViolation(
-        section=animation_section,
-        path="tav/@tm",
-        reason="malformed ST_TLTimeAnimateValueTime: " + text,
-      )
+  } noraise {
+    v =>
+      match v {
+        @domain.AnimValueIndefinite => None
+        @domain.AnimValuePercentage(thousandths) =>
+          Some(thousandths.to_double() / 100000.0)
+      }
   }
 }
 

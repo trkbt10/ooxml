@@ -402,27 +402,43 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(reversed_anim_effect_children)
   let duplicate_anim_tav_list = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
-    "<anim><cBhvr><cTn id=\"21\"/></cBhvr><tavLst><tav tm=\"0\"/></tavLst><tavLst><tav tm=\"100%\"/></tavLst></anim>" +
+    "<anim><cBhvr><cTn id=\"21\"/></cBhvr><tavLst><tav tm=\"0%\"/></tavLst><tavLst><tav tm=\"100%\"/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(duplicate_anim_tav_list)
   let unexpected_anim_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
-    "<anim><cBhvr><cTn id=\"22\"/></cBhvr><bogus/><tavLst><tav tm=\"0\"/></tavLst></anim>" +
+    "<anim><cBhvr><cTn id=\"22\"/></cBhvr><bogus/><tavLst><tav tm=\"0%\"/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(unexpected_anim_child)
   let reversed_anim_children = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
-    "<anim><tavLst><tav tm=\"0\"/></tavLst><cBhvr><cTn id=\"23\"/></cBhvr></anim>" +
+    "<anim><tavLst><tav tm=\"0%\"/></tavLst><cBhvr><cTn id=\"23\"/></cBhvr></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(reversed_anim_children)
   let tav = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"bogus\"/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(tav)
+  let bare_tav_tm = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"0\"/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(bare_tav_tm)
+  let negative_tav_tm = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"-1%\"/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(negative_tav_tm)
+  let exponent_tav_tm = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"1e2%\"/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(exponent_tav_tm)
+  let out_of_range_tav_tm = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"100.1%\"/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(out_of_range_tav_tm)
   let unexpected_tav_value_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
-    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"0\"><val><fltVal val=\"0\"/></val><bogus/></tav></tavLst></anim>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"0%\"><val><fltVal val=\"0\"/></val><bogus/></tav></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(unexpected_tav_value_child)
   let multiple_tav_values = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
-    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"0\"><val><fltVal val=\"0\"/></val><val><fltVal val=\"1\"/></val></tav></tavLst></anim>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"0%\"><val><fltVal val=\"0\"/></val><val><fltVal val=\"1\"/></val></tav></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(multiple_tav_values)
   let motion = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
@@ -578,7 +594,7 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(unexpected_condition_child)
   let unexpected_tav_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
-    "<anim><cBhvr><cTn id=\"9\"/></cBhvr><tavLst><tav tm=\"0\"/><bogus/></tavLst></anim>" +
+    "<anim><cBhvr><cTn id=\"9\"/></cBhvr><tavLst><tav tm=\"0%\"/><bogus/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(unexpected_tav_child)
   let unexpected_attr_name_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
