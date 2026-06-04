@@ -623,10 +623,28 @@ fn decode_cond_target(
   let runtime_id = match tn {
     Some(t) =>
       match attr_local(t, "val") {
-        Some(text) => Some(parse_signed_int_attr(text, "tn/@val"))
-        None => None
+        Some(text) => Some(parse_unsigned_int_attr(text, "tn/@val"))
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path="tn/@val",
+            reason="missing required @val attribute",
+          )
       }
     None => None
+  }
+  match first_child_by_local_name(element, "rtn") {
+    Some(r) =>
+      match attr_local(r, "val") {
+        Some(text) => ignore(parse_st_runtime_node(text))
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path="rtn/@val",
+            reason="missing required @val attribute",
+          )
+      }
+    None => ()
   }
   (shape_id, runtime_id)
 }
@@ -649,7 +667,12 @@ fn decode_sp_tgt_shape_id(
                 reason="malformed ST_DrawingElementId: " + text,
               )
           }
-        None => None
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path="spTgt/@spid",
+            reason="missing required @spid attribute",
+          )
       }
     None => None
   }
@@ -1522,6 +1545,20 @@ fn parse_st_trigger_event(
     e => {
       raise_schema("cond/@evt", e)
       @domain.TriggerBegin
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_runtime_node(
+  text : String,
+) -> @domain.ST_TLTriggerRuntimeNode raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLTriggerRuntimeNode::parse(text) catch {
+    e => {
+      raise_schema("rtn/@val", e)
+      @domain.RuntimeFirst
     }
   } noraise {
     v => v
