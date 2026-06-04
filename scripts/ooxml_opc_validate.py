@@ -166,6 +166,13 @@ def item_name_for_part(part_name: str) -> str:
     return part_name[1:] if part_name.startswith("/") else part_name
 
 
+def ascii_case_key(value: str) -> str:
+    return "".join(
+        chr(ord(character) + 32) if "A" <= character <= "Z" else character
+        for character in value
+    )
+
+
 def is_relationships_item(item_name: str) -> bool:
     return item_name == RELATIONSHIPS_ROOT or (
         "/_rels/" in item_name and item_name.endswith(".rels")
@@ -269,13 +276,14 @@ def content_type_for_item(
     overrides: dict[str, str],
 ) -> str | None:
     part_name = part_name_for_item(item_name)
-    if part_name in overrides:
-        return overrides[part_name]
+    override_key = ascii_case_key(part_name)
+    if override_key in overrides:
+        return overrides[override_key]
     basename = item_name.rsplit("/", 1)[-1]
     if "." not in basename:
         return None
     extension = basename.rsplit(".", 1)[-1]
-    return defaults.get(extension)
+    return defaults.get(ascii_case_key(extension))
 
 
 def decode_xml_prolog(xml_bytes: bytes) -> str:
@@ -366,6 +374,7 @@ def parse_content_types(
         if child.tag == f"{{{CONTENT_TYPES_NS}}}Default":
             extension = child.get("Extension", "")
             content_type = child.get("ContentType", "")
+            extension_key = ascii_case_key(extension)
             extension_error = validate_default_extension(extension)
             if extension_error:
                 results.append(
@@ -386,19 +395,20 @@ def parse_content_types(
                         f"invalid Default ContentType for {extension!r}: {content_type_error}",
                     )
                 )
-            if extension in defaults:
+            if extension_key in defaults:
                 results.append(
                     fail(
                         package,
                         CONTENT_TYPES_PART,
                         "content-types",
-                        f"duplicate Default for extension: {extension}",
+                        f"duplicate Default for extension: {extension} (ASCII-case-insensitive)",
                     )
                 )
-            defaults[extension] = content_type
+            defaults[extension_key] = content_type
         elif child.tag == f"{{{CONTENT_TYPES_NS}}}Override":
             part_name = child.get("PartName", "")
             content_type = child.get("ContentType", "")
+            part_name_key = ascii_case_key(part_name)
             if not part_name:
                 results.append(
                     fail(
@@ -418,13 +428,13 @@ def parse_content_types(
                         f"invalid Override ContentType for {part_name!r}: {content_type_error}",
                     )
                 )
-            if part_name in overrides:
+            if part_name_key in overrides:
                 results.append(
                     fail(
                         package,
                         CONTENT_TYPES_PART,
                         "content-types",
-                        f"duplicate Override for part: {part_name}",
+                        f"duplicate Override for part: {part_name} (ASCII-case-insensitive)",
                     )
                 )
             if part_name:
@@ -438,7 +448,7 @@ def parse_content_types(
                             f"invalid Override PartName {part_name}: {error}",
                     )
                 )
-            overrides[part_name] = content_type
+            overrides[part_name_key] = content_type
         else:
             results.append(
                 fail(
@@ -951,7 +961,7 @@ def validate_package(package: Path) -> list[ValidationResult]:
                         )
                     )
 
-            folded = [part.casefold() for part in ordinary_parts]
+            folded = [ascii_case_key(part) for part in ordinary_parts]
             for part_name, count in Counter(folded).items():
                 if count > 1:
                     results.append(
@@ -963,11 +973,11 @@ def validate_package(package: Path) -> list[ValidationResult]:
                         )
                     )
 
-            sorted_parts = sorted(ordinary_parts, key=lambda value: (len(value), value.casefold()))
+            sorted_parts = sorted(ordinary_parts, key=lambda value: (len(value), ascii_case_key(value)))
             for i, base in enumerate(sorted_parts):
-                base_folded = base.casefold()
+                base_folded = ascii_case_key(base)
                 for candidate in sorted_parts[i + 1 :]:
-                    candidate_folded = candidate.casefold()
+                    candidate_folded = ascii_case_key(candidate)
                     if candidate_folded.startswith(base_folded + "/"):
                         results.append(
                             fail(
@@ -978,12 +988,14 @@ def validate_package(package: Path) -> list[ValidationResult]:
                             )
                         )
 
-            all_known_items = set(ordinary_items) | set(relationship_items)
+            all_known_part_names = {
+                ascii_case_key(part_name_for_item(item_name))
+                for item_name in set(ordinary_items) | set(relationship_items)
+            }
             for part_name in sorted(overrides):
                 if not part_name:
                     continue
-                item_name = item_name_for_part(part_name)
-                if item_name not in all_known_items:
+                if part_name not in all_known_part_names:
                     results.append(
                         fail(
                             package,
