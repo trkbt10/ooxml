@@ -211,6 +211,7 @@ test "§19.5 media nodes reject malformed direct children" {
   let before = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>"
   let after = "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(before + "<audio><bogus/></audio>" + after)
+  assert_timing_schema_violation(before + "<audio/>" + after)
   assert_timing_schema_violation(
     before +
     "<audio><cMediaNode><cTn id=\"52\"/><tgtEl><sndTgt/></tgtEl></cMediaNode><cMediaNode><cTn id=\"53\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
@@ -224,6 +225,14 @@ test "§19.5 media nodes reject malformed direct children" {
   assert_timing_schema_violation(
     before +
     "<video><cMediaNode><cTn id=\"55\"/><cTn id=\"56\"/><tgtEl><spTgt spid=\"1\"/></tgtEl></cMediaNode></video>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before + "<video><cMediaNode><cTn id=\"68\"/></cMediaNode></video>" + after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<audio><cMediaNode><cTn id=\"69\"/><tgtEl><sndTgt/></tgtEl><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
     after,
   )
   assert_timing_schema_violation(
@@ -766,6 +775,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<set><cBhvr><cTn id=\"11\"/><tgtEl><spTgt spid=\"5\"/></tgtEl><tgtEl><spTgt spid=\"6\"/></tgtEl></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(duplicate_behavior_targets)
+  let duplicate_behavior_ctn = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"17\"/><cTn id=\"18\"/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_behavior_ctn)
   let duplicate_attr_name_lists = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<set><cBhvr><cTn id=\"12\"/><attrNameLst><attrName>style.visibility</attrName></attrNameLst><attrNameLst><attrName>style.opacity</attrName></attrNameLst></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
