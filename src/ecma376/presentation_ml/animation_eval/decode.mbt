@@ -2279,25 +2279,39 @@ fn parse_signed_int(text : String) -> Int? {
   if trimmed.length() == 0 {
     return None
   }
-  let (sign, start) = if trimmed.code_unit_at(0).to_int() == 0x2D {
-    (-1, 1)
+  let (negative, start) = if trimmed.code_unit_at(0).to_int() == 0x2D {
+    (true, 1)
   } else if trimmed.code_unit_at(0).to_int() == 0x2B {
-    (1, 1)
+    (false, 1)
   } else {
-    (1, 0)
+    (false, 0)
   }
   if start >= trimmed.length() {
     return None
   }
-  let mut value = 0
+  let digit_count = trimmed.length() - start
+  if digit_count > 10 {
+    return None
+  }
+  let mut value : Int64 = 0L
   for i in start..<trimmed.length() {
     let unit = trimmed.code_unit_at(i).to_int()
     if unit < 0x30 || unit > 0x39 {
       return None
     }
-    value = value * 10 + (unit - 0x30)
+    value = value * 10L + (unit - 0x30).to_int64()
   }
-  Some(value * sign)
+  if negative {
+    if value > 2147483648L {
+      return None
+    }
+    Some((-value).to_int())
+  } else {
+    if value > 2147483647L {
+      return None
+    }
+    Some(value.to_int())
+  }
 }
 
 ///|
