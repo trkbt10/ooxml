@@ -223,6 +223,7 @@ pub fn decode_anim_motion(
 pub fn decode_anim_rot(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_required_child(element, "animRot", "cBhvr")
   let common = decode_behavior_common(element)
   let merged = with_from_to_by(common, element)
   let behaviour : @domain.CT_TLAnimateRotationBehavior = { common: merged }
@@ -268,6 +269,7 @@ pub fn decode_set(
 pub fn decode_cmd(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_required_child(element, "cmd", "cBhvr")
   let common = decode_behavior_common(element)
   let command_type = match attr_local(element, "type") {
     Some(text) => Some(parse_st_command_type(text))
@@ -1038,6 +1040,45 @@ fn with_to_variant(
     override_behavior: None,
     runtime_context: None,
     transform_type: None,
+  }
+}
+
+///|
+fn validate_required_child(
+  element : @xml.Element,
+  path : String,
+  required_local_name : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut required_count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          name if name == required_local_name =>
+            required_count = required_count + 1
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path~,
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+      _ => ()
+    }
+  }
+  if required_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/" + required_local_name,
+      reason="missing required <" + required_local_name + "> child",
+    )
+  }
+  if required_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/" + required_local_name,
+      reason="allows exactly one <" + required_local_name + "> child",
+    )
   }
 }
 

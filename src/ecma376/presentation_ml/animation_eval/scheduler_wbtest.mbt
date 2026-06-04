@@ -251,6 +251,26 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animScale><cBhvr><cTn id=\"27\"/></cBhvr><rCtr x=\"0\" y=\"0\"/></animScale>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(scale_rejects_r_ctr)
+  let duplicate_anim_rot_cbhvr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animRot><cBhvr><cTn id=\"32\"/></cBhvr><cBhvr><cTn id=\"33\"/></cBhvr></animRot>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_anim_rot_cbhvr)
+  let unexpected_anim_rot_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animRot><cBhvr><cTn id=\"34\"/></cBhvr><bogus/></animRot>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_anim_rot_child)
+  let missing_cmd_cbhvr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<cmd cmd=\"foo\"/>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_cmd_cbhvr)
+  let duplicate_cmd_cbhvr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<cmd><cBhvr><cTn id=\"35\"/></cBhvr><cBhvr><cTn id=\"36\"/></cBhvr></cmd>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_cmd_cbhvr)
+  let unexpected_cmd_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<cmd><cBhvr><cTn id=\"37\"/></cBhvr><bogus/></cmd>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_cmd_child)
   let bool_val = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<set><cBhvr><cTn id=\"3\"/></cBhvr><to><boolVal val=\"maybe\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
