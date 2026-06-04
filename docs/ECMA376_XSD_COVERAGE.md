@@ -95,6 +95,9 @@ The validator checks:
   case-insensitive uniqueness, and derivable part-name collisions.
 - `[Content_Types].xml` Default/Override coverage for every part and
   Relationships part.
+- `[Content_Types].xml` structure: `Default` / `Override` children only,
+  required non-empty `Extension`, `PartName`, and `ContentType` attributes, and
+  parameter-free media-type syntax for every `ContentType`.
 - Relationship part ownership: package relationships and part relationships
   must map to existing sources.
 - Internal relationship target resolution from the correct OPC base IRI, with

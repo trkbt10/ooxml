@@ -48,6 +48,8 @@ DEFAULT_FIXTURES = [
 
 PERCENT_ENCODED = re.compile(r"%([0-9A-Fa-f]{2})")
 UNRESERVED = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+MEDIA_TYPE_TOKEN = r"[A-Za-z0-9!#$%&'*+\-.^_`{|}~]+"
+MEDIA_TYPE = re.compile(rf"^{MEDIA_TYPE_TOKEN}/{MEDIA_TYPE_TOKEN}$")
 
 
 @dataclass(frozen=True)
@@ -179,6 +181,28 @@ def validate_part_name(part_name: str) -> str | None:
     return None
 
 
+def validate_default_extension(extension: str) -> str | None:
+    if extension == "":
+        return "Default Extension must be non-empty"
+    if extension.startswith("."):
+        return "Default Extension must omit the leading dot"
+    if "/" in extension or "\\" in extension:
+        return "Default Extension must not contain a path separator"
+    return None
+
+
+def validate_content_type_value(content_type: str) -> str | None:
+    if content_type == "":
+        return "ContentType must be non-empty"
+    if ";" in content_type:
+        return "ContentType must not include parameters"
+    if any(character.isspace() for character in content_type):
+        return "ContentType must not contain whitespace"
+    if MEDIA_TYPE.fullmatch(content_type) is None:
+        return "ContentType must be a valid media type"
+    return None
+
+
 def content_type_for_item(
     item_name: str,
     defaults: dict[str, str],
@@ -225,6 +249,26 @@ def parse_content_types(
         if child.tag == f"{{{CONTENT_TYPES_NS}}}Default":
             extension = child.get("Extension", "")
             content_type = child.get("ContentType", "")
+            extension_error = validate_default_extension(extension)
+            if extension_error:
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        f"invalid Default Extension {extension!r}: {extension_error}",
+                    )
+                )
+            content_type_error = validate_content_type_value(content_type)
+            if content_type_error:
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        f"invalid Default ContentType for {extension!r}: {content_type_error}",
+                    )
+                )
             if extension in defaults:
                 results.append(
                     fail(
@@ -238,6 +282,25 @@ def parse_content_types(
         elif child.tag == f"{{{CONTENT_TYPES_NS}}}Override":
             part_name = child.get("PartName", "")
             content_type = child.get("ContentType", "")
+            if not part_name:
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        "Override PartName must be non-empty",
+                    )
+                )
+            content_type_error = validate_content_type_value(content_type)
+            if content_type_error:
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        f"invalid Override ContentType for {part_name!r}: {content_type_error}",
+                    )
+                )
             if part_name in overrides:
                 results.append(
                     fail(
@@ -256,9 +319,18 @@ def parse_content_types(
                             CONTENT_TYPES_PART,
                             "content-types",
                             f"invalid Override PartName {part_name}: {error}",
-                        )
                     )
+                )
             overrides[part_name] = content_type
+        else:
+            results.append(
+                fail(
+                    package,
+                    CONTENT_TYPES_PART,
+                    "content-types",
+                    f"unexpected child element: {child.tag}",
+                )
+            )
 
     return defaults, overrides, results
 
