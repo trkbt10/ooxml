@@ -874,6 +874,20 @@ test "§19.5 animation variants reject missing required val attributes" {
   )
   assert_timing_schema_violation(
     before +
+    "<clrVal><hslClr hue=\"21600000\" sat=\"0%\" lum=\"0%\"/></clrVal>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before + "<clrVal><scrgbClr r=\"0%\" b=\"0%\"/></clrVal>" + after,
+  )
+  assert_timing_schema_violation(
+    before + "<clrVal><sysClr val=\"bogus\"/></clrVal>" + after,
+  )
+  assert_timing_schema_violation(
+    before + "<clrVal><prstClr val=\"\"/></clrVal>" + after,
+  )
+  assert_timing_schema_violation(
+    before +
     "<clrVal><srgbClr val=\"ff00aa\"/><schemeClr val=\"accent1\"/></clrVal>" +
     after,
   )
