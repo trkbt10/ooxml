@@ -310,6 +310,11 @@ test "§19.5 animation variants reject missing required val attributes" {
   assert_timing_schema_violation(before + "<intVal/>" + after)
   assert_timing_schema_violation(before + "<fltVal/>" + after)
   assert_timing_schema_violation(before + "<strVal/>" + after)
+  assert_timing_schema_violation(before + after)
+  assert_timing_schema_violation(before + "<bogusVal val=\"x\"/>" + after)
+  assert_timing_schema_violation(
+    before + "<strVal val=\"visible\"/><intVal val=\"1\"/>" + after,
+  )
 }
 
 ///|

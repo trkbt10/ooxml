@@ -1151,20 +1151,23 @@ pub fn decode_tav(
 pub fn decode_anim_variant(
   val_element : @xml.Element,
 ) -> @domain.CT_TLAnimVariant? raise @opc_errors.SchemaViolation {
+  validate_anim_variant_choice(val_element)
   for child in val_element.children {
     match child {
       @xml.Element(element) => {
         let kind_local = element.name.local_name
         let value = attr_local(element, "val")
-        return match kind_local {
+        match kind_local {
           "boolVal" => {
             let text = require_anim_variant_val(value, "boolVal/@val")
-            Some(@domain.AnimVariantBool(parse_xsd_bool(text, "boolVal/@val")))
+            return Some(
+              @domain.AnimVariantBool(parse_xsd_bool(text, "boolVal/@val")),
+            )
           }
           "intVal" => {
             let text = require_anim_variant_val(value, "intVal/@val")
             match parse_signed_int(text) {
-              Some(n) => Some(@domain.AnimVariantInt(n))
+              Some(n) => return Some(@domain.AnimVariantInt(n))
               None =>
                 raise @opc_errors.SchemaViolation(
                   section=animation_section,
@@ -1176,7 +1179,7 @@ pub fn decode_anim_variant(
           "fltVal" => {
             let text = require_anim_variant_val(value, "fltVal/@val")
             match parse_double(text) {
-              Some(d) => Some(@domain.AnimVariantFloat(d))
+              Some(d) => return Some(@domain.AnimVariantFloat(d))
               None =>
                 raise @opc_errors.SchemaViolation(
                   section=animation_section,
@@ -1187,19 +1190,71 @@ pub fn decode_anim_variant(
           }
           "strVal" => {
             let text = require_anim_variant_val(value, "strVal/@val")
-            Some(@domain.AnimVariantString(text))
+            return Some(@domain.AnimVariantString(text))
           }
           "clrVal" =>
-            Some(
+            return Some(
               @domain.AnimVariantColor(serialise_color_endpoint(val_element)),
             )
-          _ => None
+          _ => ()
         }
       }
       _ => ()
     }
   }
   None
+}
+
+///|
+fn validate_anim_variant_choice(
+  val_element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let element_count = count_element_children(val_element)
+  let choice_count = count_anim_variant_choices(val_element)
+  let path = val_element.name.local_name
+  if choice_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="missing required boolVal|intVal|fltVal|strVal|clrVal choice",
+    )
+  }
+  if element_count != 1 || choice_count != 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="expected exactly one boolVal|intVal|fltVal|strVal|clrVal choice",
+    )
+  }
+}
+
+///|
+fn count_element_children(element : @xml.Element) -> Int {
+  let mut count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(_) => count = count + 1
+      _ => ()
+    }
+  }
+  count
+}
+
+///|
+fn count_anim_variant_choices(element : @xml.Element) -> Int {
+  let mut count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "boolVal" | "intVal" | "fltVal" | "strVal" | "clrVal" =>
+            count = count + 1
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  count
 }
 
 ///|
