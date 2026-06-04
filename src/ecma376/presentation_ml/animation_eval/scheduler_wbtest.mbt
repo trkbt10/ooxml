@@ -259,6 +259,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animRot><cBhvr><cTn id=\"34\"/></cBhvr><bogus/></animRot>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(unexpected_anim_rot_child)
+  let malformed_anim_rot_by = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animRot by=\"bad\"><cBhvr><cTn id=\"38\"/></cBhvr></animRot>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_rot_by)
+  let fractional_anim_rot_from = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animRot from=\"1.5\"><cBhvr><cTn id=\"39\"/></cBhvr></animRot>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(fractional_anim_rot_from)
+  let malformed_anim_rot_to = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animRot to=\"+\"><cBhvr><cTn id=\"40\"/></cBhvr></animRot>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_anim_rot_to)
   let missing_cmd_cbhvr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<cmd cmd=\"foo\"/>" +
     "</childTnLst></cTn></par></tnLst></timing>"
@@ -474,6 +486,32 @@ test "§19.5 animation variants reject missing required val attributes" {
   assert_timing_schema_violation(
     before + "<strVal val=\"visible\"/><intVal val=\"1\"/>" + after,
   )
+}
+
+///|
+test "§19.5.5 animRot preserves ST_Angle endpoints" {
+  let node = try! decode_anim_rot(
+    parse_root(
+      "<animRot from=\"-5400000\" to=\"5400000\" by=\"60000\"><cBhvr><cTn id=\"15\"/></cBhvr></animRot>",
+    ),
+  )
+  match node.node_kind {
+    @domain.TimeNodeAnimateRotation(behavior) => {
+      match behavior.common.from_value {
+        Some(@domain.AnimVariantInt(value)) => assert_eq(value, -5400000)
+        _ => fail("expected integer from angle")
+      }
+      match behavior.common.to_value {
+        Some(@domain.AnimVariantInt(value)) => assert_eq(value, 5400000)
+        _ => fail("expected integer to angle")
+      }
+      match behavior.common.by_value {
+        Some(@domain.AnimVariantInt(value)) => assert_eq(value, 60000)
+        _ => fail("expected integer by angle")
+      }
+    }
+    _ => fail("expected animate rotation node")
+  }
 }
 
 ///|

@@ -225,7 +225,7 @@ pub fn decode_anim_rot(
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   validate_required_child(element, "animRot", "cBhvr")
   let common = decode_behavior_common(element)
-  let merged = with_from_to_by(common, element)
+  let merged = with_angle_from_to_by(common, element, "animRot")
   let behaviour : @domain.CT_TLAnimateRotationBehavior = { common: merged }
   decode_common_time_node_data(
     element,
@@ -1037,6 +1037,45 @@ fn with_anim_attrs(
     override_behavior: common.override_behavior,
     runtime_context: common.runtime_context,
     transform_type: common.transform_type,
+  }
+}
+
+///|
+fn with_angle_from_to_by(
+  common : @domain.CT_TLCommonBehaviorData,
+  element : @xml.Element,
+  path : String,
+) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
+  let from_value = angle_variant_attr(element, "from", path + "/@from")
+  let to_value = angle_variant_attr(element, "to", path + "/@to")
+  let by_value = angle_variant_attr(element, "by", path + "/@by")
+  {
+    target_shape_id: common.target_shape_id,
+    attr_names: common.attr_names,
+    additive: common.additive,
+    accumulate: common.accumulate,
+    from_value,
+    to_value,
+    by_value,
+    tav_list: common.tav_list,
+    calc_mode: common.calc_mode,
+    value_type: common.value_type,
+    override_behavior: common.override_behavior,
+    runtime_context: common.runtime_context,
+    transform_type: common.transform_type,
+  }
+}
+
+///|
+fn angle_variant_attr(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> @domain.CT_TLAnimVariant? raise @opc_errors.SchemaViolation {
+  match attr_local(element, local_name) {
+    Some(text) =>
+      Some(@domain.AnimVariantInt(parse_signed_int_attr(text, path)))
+    None => None
   }
 }
 
