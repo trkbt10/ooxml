@@ -291,6 +291,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tn val=\"2\"/><rtn val=\"first\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(multiple_condition_choices)
+  let unexpected_condition_choice = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tn val=\"2\"/><bogus/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_condition_choice)
   let missing_target_choice = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><tgtEl/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
@@ -299,6 +303,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tgtEl><sldTgt/><spTgt spid=\"5\"/></tgtEl></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(multiple_target_choices)
+  let unexpected_target_choice = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tgtEl><spTgt spid=\"5\"/><bogus/></tgtEl></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_target_choice)
   let missing_behavior_target_choice = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<set><cBhvr><cTn id=\"6\"/><tgtEl/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"

@@ -659,6 +659,7 @@ fn decode_cond_target(
   element : @xml.Element,
 ) -> (Int?, Int?) raise @opc_errors.SchemaViolation {
   let choice_count = count_cond_target_choices(element)
+  let element_count = count_element_children(element)
   if choice_count == 0 {
     raise @opc_errors.SchemaViolation(
       section=animation_section,
@@ -666,7 +667,7 @@ fn decode_cond_target(
       reason="missing required tgtEl|tn|rtn choice",
     )
   }
-  if choice_count > 1 {
+  if element_count != 1 || choice_count != 1 {
     raise @opc_errors.SchemaViolation(
       section=animation_section,
       path="cond",
@@ -732,6 +733,7 @@ fn validate_time_target_element(
   tgt_el : @xml.Element,
 ) -> Unit raise @opc_errors.SchemaViolation {
   let choice_count = count_time_target_choices(tgt_el)
+  let element_count = count_element_children(tgt_el)
   if choice_count == 0 {
     raise @opc_errors.SchemaViolation(
       section=animation_section,
@@ -739,7 +741,7 @@ fn validate_time_target_element(
       reason="missing required sldTgt|sndTgt|spTgt|inkTgt choice",
     )
   }
-  if choice_count > 1 {
+  if element_count != 1 || choice_count != 1 {
     raise @opc_errors.SchemaViolation(
       section=animation_section,
       path="tgtEl",
