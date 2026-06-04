@@ -118,6 +118,7 @@ pub fn decode_excl(
 pub fn decode_anim(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_required_optional_child_pair(element, "anim", "cBhvr", "tavLst")
   let common = decode_behavior_common(element)
   let calc = attr_local(element, "calcmode")
   let value_type = attr_local(element, "valueType")

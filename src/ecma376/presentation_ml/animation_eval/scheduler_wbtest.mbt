@@ -275,6 +275,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animEffect><progress><fltVal val=\"0.25\"/></progress><cBhvr><cTn id=\"20\"/></cBhvr></animEffect>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(reversed_anim_effect_children)
+  let duplicate_anim_tav_list = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"21\"/></cBhvr><tavLst><tav tm=\"0\"/></tavLst><tavLst><tav tm=\"100%\"/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_anim_tav_list)
+  let unexpected_anim_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"22\"/></cBhvr><bogus/><tavLst><tav tm=\"0\"/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_anim_child)
+  let reversed_anim_children = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><tavLst><tav tm=\"0\"/></tavLst><cBhvr><cTn id=\"23\"/></cBhvr></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(reversed_anim_children)
   let tav = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"bogus\"/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
