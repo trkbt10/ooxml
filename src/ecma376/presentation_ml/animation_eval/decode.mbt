@@ -504,7 +504,10 @@ fn decode_common_time_node_data(
   let grp_id = cTn_uint_opt("grpId")
   let preset_subtype = cTn_int_opt("presetSubtype")
   let evt_filter = cTn_str_opt("evtFilter")
-  let master_rel = cTn_str_opt("masterRel")
+  let master_rel = match cTn_str_opt("masterRel") {
+    Some(text) => Some(parse_st_master_relation(text).to_string())
+    None => None
+  }
   let node_ph = cTn_bool_opt("nodePh")
   let repeat_dur = match c_tn {
     Some(t) =>
@@ -515,7 +518,10 @@ fn decode_common_time_node_data(
     None => None
   }
   let spd = cTn_str_opt("spd")
-  let sync_behavior = cTn_str_opt("syncBehavior")
+  let sync_behavior = match cTn_str_opt("syncBehavior") {
+    Some(text) => Some(parse_st_sync_type(text).to_string())
+    None => None
+  }
   let tm_filter = cTn_str_opt("tmFilter")
   let (start_conditions, end_conditions, children) = match c_tn {
     Some(t) => {
@@ -2398,6 +2404,34 @@ fn parse_st_preset_class(
     e => {
       raise_schema("cTn/@presetClass", e)
       @domain.PresetEntr
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_master_relation(
+  text : String,
+) -> @domain.ST_TLTimeNodeMasterRelation raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLTimeNodeMasterRelation::parse(text) catch {
+    e => {
+      raise_schema("cTn/@masterRel", e)
+      @domain.MasterRelSameClick
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_sync_type(
+  text : String,
+) -> @domain.ST_TLTimeNodeSyncType raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLTimeNodeSyncType::parse(text) catch {
+    e => {
+      raise_schema("cTn/@syncBehavior", e)
+      @domain.SyncCanSlip
     }
   } noraise {
     v => v

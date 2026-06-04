@@ -254,7 +254,7 @@ test "§19.5 media nodes reject malformed direct children" {
 }
 
 ///|
-test "§19.5.33 cTn rejects malformed percentage and boolean attributes" {
+test "§19.5.33 cTn rejects malformed scalar attributes" {
   let before = "<timing><tnLst><par><cTn id=\"1\" "
   let after = "/></par></tnLst></timing>"
   assert_timing_schema_violation(before + "accel=\"bad\"" + after)
@@ -267,6 +267,17 @@ test "§19.5.33 cTn rejects malformed percentage and boolean attributes" {
   assert_timing_schema_violation(before + "bldLvl=\"bad\"" + after)
   assert_timing_schema_violation(before + "grpId=\"-1\"" + after)
   assert_timing_schema_violation(before + "presetSubtype=\"bad\"" + after)
+  assert_timing_schema_violation(before + "masterRel=\"bad\"" + after)
+  assert_timing_schema_violation(before + "syncBehavior=\"bad\"" + after)
+}
+
+///|
+test "§19.5.12 cTn preserves master relation and sync type" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\" masterRel=\"lastClick\" syncBehavior=\"locked\"/></par></tnLst></timing>"
+  let timeline = try! decode_timing(build_timing(xml))
+  let root = root_node(timeline)
+  assert_true(root.master_rel == Some("lastClick"))
+  assert_true(root.sync_behavior == Some("locked"))
 }
 
 ///|
