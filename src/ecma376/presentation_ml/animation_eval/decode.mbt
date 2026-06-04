@@ -132,6 +132,7 @@ pub fn decode_anim(
 pub fn decode_anim_clr(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_anim_clr_children(element)
   let common0 = decode_behavior_common(element)
   let common1 = with_endpoint_color(common0, element, "from")
   let common2 = with_endpoint_color(common1, element, "to")
@@ -1095,6 +1096,91 @@ fn validate_required_optional_child_pair(
       section=animation_section,
       path=path + "/" + optional_local_name,
       reason="allows at most one <" + optional_local_name + "> child",
+    )
+  }
+}
+
+///|
+fn validate_anim_clr_children(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut cbhvr_count = 0
+  let mut by_count = 0
+  let mut from_count = 0
+  let mut to_count = 0
+  let mut last_rank = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let rank = match e.name.local_name {
+          "cBhvr" => {
+            cbhvr_count = cbhvr_count + 1
+            0
+          }
+          "by" => {
+            by_count = by_count + 1
+            1
+          }
+          "from" => {
+            from_count = from_count + 1
+            2
+          }
+          "to" => {
+            to_count = to_count + 1
+            3
+          }
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path="animClr",
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+        if rank < last_rank {
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path="animClr",
+            reason="child element out of sequence: " + e.name.local_name,
+          )
+        }
+        last_rank = rank
+      }
+      _ => ()
+    }
+  }
+  if cbhvr_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="animClr/cBhvr",
+      reason="missing required <cBhvr> child",
+    )
+  }
+  if cbhvr_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="animClr/cBhvr",
+      reason="allows exactly one <cBhvr> child",
+    )
+  }
+  if by_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="animClr/by",
+      reason="allows at most one <by> child",
+    )
+  }
+  if from_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="animClr/from",
+      reason="allows at most one <from> child",
+    )
+  }
+  if to_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="animClr/to",
+      reason="allows at most one <to> child",
     )
   }
 }

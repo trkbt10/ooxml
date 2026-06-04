@@ -315,6 +315,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animClr><cBhvr><cTn id=\"13\"/></cBhvr><by><rgb r=\"100%\" g=\"0%\"/></by></animClr>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(malformed_anim_clr_by)
+  let duplicate_anim_clr_from = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"24\"/></cBhvr><from><srgbClr val=\"000000\"/></from><from><schemeClr val=\"accent1\"/></from></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_anim_clr_from)
+  let unexpected_anim_clr_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"25\"/></cBhvr><bogus/><to><schemeClr val=\"accent1\"/></to></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_anim_clr_child)
+  let reversed_anim_clr_children = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animClr><cBhvr><cTn id=\"26\"/></cBhvr><to><schemeClr val=\"accent1\"/></to><from><srgbClr val=\"000000\"/></from></animClr>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(reversed_anim_clr_children)
   let condition = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><tn val=\"bad\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
@@ -412,7 +424,7 @@ test "§19.5 animation variants reject missing required val attributes" {
 test "§19.5.2 animClr preserves endpoint payloads" {
   let node = try! decode_anim_clr(
     parse_root(
-      "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><from><srgbClr val=\"000000\"/></from><to><schemeClr val=\"accent1\"/></to><by><rgb r=\"100%\" g=\"0%\" b=\"0%\"/></by></animClr>",
+      "<animClr><cBhvr><cTn id=\"12\"/></cBhvr><by><rgb r=\"100%\" g=\"0%\" b=\"0%\"/></by><from><srgbClr val=\"000000\"/></from><to><schemeClr val=\"accent1\"/></to></animClr>",
     ),
   )
   match node.node_kind {
