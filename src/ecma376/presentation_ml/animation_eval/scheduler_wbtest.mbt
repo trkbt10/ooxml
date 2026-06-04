@@ -411,6 +411,18 @@ test "§19.5.33 timing nodes reject missing required cTn children" {
   let unsupported_child_node = "<timing><tnLst><par><cTn id=\"1\">" +
     "<childTnLst><bogus/></childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(unsupported_child_node)
+  let unexpected_par_child = "<timing><tnLst><par><cTn id=\"1\"/><bogus/></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_par_child)
+  let duplicate_excl_ctn = "<timing><tnLst><excl><cTn id=\"1\"/><cTn id=\"2\"/></excl></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_excl_ctn)
+  let reversed_seq_children = "<timing><tnLst><seq>" +
+    "<nextCondLst><cond><rtn val=\"first\"/></cond></nextCondLst><cTn id=\"1\"/>" +
+    "</seq></tnLst></timing>"
+  assert_timing_schema_violation(reversed_seq_children)
+  let duplicate_seq_prev_conditions = "<timing><tnLst><seq><cTn id=\"1\"/>" +
+    "<prevCondLst><cond><rtn val=\"first\"/></cond></prevCondLst>" +
+    "<prevCondLst><cond><rtn val=\"last\"/></cond></prevCondLst></seq></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_seq_prev_conditions)
   let empty_condition_list = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst/></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(empty_condition_list)

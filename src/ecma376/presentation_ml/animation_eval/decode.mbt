@@ -82,6 +82,7 @@ pub fn decode_time_node(
 pub fn decode_par(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_container_time_node_children(element, "par", false)
   decode_common_time_node_data(element, @domain.TimeNodePar)
 }
 
@@ -90,6 +91,7 @@ pub fn decode_par(
 pub fn decode_seq(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_container_time_node_children(element, "seq", true)
   // seq carries prevCondLst / nextCondLst directly as siblings of
   // cTn. We merge them into the resulting node so consumers can
   // inspect the sequence-level navigation conditions.
@@ -110,7 +112,83 @@ pub fn decode_seq(
 pub fn decode_excl(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_container_time_node_children(element, "excl", false)
   decode_common_time_node_data(element, @domain.TimeNodeExcl)
+}
+
+///|
+fn validate_container_time_node_children(
+  element : @xml.Element,
+  path : String,
+  allow_seq_conditions : Bool,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut ctn_count = 0
+  let mut prev_count = 0
+  let mut next_count = 0
+  let mut last_rank = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let rank = match e.name.local_name {
+          "cTn" => {
+            ctn_count = ctn_count + 1
+            0
+          }
+          "prevCondLst" if allow_seq_conditions => {
+            prev_count = prev_count + 1
+            1
+          }
+          "nextCondLst" if allow_seq_conditions => {
+            next_count = next_count + 1
+            2
+          }
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path~,
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+        if rank < last_rank {
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path~,
+            reason="child element out of sequence: " + e.name.local_name,
+          )
+        }
+        last_rank = rank
+      }
+      _ => ()
+    }
+  }
+  if ctn_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/cTn",
+      reason="missing required <cTn> child",
+    )
+  }
+  if ctn_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/cTn",
+      reason="allows exactly one <cTn> child",
+    )
+  }
+  if prev_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/prevCondLst",
+      reason="allows at most one <prevCondLst> child",
+    )
+  }
+  if next_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path=path + "/nextCondLst",
+      reason="allows at most one <nextCondLst> child",
+    )
+  }
 }
 
 ///|
