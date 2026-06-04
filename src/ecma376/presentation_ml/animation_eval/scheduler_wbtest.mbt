@@ -251,6 +251,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<set><cBhvr><cTn id=\"3\"/></cBhvr><to><boolVal val=\"maybe\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(bool_val)
+  let duplicate_set_cbhvr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"14\"/></cBhvr><cBhvr><cTn id=\"15\"/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_set_cbhvr)
+  let duplicate_set_to = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"16\"/></cBhvr><to><strVal val=\"visible\"/></to><to><strVal val=\"hidden\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_set_to)
+  let unexpected_set_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"17\"/></cBhvr><bogus/><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(unexpected_set_child)
   let tav = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"bogus\"/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"

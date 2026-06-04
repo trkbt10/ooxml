@@ -249,6 +249,7 @@ pub fn decode_anim_scale(
 pub fn decode_set(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  validate_set_children(element)
   let common0 = decode_behavior_common(element)
   let common = with_to_variant(common0, element)
   let behaviour : @domain.CT_TLSetBehavior = { common, }
@@ -1030,6 +1031,51 @@ fn with_to_variant(
     override_behavior: None,
     runtime_context: None,
     transform_type: None,
+  }
+}
+
+///|
+fn validate_set_children(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut cbhvr_count = 0
+  let mut to_count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "cBhvr" => cbhvr_count = cbhvr_count + 1
+          "to" => to_count = to_count + 1
+          _ =>
+            raise @opc_errors.SchemaViolation(
+              section=animation_section,
+              path="set",
+              reason="unsupported child element: " + e.name.local_name,
+            )
+        }
+      _ => ()
+    }
+  }
+  if cbhvr_count == 0 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="set/cBhvr",
+      reason="missing required <cBhvr> child",
+    )
+  }
+  if cbhvr_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="set/cBhvr",
+      reason="allows exactly one <cBhvr> child",
+    )
+  }
+  if to_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="set/to",
+      reason="allows at most one <to> child",
+    )
   }
 }
 
