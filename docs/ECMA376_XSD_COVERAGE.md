@@ -114,6 +114,9 @@ The validator checks:
 - OPC XML usage for the Media Types stream, Core Properties part, Digital
   Signature XML Signature parts, and Relationships parts, including UTF-8 /
   UTF-16 encoding declarations and rejection of DTD declarations.
+- Relationships parts are preprocessed through the Part 3 Markup Compatibility
+  model before structure checks, with an empty markup configuration and the OPC
+  Relationships namespace as the supported application namespace.
 - Core Properties package contract: at most one Core Properties part, at most
   one package core-properties relationship, and every Core Properties part must
   be referenced by that package relationship.
@@ -138,9 +141,10 @@ Current OPC package-validation snapshot:
 | default representative fixtures | `ok: 3` |
 | all generated fixtures | `ok: 837`, `fail: 0` |
 
-This is still not a Markup Compatibility preprocessor, application repair-dialog
-detector, or visual-fidelity check. It is a package-graph gate for the OPC
-invariants that part-level XSD validation intentionally cannot prove.
+This is still not a general Markup Compatibility preprocessor beyond the
+Relationships-part preprocessing required by OPC §6.5.3, application
+repair-dialog detector, or visual-fidelity check. It is a package-graph gate for
+the OPC invariants that part-level XSD validation intentionally cannot prove.
 
 ## Format package contract validation gate
 

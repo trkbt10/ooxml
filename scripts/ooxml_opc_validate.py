@@ -27,6 +27,8 @@ from pathlib import Path
 from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
 
+from ooxml_xsd_validate import McPreprocessError, mc_preprocess_xml
+
 
 REPO = Path(__file__).resolve().parents[1]
 CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
@@ -398,6 +400,13 @@ def validate_opc_xml_usage(xml_bytes: bytes) -> str | None:
     return None
 
 
+def preprocess_relationships_xml(relationships_xml: bytes) -> bytes:
+    return mc_preprocess_xml(
+        relationships_xml,
+        supported_namespaces={RELATIONSHIPS_NS},
+    )
+
+
 def parse_content_types(
     package: Path,
     archive: zipfile.ZipFile,
@@ -643,6 +652,12 @@ def validate_relationships_part(
     if xml_usage_error:
         return [fail(package, item_name, "xml-usage", xml_usage_error)]
     try:
+        relationships_xml = preprocess_relationships_xml(relationships_xml)
+    except McPreprocessError as error:
+        return [fail(package, item_name, "relationships", f"markup compatibility: {error}")]
+    except ET.ParseError as error:
+        return [fail(package, item_name, "relationships", f"xml parse: {error}")]
+    try:
         root = ET.fromstring(relationships_xml)
     except ET.ParseError as error:
         return [fail(package, item_name, "relationships", f"xml parse: {error}")]
@@ -817,6 +832,10 @@ def read_relationship_entries(
     except KeyError:
         return []
     if validate_opc_xml_usage(relationships_xml):
+        return []
+    try:
+        relationships_xml = preprocess_relationships_xml(relationships_xml)
+    except (ET.ParseError, McPreprocessError):
         return []
     try:
         root = ET.fromstring(relationships_xml)
