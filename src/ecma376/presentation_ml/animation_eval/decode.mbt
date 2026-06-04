@@ -686,7 +686,7 @@ fn with_next_conditions(
 fn decode_child_time_nodes(
   c_tn : @xml.Element,
 ) -> Array[@domain.CT_TLCommonTimeNodeData] raise @opc_errors.SchemaViolation {
-  let list = first_child_by_local_name(c_tn, "childTnLst")
+  let list = single_child_by_local_name(c_tn, "childTnLst", "cTn/childTnLst")
   match list {
     Some(l) => decode_time_node_list(l)
     None => []
@@ -701,7 +701,7 @@ fn decode_condition_list(
   local_name : String,
 ) -> Array[@domain.CT_TLTimeCondition] raise @opc_errors.SchemaViolation {
   let result : Array[@domain.CT_TLTimeCondition] = []
-  match first_child_by_local_name(parent, local_name) {
+  match single_child_by_local_name(parent, local_name, local_name) {
     Some(list) => {
       validate_list_element_children(list, local_name, "cond")
       for child in list.children {
@@ -2760,6 +2760,33 @@ fn first_child_by_local_name(
     }
   }
   None
+}
+
+///|
+fn single_child_by_local_name(
+  parent : @xml.Element,
+  local_name : String,
+  path : String,
+) -> @xml.Element? raise @opc_errors.SchemaViolation {
+  let mut found : @xml.Element? = None
+  for child in parent.children {
+    match child {
+      @xml.Element(element) =>
+        if element.name.local_name == local_name {
+          match found {
+            Some(_) =>
+              raise @opc_errors.SchemaViolation(
+                section=animation_section,
+                path~,
+                reason="allows at most one <" + local_name + "> child",
+              )
+            None => found = Some(element)
+          }
+        }
+      _ => ()
+    }
+  }
+  found
 }
 
 ///|

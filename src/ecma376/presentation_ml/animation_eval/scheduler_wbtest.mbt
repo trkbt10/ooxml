@@ -435,6 +435,21 @@ test "§19.5.33 timing nodes reject missing required cTn children" {
   let empty_condition_list = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst/></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(empty_condition_list)
+  let duplicate_start_condition_lists = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tn val=\"1\"/></cond></stCondLst>" +
+    "<stCondLst><cond><tn val=\"2\"/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_start_condition_lists)
+  let duplicate_end_condition_lists = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<endCondLst><cond><tn val=\"1\"/></cond></endCondLst>" +
+    "<endCondLst><cond><tn val=\"2\"/></cond></endCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_end_condition_lists)
+  let duplicate_child_time_node_lists = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<childTnLst><set><cBhvr><cTn id=\"2\"/></cBhvr><to><strVal val=\"visible\"/></to></set></childTnLst>" +
+    "<childTnLst><set><cBhvr><cTn id=\"3\"/></cBhvr><to><strVal val=\"hidden\"/></to></set></childTnLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(duplicate_child_time_node_lists)
 }
 
 ///|
