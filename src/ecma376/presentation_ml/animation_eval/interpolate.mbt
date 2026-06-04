@@ -76,6 +76,9 @@ pub fn effective_progress(
     iterations
   }
   if max_cycle > 0 && raw_progress >= max_cycle.to_double() {
+    if auto_reverse && max_cycle % 2 == 0 {
+      return (0.0, true)
+    }
     return (1.0, true)
   }
   let cycle = raw_progress.floor().to_int()

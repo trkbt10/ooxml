@@ -1065,6 +1065,23 @@ test "§19.5.33 repeatCount=3000 cycles three iterations" {
 }
 
 ///|
+test "§19.5.33 autoRev returns to the start value before fill hold" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim from=\"0\" to=\"100\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"31\" dur=\"1000\" autoRev=\"true\" fill=\"hold\"/><tgtEl><spTgt spid=\"1\"/></tgtEl><attrNameLst><attrName>opacity</attrName></attrNameLst></cBhvr></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  let timeline = try! decode_timing(build_timing(xml))
+  let engine = TimingEngine::new(timeline)
+  let v500 = engine.animate(500)[0].value.as_double().unwrap()
+  let v1500 = engine.animate(1500)[0].value.as_double().unwrap()
+  let v2000 = engine.animate(2000)[0].value.as_double().unwrap()
+  let v2500 = engine.animate(2500)[0].value.as_double().unwrap()
+  assert_true(v500 > 49.0 && v500 < 51.0)
+  assert_true(v1500 > 49.0 && v1500 < 51.0)
+  assert_true(v2000 >= -0.001 && v2000 < 1.0)
+  assert_true(v2500 >= -0.001 && v2500 < 1.0)
+}
+
+///|
 test "§19.7.41 fill=hold keeps snapshot active past end time" {
   let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim from=\"0\" to=\"100\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"30\" dur=\"500\" fill=\"hold\"/><tgtEl><spTgt spid=\"1\"/></tgtEl><attrNameLst><attrName>opacity</attrName></attrNameLst></cBhvr></anim>" +

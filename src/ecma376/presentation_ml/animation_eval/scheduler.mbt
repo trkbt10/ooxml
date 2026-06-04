@@ -103,7 +103,6 @@ pub fn TimingEngine::animate(
       placement.node,
       single_dur,
       elapsed,
-      past_end,
     )
     emit_active(placement.node, common, eased, local_progress, active)
   }
@@ -386,9 +385,8 @@ fn compute_progress(
   node : @domain.CT_TLCommonTimeNodeData,
   single_dur : Int,
   elapsed : Int,
-  past_end : Bool,
 ) -> (Double, Double) {
-  if past_end || single_dur <= 0 {
+  if single_dur <= 0 {
     return (1.0, 1.0)
   }
   let raw = elapsed.to_double() / single_dur.to_double()
