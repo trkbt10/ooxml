@@ -239,16 +239,13 @@ pub fn decode_anim_scale(
   element : @xml.Element,
 ) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   validate_anim_point_children(element, "animScale", false)
+  validate_absent_attributes(element, "animScale", ["from", "to", "by"])
   let common = decode_behavior_common(element)
-  let merged = with_from_to_by(common, element)
   let zoom_contents = match attr_local(element, "zoomContents") {
     Some(text) => Some(parse_xsd_bool(text, "animScale/@zoomContents"))
     None => None
   }
-  let behaviour : @domain.CT_TLAnimateScaleBehavior = {
-    common: merged,
-    zoom_contents,
-  }
+  let behaviour : @domain.CT_TLAnimateScaleBehavior = { common, zoom_contents }
   decode_common_time_node_data(element, @domain.TimeNodeAnimateScale(behaviour))
 }
 
@@ -1080,52 +1077,6 @@ fn angle_variant_attr(
 }
 
 ///|
-fn with_from_to_by(
-  common : @domain.CT_TLCommonBehaviorData,
-  element : @xml.Element,
-) -> @domain.CT_TLCommonBehaviorData {
-  let from_value = match attr_local(element, "from") {
-    Some(text) =>
-      match parse_double(text) {
-        Some(d) => Some(@domain.AnimVariantFloat(d))
-        None => Some(@domain.AnimVariantString(text))
-      }
-    None => None
-  }
-  let to_value = match attr_local(element, "to") {
-    Some(text) =>
-      match parse_double(text) {
-        Some(d) => Some(@domain.AnimVariantFloat(d))
-        None => Some(@domain.AnimVariantString(text))
-      }
-    None => None
-  }
-  let by_value = match attr_local(element, "by") {
-    Some(text) =>
-      match parse_double(text) {
-        Some(d) => Some(@domain.AnimVariantFloat(d))
-        None => Some(@domain.AnimVariantString(text))
-      }
-    None => None
-  }
-  {
-    target_shape_id: common.target_shape_id,
-    attr_names: common.attr_names,
-    additive: common.additive,
-    accumulate: common.accumulate,
-    from_value,
-    to_value,
-    by_value,
-    tav_list: common.tav_list,
-    calc_mode: common.calc_mode,
-    value_type: common.value_type,
-    override_behavior: common.override_behavior,
-    runtime_context: common.runtime_context,
-    transform_type: common.transform_type,
-  }
-}
-
-///|
 /// Decode the `<p:to>` child variant of a `<p:set>` element. Per
 /// §19.5.66 set carries no from/by, only a single `<p:to>` whose
 /// child is one of `<p:strVal>`, `<p:intVal>`, `<p:fltVal>`,
@@ -1153,6 +1104,25 @@ fn with_to_variant(
     override_behavior: None,
     runtime_context: None,
     transform_type: None,
+  }
+}
+
+///|
+fn validate_absent_attributes(
+  element : @xml.Element,
+  path : String,
+  names : Array[String],
+) -> Unit raise @opc_errors.SchemaViolation {
+  for name in names {
+    match attr_local(element, name) {
+      Some(_) =>
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path=path + "/@" + name,
+          reason="unsupported attribute: " + name,
+        )
+      None => ()
+    }
   }
 }
 

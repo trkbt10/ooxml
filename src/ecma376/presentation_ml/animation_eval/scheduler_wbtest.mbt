@@ -251,6 +251,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animScale><cBhvr><cTn id=\"27\"/></cBhvr><rCtr x=\"0\" y=\"0\"/></animScale>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(scale_rejects_r_ctr)
+  let scale_rejects_from_attr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animScale from=\"1\"><cBhvr><cTn id=\"41\"/></cBhvr></animScale>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(scale_rejects_from_attr)
+  let scale_rejects_to_attr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animScale to=\"2\"><cBhvr><cTn id=\"42\"/></cBhvr></animScale>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(scale_rejects_to_attr)
+  let scale_rejects_by_attr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animScale by=\"3\"><cBhvr><cTn id=\"43\"/></cBhvr></animScale>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(scale_rejects_by_attr)
   let duplicate_anim_rot_cbhvr = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animRot><cBhvr><cTn id=\"32\"/></cBhvr><cBhvr><cTn id=\"33\"/></cBhvr></animRot>" +
     "</childTnLst></cTn></par></tnLst></timing>"
