@@ -351,6 +351,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<animMotion rAng=\"bad\"><cBhvr><cTn id=\"5\"/></cBhvr></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(motion)
+  let fractional_motion_rotation = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animMotion rAng=\"1.5\"><cBhvr><cTn id=\"44\"/></cBhvr></animMotion>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(fractional_motion_rotation)
   let missing_motion_point_y = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animMotion><cBhvr><cTn id=\"28\"/></cBhvr><by x=\"0\"/></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"

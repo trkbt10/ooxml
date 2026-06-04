@@ -200,7 +200,8 @@ pub fn decode_anim_motion(
     None => None
   }
   let r_ang = match attr_local(element, "rAng") {
-    Some(text) => Some(parse_double_attr(text, "animMotion/@rAng"))
+    Some(text) =>
+      Some(parse_signed_int_attr(text, "animMotion/@rAng").to_double())
     None => None
   }
   let pts_types = attr_local(element, "ptsTypes")
@@ -1942,22 +1943,6 @@ fn parse_xsd_bool(
         section=animation_section,
         path~,
         reason="invalid xsd:boolean lexical form: " + text,
-      )
-  }
-}
-
-///|
-fn parse_double_attr(
-  text : String,
-  path : String,
-) -> Double raise @opc_errors.SchemaViolation {
-  match parse_double(text) {
-    Some(value) => value
-    None =>
-      raise @opc_errors.SchemaViolation(
-        section=animation_section,
-        path~,
-        reason="malformed xsd:double: " + text,
       )
   }
 }
