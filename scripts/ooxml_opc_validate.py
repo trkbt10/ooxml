@@ -257,6 +257,10 @@ def validate_content_type_value(content_type: str) -> str | None:
     return None
 
 
+def unexpected_attributes(element: ET.Element, allowed: set[str]) -> list[str]:
+    return sorted(attribute for attribute in element.attrib if attribute not in allowed)
+
+
 def validate_relationship_type_value(relationship_type: str) -> str | None:
     if relationship_type == "":
         return "relationship Type must be non-empty"
@@ -370,11 +374,53 @@ def parse_content_types(
         )
         return defaults, overrides, results
 
+    root_unexpected_attributes = unexpected_attributes(root, set())
+    if root_unexpected_attributes:
+        results.append(
+            fail(
+                package,
+                CONTENT_TYPES_PART,
+                "content-types",
+                f"Types element must not have attributes: {', '.join(root_unexpected_attributes)}",
+            )
+        )
+    if not list(root):
+        results.append(
+            fail(
+                package,
+                CONTENT_TYPES_PART,
+                "content-types",
+                "Types element must contain at least one Default or Override element",
+            )
+        )
+
     for child in root:
         if child.tag == f"{{{CONTENT_TYPES_NS}}}Default":
             extension = child.get("Extension", "")
             content_type = child.get("ContentType", "")
             extension_key = ascii_case_key(extension)
+            child_unexpected_attributes = unexpected_attributes(
+                child,
+                {"Extension", "ContentType"},
+            )
+            if child_unexpected_attributes:
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        f"Default element has unexpected attributes: {', '.join(child_unexpected_attributes)}",
+                    )
+                )
+            if list(child):
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        "Default element must not have child elements",
+                    )
+                )
             extension_error = validate_default_extension(extension)
             if extension_error:
                 results.append(
@@ -409,6 +455,28 @@ def parse_content_types(
             part_name = child.get("PartName", "")
             content_type = child.get("ContentType", "")
             part_name_key = ascii_case_key(part_name)
+            child_unexpected_attributes = unexpected_attributes(
+                child,
+                {"ContentType", "PartName"},
+            )
+            if child_unexpected_attributes:
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        f"Override element has unexpected attributes: {', '.join(child_unexpected_attributes)}",
+                    )
+                )
+            if list(child):
+                results.append(
+                    fail(
+                        package,
+                        CONTENT_TYPES_PART,
+                        "content-types",
+                        "Override element must not have child elements",
+                    )
+                )
             if not part_name:
                 results.append(
                     fail(

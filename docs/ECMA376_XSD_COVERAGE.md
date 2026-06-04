@@ -105,7 +105,9 @@ The validator checks:
   Relationships part.
 - `[Content_Types].xml` structure: `Default` / `Override` children only,
   required non-empty `Extension`, `PartName`, and `ContentType` attributes, and
-  parameter-free media-type syntax for every `ContentType`.
+  parameter-free media-type syntax for every `ContentType`. The `Types` element
+  must not have attributes and must contain at least one mapping; `Default` and
+  `Override` elements must not carry unexpected attributes or child elements.
 - `[Content_Types].xml` mapping semantics: `Default/@Extension` and
   `Override/@PartName` matching and duplicate detection use the ECMA-376
   required ASCII case-insensitive comparison.
