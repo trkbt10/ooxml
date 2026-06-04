@@ -24,20 +24,29 @@ OOXML packages:
 python3 scripts/ooxml_xsd_validate.py --summary
 python3 scripts/ooxml_xsd_validate.py --all-fixtures --failures-only --summary
 python3 scripts/ooxml_xsd_validate.py path/to/file.docx path/to/file.xlsx path/to/file.pptx
+python3 scripts/ooxml_xsd_validate.py --no-mc-preprocess path/to/file.docx
 ```
 
 The validator unzips `.docx`, `.xlsx`, and `.pptx` packages, maps each XML
 part's root namespace to the locally vendored ECMA-376 Strict, Transitional,
 or OPC XSD set, and runs `xmllint --schema` on the part. This checks known
 namespace child sequences, cardinality, attributes, and simple type values.
+Before schema validation, the validator applies an ECMA-376 Part 3 Markup
+Compatibility preprocessing pass for `mc:Ignorable`, `mc:ProcessContent`, and
+`mc:AlternateContent`/`mc:Choice`/`mc:Fallback`, and rejects unsupported
+`mc:MustUnderstand` namespaces. The application configuration uses the vendored
+ECMA schema namespaces as understood namespaces, so unsupported extension choices
+fall back before the schema sees the output document. Use `--no-mc-preprocess`
+when diagnosing raw package XML.
 For Strict and Transitional ML schemas the validator uses a generated
 schema-set wrapper that imports every local schema in that set. This is needed
 for strict wildcards such as DrawingML `graphicData`, where a WML part can
 legitimately contain a globally declared VML, picture, chart, or diagram
 payload from another ECMA schema file.
 
-This gate does not prove complete OPC graph conformance, Markup Compatibility
-preprocessing, visual fidelity, or Microsoft Office / LibreOffice openability.
+This gate does not prove complete OPC graph conformance, full Markup
+Compatibility conformance beyond the preprocessing needed for schema
+validation, visual fidelity, or Microsoft Office / LibreOffice openability.
 OPC graph and content-type checks are covered separately by
 `scripts/ooxml_opc_validate.py`. Application-open checks are covered by
 `docs/OOXML_INTEROP_SMOKE.md` and must not be treated as schema validation.
@@ -62,7 +71,8 @@ The former full-fixture failures were resolved as follows:
 
 Do not infer from the zero-failure XSD sweep that application interop is
 complete. Microsoft and LibreOffice open/repair checks, Markup Compatibility
-processing, and visual fidelity remain separate gates.
+edge cases outside this validator's preprocessing model, and visual fidelity
+remain separate gates.
 
 ## OPC package graph validation gate
 

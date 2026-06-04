@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
 import shutil
@@ -32,6 +33,7 @@ from xml.etree import ElementTree as ET
 REPO = Path(__file__).resolve().parents[1]
 XSD_NS = "http://www.w3.org/2001/XMLSchema"
 XML_NS = "http://www.w3.org/XML/1998/namespace"
+MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 
 STRICT_XSD = (
     REPO
@@ -108,6 +110,10 @@ class SchemaBinding:
     validation_schema: Path
 
 
+class McPreprocessError(ValueError):
+    pass
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", help="OOXML package files to validate")
@@ -140,6 +146,11 @@ def parse_args() -> argparse.Namespace:
         "--keep-tmp",
         action="store_true",
         help="keep the temporary schema/part directory for debugging",
+    )
+    parser.add_argument(
+        "--no-mc-preprocess",
+        action="store_true",
+        help="validate raw XML without ECMA-376 Part 3 Markup Compatibility preprocessing",
     )
     parser.add_argument(
         "--xmllint",
@@ -269,6 +280,248 @@ def root_namespace(xml_bytes: bytes) -> tuple[str | None, str | None]:
     return None, root.tag
 
 
+def split_tag(tag: str) -> tuple[str | None, str]:
+    if tag.startswith("{"):
+        namespace, local = tag[1:].split("}", 1)
+        return namespace, local
+    return None, tag
+
+
+def attr_value(element: ET.Element, namespace: str, local_name: str) -> str:
+    return element.attrib.get(f"{{{namespace}}}{local_name}", "")
+
+
+def parse_token_list(value: str) -> list[str]:
+    return [token for token in re.split(r"[\t\r\n ]+", value.strip()) if token]
+
+
+def collect_prefix_map(xml_bytes: bytes) -> dict[str, str]:
+    prefixes: dict[str, str] = {}
+    for _event, value in ET.iterparse(io.BytesIO(xml_bytes), events=("start-ns",)):
+        prefix, namespace = value
+        prefixes[prefix or ""] = namespace
+    return prefixes
+
+
+def namespaces_for_prefixes(tokens: list[str], prefix_map: dict[str, str]) -> set[str]:
+    namespaces: set[str] = set()
+    for token in tokens:
+        if token not in prefix_map:
+            raise McPreprocessError(f"mc namespace prefix is not declared: {token}")
+        namespace = prefix_map[token]
+        if namespace == MC_NS:
+            raise McPreprocessError(f"mc namespace cannot be declared ignorable: {token}")
+        namespaces.add(namespace)
+    return namespaces
+
+
+def process_content_pairs(
+    tokens: list[str],
+    prefix_map: dict[str, str],
+    ignorable_namespaces: set[str],
+) -> set[tuple[str, str]]:
+    pairs: set[tuple[str, str]] = set()
+    for token in tokens:
+        if ":" not in token:
+            raise McPreprocessError(f"mc:ProcessContent token is not prefix:local: {token}")
+        prefix, local_name = token.split(":", 1)
+        if not prefix or not local_name:
+            raise McPreprocessError(f"mc:ProcessContent token is not prefix:local: {token}")
+        if prefix not in prefix_map:
+            raise McPreprocessError(f"mc:ProcessContent prefix is not declared: {prefix}")
+        namespace = prefix_map[prefix]
+        if namespace == MC_NS:
+            raise McPreprocessError("mc namespace cannot be declared process-content")
+        if namespace not in ignorable_namespaces:
+            raise McPreprocessError(
+                f"mc:ProcessContent namespace is not ignorable: {prefix}"
+            )
+        pairs.add((namespace, local_name))
+    return pairs
+
+
+def process_content_matches(
+    namespace: str | None,
+    local_name: str,
+    process_content: set[tuple[str, str]],
+) -> bool:
+    if namespace is None:
+        return False
+    return (namespace, local_name) in process_content or (namespace, "*") in process_content
+
+
+def validate_must_understand(
+    element: ET.Element,
+    prefix_map: dict[str, str],
+    supported_namespaces: set[str],
+) -> None:
+    for namespace in namespaces_for_prefixes(
+        parse_token_list(attr_value(element, MC_NS, "MustUnderstand")),
+        prefix_map,
+    ):
+        if namespace not in supported_namespaces:
+            raise McPreprocessError(
+                f"mc:MustUnderstand namespace is unsupported: {namespace}"
+            )
+
+
+def clone_without_tail(element: ET.Element) -> ET.Element:
+    cloned = ET.Element(element.tag)
+    cloned.text = element.text
+    return cloned
+
+
+def apply_mc_attributes(
+    element: ET.Element,
+    prefix_map: dict[str, str],
+    inherited_ignorable: set[str],
+    inherited_process_content: set[tuple[str, str]],
+) -> tuple[set[str], set[tuple[str, str]]]:
+    ignorable = set(inherited_ignorable)
+    ignorable.update(
+        namespaces_for_prefixes(
+            parse_token_list(attr_value(element, MC_NS, "Ignorable")),
+            prefix_map,
+        )
+    )
+    process_content = set(inherited_process_content)
+    process_content.update(
+        process_content_pairs(
+            parse_token_list(attr_value(element, MC_NS, "ProcessContent")),
+            prefix_map,
+            ignorable,
+        )
+    )
+    return ignorable, process_content
+
+
+def copy_output_attributes(
+    source: ET.Element,
+    target: ET.Element,
+    ignorable: set[str],
+    supported_namespaces: set[str],
+) -> None:
+    for name, value in source.attrib.items():
+        namespace, local_name = split_tag(name)
+        if namespace == MC_NS:
+            continue
+        if namespace in ignorable and namespace not in supported_namespaces:
+            continue
+        target.set(name, value)
+
+
+def alternate_content_selected_children(
+    element: ET.Element,
+    prefix_map: dict[str, str],
+    supported_namespaces: set[str],
+) -> list[ET.Element]:
+    for child in list(element):
+        namespace, local_name = split_tag(child.tag)
+        if namespace != MC_NS or local_name != "Choice":
+            continue
+        required_namespaces = namespaces_for_prefixes(
+            parse_token_list(child.attrib.get("Requires", "")),
+            prefix_map,
+        )
+        if required_namespaces and required_namespaces.issubset(supported_namespaces):
+            return list(child)
+    for child in list(element):
+        namespace, local_name = split_tag(child.tag)
+        if namespace == MC_NS and local_name == "Fallback":
+            return list(child)
+    return []
+
+
+def process_mc_element(
+    element: ET.Element,
+    prefix_map: dict[str, str],
+    supported_namespaces: set[str],
+    inherited_ignorable: set[str],
+    inherited_process_content: set[tuple[str, str]],
+) -> list[ET.Element]:
+    namespace, local_name = split_tag(element.tag)
+    ignorable, process_content = apply_mc_attributes(
+        element,
+        prefix_map,
+        inherited_ignorable,
+        inherited_process_content,
+    )
+
+    if namespace == MC_NS and local_name == "AlternateContent":
+        validate_must_understand(element, prefix_map, supported_namespaces)
+        output: list[ET.Element] = []
+        for selected in alternate_content_selected_children(
+            element,
+            prefix_map,
+            supported_namespaces,
+        ):
+            output.extend(
+                process_mc_element(
+                    selected,
+                    prefix_map,
+                    supported_namespaces,
+                    ignorable,
+                    process_content,
+                )
+            )
+        return output
+
+    if namespace == MC_NS:
+        return []
+
+    if namespace in ignorable and namespace not in supported_namespaces:
+        if process_content_matches(namespace, local_name, process_content):
+            output: list[ET.Element] = []
+            for child in list(element):
+                output.extend(
+                    process_mc_element(
+                        child,
+                        prefix_map,
+                        supported_namespaces,
+                        ignorable,
+                        process_content,
+                    )
+                )
+            return output
+        return []
+
+    validate_must_understand(element, prefix_map, supported_namespaces)
+    cloned = clone_without_tail(element)
+    copy_output_attributes(element, cloned, ignorable, supported_namespaces)
+    for child in list(element):
+        for processed in process_mc_element(
+            child,
+            prefix_map,
+            supported_namespaces,
+            ignorable,
+            process_content,
+        ):
+            cloned.append(processed)
+    return [cloned]
+
+
+def mc_preprocess_xml(
+    xml_bytes: bytes,
+    supported_namespaces: set[str],
+) -> bytes:
+    if MC_NS.encode("utf-8") not in xml_bytes and b"AlternateContent" not in xml_bytes:
+        return xml_bytes
+    prefix_map = collect_prefix_map(xml_bytes)
+    root = ET.fromstring(xml_bytes)
+    processed_roots = process_mc_element(
+        root,
+        prefix_map,
+        supported_namespaces,
+        inherited_ignorable=set(),
+        inherited_process_content=set(),
+    )
+    if len(processed_roots) != 1:
+        raise McPreprocessError(
+            f"Markup Compatibility preprocessing produced {len(processed_roots)} root elements"
+        )
+    return ET.tostring(processed_roots[0], encoding="utf-8", xml_declaration=True)
+
+
 def part_output_path(parts_root: Path, package: Path, part: str) -> Path:
     package_stem = package.name.replace("/", "_")
     safe_part = part.replace("/", "__").replace("[", "_").replace("]", "_")
@@ -321,6 +574,7 @@ def validate_package(
     namespace_to_schema: dict[str, SchemaBinding],
     parts_root: Path,
     allow_unknown: bool,
+    mc_preprocess: bool,
 ) -> list[ValidationResult]:
     results: list[ValidationResult] = []
     package_label = str(package.relative_to(REPO) if package.is_relative_to(REPO) else package)
@@ -335,8 +589,13 @@ def validate_package(
             for part in parts:
                 try:
                     xml_bytes = archive.read(part)
+                    if mc_preprocess:
+                        xml_bytes = mc_preprocess_xml(
+                            xml_bytes,
+                            supported_namespaces=set(namespace_to_schema),
+                        )
                     namespace, _local = root_namespace(xml_bytes)
-                except (KeyError, ET.ParseError) as error:
+                except (KeyError, ET.ParseError, McPreprocessError) as error:
                     results.append(
                         ValidationResult(package_label, part, "fail", "", f"xml parse: {error}")
                     )
@@ -421,6 +680,7 @@ def main() -> int:
                     namespace_to_schema,
                     parts_root,
                     allow_unknown=args.allow_unknown,
+                    mc_preprocess=not args.no_mc_preprocess,
                 )
             )
 
