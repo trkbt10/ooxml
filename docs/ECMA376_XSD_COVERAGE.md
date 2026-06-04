@@ -6,7 +6,8 @@ This report walks the locally vendored ECMA-376 Strict, Transitional, and OPC XS
 
 It measures identifier presence for complex types, simple types, and top-level elements. It is not a proof that every child sequence, cardinality rule, relationship rule, or Microsoft Office / LibreOffice round trip is valid.
 
-Use this alongside `docs/ECMA376_SDD_COVERAGE.md`, parser/builder tests, package validation, and office-suite smoke tests.
+Use this alongside `docs/ECMA376_SDD_COVERAGE.md`, parser/builder tests,
+package validation, format contract validation, and office-suite smoke tests.
 
 ## Package XSD validation gate
 
@@ -48,7 +49,8 @@ This gate does not prove complete OPC graph conformance, full Markup
 Compatibility conformance beyond the preprocessing needed for schema
 validation, visual fidelity, or Microsoft Office / LibreOffice openability.
 OPC graph and content-type checks are covered separately by
-`scripts/ooxml_opc_validate.py`. Application-open checks are covered by
+`scripts/ooxml_opc_validate.py`. Format-specific package contracts are covered
+by `scripts/ooxml_format_validate.py`. Application-open checks are covered by
 `docs/OOXML_INTEROP_SMOKE.md` and must not be treated as schema validation.
 
 Current package-validation snapshot, after ECMA/VML fixture repairs and
@@ -57,7 +59,7 @@ schema-set wildcard validation:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5455`, `fail: 0` |
+| all generated fixtures | `ok: 5457`, `fail: 0` |
 | previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
 | earlier full-fixture baseline before schema-order repairs | `ok: 5365`, `fail: 120` |
 
@@ -108,6 +110,46 @@ Current OPC package-validation snapshot:
 This is still not a Markup Compatibility preprocessor, application repair-dialog
 detector, or visual-fidelity check. It is a package-graph gate for the OPC
 invariants that part-level XSD validation intentionally cannot prove.
+
+## Format package contract validation gate
+
+Use `scripts/ooxml_format_validate.py` for `.docx`, `.xlsx`, and `.pptx`
+contracts that are neither pure XML-schema checks nor generic OPC graph rules:
+
+```bash
+python3 scripts/ooxml_format_validate.py --summary
+python3 scripts/ooxml_format_validate.py --all-fixtures --failures-only --summary
+python3 scripts/ooxml_format_validate.py path/to/file.docx path/to/file.xlsx path/to/file.pptx
+```
+
+The validator checks:
+
+- The package root `_rels/.rels` has exactly one `officeDocument`
+  relationship.
+- That relationship resolves to the format's main part, whose content type and
+  root element match WordprocessingML, SpreadsheetML, or PresentationML.
+- Every XML attribute in the Office document relationship-reference namespace
+  (`r:id`, `r:embed`, `r:link`, and peers) resolves to an Id in the source
+  part's own `.rels` part.
+- SpreadsheetML workbook `<sheet r:id="...">` references resolve to worksheet,
+  chartsheet, or dialogsheet parts with matching content type and XML root.
+- PresentationML `<sldId r:id="...">` and `<sldMasterId r:id="...">`
+  references resolve to slide and slide-master parts with matching content type
+  and XML root.
+
+Current format contract-validation snapshot:
+
+| Scope | Result |
+|---|---|
+| default representative fixtures | `ok: 3` |
+| all generated fixtures | `ok: 837`, `fail: 0` |
+
+This gate found two SpreadsheetML external-reference fixtures whose
+`externalBook/@r:id` pointed at a missing
+`xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
+builder now emits the required `externalLinkPath` relationship with
+`TargetMode="External"` for those packages. The XSD package sweep now reports
+`ok: 5457` because the two added Relationships parts are included.
 
 ## ECMA-376 Part 1 Strict XSD
 

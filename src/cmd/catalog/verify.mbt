@@ -2586,6 +2586,7 @@ fn xlsx_with_drawing_root_package(drawing_root : @xml.Element) -> Bytes {
 /// The builder owns rId numbering:
 ///   * `rId1` — workbook → worksheet.
 ///   * `rId2` — workbook → external link part.
+///   * `externalLink1.xml` `rId1` — external link part → external workbook path.
 /// The `<externalReference r:id="…">` child the builder inserts into
 /// the workbook MUST resolve to `rId2`; this is wired automatically.
 fn xlsx_package_with_externals(
@@ -2666,6 +2667,23 @@ fn xlsx_package_with_externals(
       ),
     ),
   ])
+  let external_link_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath",
+          ),
+          xa("Target", "file:///external-workbook.xlsx"),
+          xa("TargetMode", "External"),
+        ],
+        [],
+      ),
+    ),
+  ])
   let worksheet : @xml.Element = if content.name.local_name == "worksheet" {
     content
   } else {
@@ -2695,6 +2713,10 @@ fn xlsx_package_with_externals(
     ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
     ("xl/worksheets/sheet1.xml", write_part(worksheet)),
     ("xl/externalLinks/externalLink1.xml", write_part(external_link)),
+    (
+      "xl/externalLinks/_rels/externalLink1.xml.rels",
+      write_part(external_link_rels),
+    ),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
