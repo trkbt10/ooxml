@@ -112,6 +112,10 @@ The validator checks:
 - Core Properties package contract: at most one Core Properties part, at most
   one package core-properties relationship, and every Core Properties part must
   be referenced by that package relationship.
+- Digital Signature package contract: at most one Digital Signature Origin
+  part, empty Origin content, required package Origin relationship, and every
+  Digital Signature XML Signature part reached from the Origin part by a Digital
+  Signature relationship.
 - Relationship part ownership: package relationships and part relationships
   must map to existing sources.
 - Relationship part structure: `Relationship` children only, required non-empty

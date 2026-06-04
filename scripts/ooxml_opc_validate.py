@@ -35,7 +35,16 @@ RELATIONSHIPS_CONTENT_TYPE = "application/vnd.openxmlformats-package.relationshi
 CORE_PROPERTIES_RELATIONSHIP_TYPE = (
     "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
 )
+DIGITAL_SIGNATURE_ORIGIN_RELATIONSHIP_TYPE = (
+    "http://schemas.openxmlformats.org/package/2006/relationships/digital-signature/origin"
+)
+DIGITAL_SIGNATURE_RELATIONSHIP_TYPE = (
+    "http://schemas.openxmlformats.org/package/2006/relationships/digital-signature/signature"
+)
 CORE_PROPERTIES_CONTENT_TYPE = "application/vnd.openxmlformats-package.core-properties+xml"
+DIGITAL_SIGNATURE_ORIGIN_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-package.digital-signature-origin"
+)
 DIGITAL_SIGNATURE_XML_SIGNATURE_CONTENT_TYPE = (
     "application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml"
 )
@@ -173,6 +182,14 @@ def relationships_source_part(item_name: str) -> str | None:
     if prefix:
         return "/" + prefix + "/" + source_name
     return "/" + source_name
+
+
+def relationships_item_for_source_part(source_part: str) -> str:
+    item_name = item_name_for_part(source_part)
+    if "/" in item_name:
+        prefix, basename = item_name.rsplit("/", 1)
+        return prefix + "/_rels/" + basename + ".rels"
+    return "_rels/" + item_name + ".rels"
 
 
 def is_reserved_relationship_part_name(part_name: str) -> bool:
@@ -747,6 +764,142 @@ def validate_core_properties_contract(
     return results
 
 
+def validate_digital_signature_contract(
+    package: Path,
+    archive: zipfile.ZipFile,
+    package_relationships: list[RelationshipEntry],
+    digital_signature_origin_parts: set[str],
+    digital_signature_xml_signature_parts: set[str],
+    defaults: dict[str, str],
+    overrides: dict[str, str],
+) -> list[ValidationResult]:
+    results: list[ValidationResult] = []
+    if len(digital_signature_origin_parts) > 1:
+        results.append(
+            fail(
+                package,
+                "(package)",
+                "digital-signature",
+                f"package must contain at most one Digital Signature Origin part: {len(digital_signature_origin_parts)}",
+            )
+        )
+
+    origin_relationships = [
+        relationship
+        for relationship in package_relationships
+        if relationship.relationship_type == DIGITAL_SIGNATURE_ORIGIN_RELATIONSHIP_TYPE
+    ]
+    referenced_origins: set[str] = set()
+    for relationship in origin_relationships:
+        if relationship.target_mode != "Internal":
+            results.append(
+                fail(
+                    package,
+                    RELATIONSHIPS_ROOT,
+                    "digital-signature",
+                    f"{relationship.relationship_id or '(missing Id)'}: Digital Signature Origin relationship must target an internal part",
+                )
+            )
+            continue
+        target_part = relationship.resolved_part
+        if target_part is None:
+            continue
+        target_item = item_name_for_part(target_part)
+        content_type = content_type_for_item(target_item, defaults, overrides)
+        if content_type != DIGITAL_SIGNATURE_ORIGIN_CONTENT_TYPE:
+            results.append(
+                fail(
+                    package,
+                    RELATIONSHIPS_ROOT,
+                    "digital-signature",
+                    f"{relationship.relationship_id or '(missing Id)'}: Digital Signature Origin relationship target must have content type {DIGITAL_SIGNATURE_ORIGIN_CONTENT_TYPE}",
+                )
+            )
+            continue
+        referenced_origins.add(target_part)
+
+    if digital_signature_xml_signature_parts and not digital_signature_origin_parts:
+        results.append(
+            fail(
+                package,
+                "(package)",
+                "digital-signature",
+                "Digital Signature Origin part must exist when Digital Signature XML Signature parts exist",
+            )
+        )
+
+    for origin_part in sorted(digital_signature_origin_parts - referenced_origins):
+        results.append(
+            fail(
+                package,
+                origin_part,
+                "digital-signature",
+                "Digital Signature Origin part must be targeted by a package Digital Signature Origin relationship",
+            )
+        )
+
+    referenced_signatures: set[str] = set()
+    for origin_part in sorted(digital_signature_origin_parts):
+        origin_item = item_name_for_part(origin_part)
+        if archive.read(origin_item):
+            results.append(
+                fail(
+                    package,
+                    origin_part,
+                    "digital-signature",
+                    "Digital Signature Origin part content must be empty",
+                )
+            )
+
+        origin_relationship_item = relationships_item_for_source_part(origin_part)
+        for relationship in read_relationship_entries(
+            archive,
+            origin_relationship_item,
+            origin_part,
+        ):
+            if relationship.relationship_type != DIGITAL_SIGNATURE_RELATIONSHIP_TYPE:
+                continue
+            if relationship.target_mode != "Internal":
+                results.append(
+                    fail(
+                        package,
+                        origin_relationship_item,
+                        "digital-signature",
+                        f"{relationship.relationship_id or '(missing Id)'}: Digital Signature relationship must target an internal XML Signature part",
+                    )
+                )
+                continue
+            target_part = relationship.resolved_part
+            if target_part is None:
+                continue
+            target_item = item_name_for_part(target_part)
+            content_type = content_type_for_item(target_item, defaults, overrides)
+            if content_type != DIGITAL_SIGNATURE_XML_SIGNATURE_CONTENT_TYPE:
+                results.append(
+                    fail(
+                        package,
+                        origin_relationship_item,
+                        "digital-signature",
+                        f"{relationship.relationship_id or '(missing Id)'}: Digital Signature relationship target must have content type {DIGITAL_SIGNATURE_XML_SIGNATURE_CONTENT_TYPE}",
+                    )
+                )
+                continue
+            referenced_signatures.add(target_part)
+
+    for signature_part in sorted(
+        digital_signature_xml_signature_parts - referenced_signatures
+    ):
+        results.append(
+            fail(
+                package,
+                signature_part,
+                "digital-signature",
+                "Digital Signature XML Signature part must be targeted by a Digital Signature relationship from the Origin part",
+            )
+        )
+    return results
+
+
 def validate_package(package: Path) -> list[ValidationResult]:
     results: list[ValidationResult] = []
     try:
@@ -877,6 +1030,29 @@ def validate_package(package: Path) -> list[ValidationResult]:
                     package,
                     package_relationships,
                     core_properties_parts,
+                    defaults,
+                    overrides,
+                )
+            )
+            digital_signature_origin_parts = {
+                part_name_for_item(item_name)
+                for item_name in ordinary_items
+                if content_type_for_item(item_name, defaults, overrides)
+                == DIGITAL_SIGNATURE_ORIGIN_CONTENT_TYPE
+            }
+            digital_signature_xml_signature_parts = {
+                part_name_for_item(item_name)
+                for item_name in ordinary_items
+                if content_type_for_item(item_name, defaults, overrides)
+                == DIGITAL_SIGNATURE_XML_SIGNATURE_CONTENT_TYPE
+            }
+            results.extend(
+                validate_digital_signature_contract(
+                    package,
+                    archive,
+                    package_relationships,
+                    digital_signature_origin_parts,
+                    digital_signature_xml_signature_parts,
                     defaults,
                     overrides,
                 )
