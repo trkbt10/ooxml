@@ -42,6 +42,20 @@ SML_NS_TRANSITIONAL = "http://schemas.openxmlformats.org/spreadsheetml/2006/main
 SML_NS_STRICT = "http://purl.oclc.org/ooxml/spreadsheetml/main"
 PML_NS_TRANSITIONAL = "http://schemas.openxmlformats.org/presentationml/2006/main"
 PML_NS_STRICT = "http://purl.oclc.org/ooxml/presentationml/main"
+DML_NS_TRANSITIONAL = "http://schemas.openxmlformats.org/drawingml/2006/main"
+DML_NS_STRICT = "http://purl.oclc.org/ooxml/drawingml/main"
+DML_CHART_NS_TRANSITIONAL = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+DML_CHART_NS_STRICT = "http://purl.oclc.org/ooxml/drawingml/chart"
+DML_CHART_DRAWING_NS_TRANSITIONAL = (
+    "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
+)
+DML_CHART_DRAWING_NS_STRICT = "http://purl.oclc.org/ooxml/drawingml/chartDrawing"
+DML_DIAGRAM_NS_TRANSITIONAL = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+DML_DIAGRAM_NS_STRICT = "http://purl.oclc.org/ooxml/drawingml/diagram"
+DML_SPREADSHEET_DRAWING_NS_TRANSITIONAL = (
+    "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+)
+DML_SPREADSHEET_DRAWING_NS_STRICT = "http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing"
 
 DOCX_MAIN_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
 XLSX_MAIN_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"
@@ -49,8 +63,51 @@ PPTX_MAIN_CT = "application/vnd.openxmlformats-officedocument.presentationml.pre
 WORKSHEET_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
 CHARTSHEET_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml"
 DIALOGSHEET_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.dialogsheet+xml"
+SPREADSHEET_STYLES_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"
+SHARED_STRINGS_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"
+)
+SPREADSHEET_COMMENTS_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"
+SPREADSHEET_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"
+PIVOT_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml"
+PIVOT_CACHE_DEFINITION_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml"
+)
+PIVOT_CACHE_RECORDS_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml"
+)
+SPREADSHEET_EXTERNAL_LINK_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml"
+)
+SPREADSHEET_DRAWING_CT = "application/vnd.openxmlformats-officedocument.drawing+xml"
 SLIDE_CT = "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"
 SLIDE_MASTER_CT = "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"
+SLIDE_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"
+THEME_CT = "application/vnd.openxmlformats-officedocument.theme+xml"
+CHART_CT = "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"
+CHART_USER_SHAPES_CT = "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml"
+DIAGRAM_DATA_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml"
+DIAGRAM_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml"
+DIAGRAM_STYLE_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml"
+DIAGRAM_COLORS_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml"
+WORD_STYLES_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"
+WORD_NUMBERING_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"
+WORD_SETTINGS_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"
+WORD_FONT_TABLE_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"
+WORD_COMMENTS_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"
+WORD_FOOTNOTES_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"
+WORD_ENDNOTES_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml"
+WORD_HEADER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"
+WORD_FOOTER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"
+IMAGE_CONTENT_TYPES = {
+    "image/bmp",
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/tiff",
+    "image/x-emf",
+    "image/x-wmf",
+}
 
 DEFAULT_FIXTURES = [
     REPO / ".snapshots" / "fixtures" / "docx" / "paragraph" / "paragraph-alignment.docx",
@@ -160,6 +217,279 @@ PRESENTATION_SLIDE_MASTER_CONTRACT = PartContract(
         (PML_NS_TRANSITIONAL, "sldMaster"),
         (PML_NS_STRICT, "sldMaster"),
     },
+)
+
+
+def relationship_contract(
+    local_name: str,
+    content_types: set[str],
+    root_tags: set[tuple[str, str]],
+) -> dict[str, PartContract]:
+    relationship_types = rel_types(local_name)
+    contract = PartContract(relationship_types, content_types, root_tags)
+    return {relationship_type: contract for relationship_type in relationship_types}
+
+
+RELATIONSHIP_TARGET_CONTRACTS: dict[str, PartContract] = {}
+for contracts in [
+    relationship_contract(
+        "officeDocument",
+        {DOCX_MAIN_CT, XLSX_MAIN_CT, PPTX_MAIN_CT},
+        {
+            (WML_NS_TRANSITIONAL, "document"),
+            (WML_NS_STRICT, "document"),
+            (SML_NS_TRANSITIONAL, "workbook"),
+            (SML_NS_STRICT, "workbook"),
+            (PML_NS_TRANSITIONAL, "presentation"),
+            (PML_NS_STRICT, "presentation"),
+        },
+    ),
+    relationship_contract(
+        "worksheet",
+        {WORKSHEET_CT},
+        {
+            (SML_NS_TRANSITIONAL, "worksheet"),
+            (SML_NS_STRICT, "worksheet"),
+        },
+    ),
+    relationship_contract(
+        "chartsheet",
+        {CHARTSHEET_CT},
+        {
+            (SML_NS_TRANSITIONAL, "chartsheet"),
+            (SML_NS_STRICT, "chartsheet"),
+        },
+    ),
+    relationship_contract(
+        "dialogsheet",
+        {DIALOGSHEET_CT},
+        {
+            (SML_NS_TRANSITIONAL, "dialogsheet"),
+            (SML_NS_STRICT, "dialogsheet"),
+        },
+    ),
+    relationship_contract(
+        "styles",
+        {SPREADSHEET_STYLES_CT, WORD_STYLES_CT},
+        {
+            (SML_NS_TRANSITIONAL, "styleSheet"),
+            (SML_NS_STRICT, "styleSheet"),
+            (WML_NS_TRANSITIONAL, "styles"),
+            (WML_NS_STRICT, "styles"),
+        },
+    ),
+    relationship_contract(
+        "sharedStrings",
+        {SHARED_STRINGS_CT},
+        {
+            (SML_NS_TRANSITIONAL, "sst"),
+            (SML_NS_STRICT, "sst"),
+        },
+    ),
+    relationship_contract(
+        "comments",
+        {SPREADSHEET_COMMENTS_CT, WORD_COMMENTS_CT},
+        {
+            (SML_NS_TRANSITIONAL, "comments"),
+            (SML_NS_STRICT, "comments"),
+            (WML_NS_TRANSITIONAL, "comments"),
+            (WML_NS_STRICT, "comments"),
+        },
+    ),
+    relationship_contract(
+        "numbering",
+        {WORD_NUMBERING_CT},
+        {
+            (WML_NS_TRANSITIONAL, "numbering"),
+            (WML_NS_STRICT, "numbering"),
+        },
+    ),
+    relationship_contract(
+        "settings",
+        {WORD_SETTINGS_CT},
+        {
+            (WML_NS_TRANSITIONAL, "settings"),
+            (WML_NS_STRICT, "settings"),
+        },
+    ),
+    relationship_contract(
+        "fontTable",
+        {WORD_FONT_TABLE_CT},
+        {
+            (WML_NS_TRANSITIONAL, "fonts"),
+            (WML_NS_STRICT, "fonts"),
+        },
+    ),
+    relationship_contract(
+        "footnotes",
+        {WORD_FOOTNOTES_CT},
+        {
+            (WML_NS_TRANSITIONAL, "footnotes"),
+            (WML_NS_STRICT, "footnotes"),
+        },
+    ),
+    relationship_contract(
+        "endnotes",
+        {WORD_ENDNOTES_CT},
+        {
+            (WML_NS_TRANSITIONAL, "endnotes"),
+            (WML_NS_STRICT, "endnotes"),
+        },
+    ),
+    relationship_contract(
+        "header",
+        {WORD_HEADER_CT},
+        {
+            (WML_NS_TRANSITIONAL, "hdr"),
+            (WML_NS_STRICT, "hdr"),
+        },
+    ),
+    relationship_contract(
+        "footer",
+        {WORD_FOOTER_CT},
+        {
+            (WML_NS_TRANSITIONAL, "ftr"),
+            (WML_NS_STRICT, "ftr"),
+        },
+    ),
+    relationship_contract(
+        "drawing",
+        {SPREADSHEET_DRAWING_CT},
+        {
+            (DML_SPREADSHEET_DRAWING_NS_TRANSITIONAL, "wsDr"),
+            (DML_SPREADSHEET_DRAWING_NS_STRICT, "wsDr"),
+        },
+    ),
+    relationship_contract(
+        "table",
+        {SPREADSHEET_TABLE_CT},
+        {
+            (SML_NS_TRANSITIONAL, "table"),
+            (SML_NS_STRICT, "table"),
+        },
+    ),
+    relationship_contract(
+        "pivotTable",
+        {PIVOT_TABLE_CT},
+        {
+            (SML_NS_TRANSITIONAL, "pivotTableDefinition"),
+            (SML_NS_STRICT, "pivotTableDefinition"),
+        },
+    ),
+    relationship_contract(
+        "pivotCacheDefinition",
+        {PIVOT_CACHE_DEFINITION_CT},
+        {
+            (SML_NS_TRANSITIONAL, "pivotCacheDefinition"),
+            (SML_NS_STRICT, "pivotCacheDefinition"),
+        },
+    ),
+    relationship_contract(
+        "pivotCacheRecords",
+        {PIVOT_CACHE_RECORDS_CT},
+        {
+            (SML_NS_TRANSITIONAL, "pivotCacheRecords"),
+            (SML_NS_STRICT, "pivotCacheRecords"),
+        },
+    ),
+    relationship_contract(
+        "externalLink",
+        {SPREADSHEET_EXTERNAL_LINK_CT},
+        {
+            (SML_NS_TRANSITIONAL, "externalLink"),
+            (SML_NS_STRICT, "externalLink"),
+        },
+    ),
+    relationship_contract(
+        "slide",
+        {SLIDE_CT},
+        {
+            (PML_NS_TRANSITIONAL, "sld"),
+            (PML_NS_STRICT, "sld"),
+        },
+    ),
+    relationship_contract(
+        "slideMaster",
+        {SLIDE_MASTER_CT},
+        {
+            (PML_NS_TRANSITIONAL, "sldMaster"),
+            (PML_NS_STRICT, "sldMaster"),
+        },
+    ),
+    relationship_contract(
+        "slideLayout",
+        {SLIDE_LAYOUT_CT},
+        {
+            (PML_NS_TRANSITIONAL, "sldLayout"),
+            (PML_NS_STRICT, "sldLayout"),
+        },
+    ),
+    relationship_contract(
+        "theme",
+        {THEME_CT},
+        {
+            (DML_NS_TRANSITIONAL, "theme"),
+            (DML_NS_STRICT, "theme"),
+        },
+    ),
+    relationship_contract(
+        "chart",
+        {CHART_CT},
+        {
+            (DML_CHART_NS_TRANSITIONAL, "chartSpace"),
+            (DML_CHART_NS_STRICT, "chartSpace"),
+        },
+    ),
+    relationship_contract(
+        "chartUserShapes",
+        {CHART_USER_SHAPES_CT},
+        {
+            (DML_CHART_DRAWING_NS_TRANSITIONAL, "userShapes"),
+            (DML_CHART_DRAWING_NS_STRICT, "userShapes"),
+        },
+    ),
+    relationship_contract(
+        "diagramData",
+        {DIAGRAM_DATA_CT},
+        {
+            (DML_DIAGRAM_NS_TRANSITIONAL, "dataModel"),
+            (DML_DIAGRAM_NS_STRICT, "dataModel"),
+        },
+    ),
+    relationship_contract(
+        "diagramLayout",
+        {DIAGRAM_LAYOUT_CT},
+        {
+            (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDef"),
+            (DML_DIAGRAM_NS_STRICT, "layoutDef"),
+        },
+    ),
+    relationship_contract(
+        "diagramQuickStyle",
+        {DIAGRAM_STYLE_CT},
+        {
+            (DML_DIAGRAM_NS_TRANSITIONAL, "styleDef"),
+            (DML_DIAGRAM_NS_STRICT, "styleDef"),
+        },
+    ),
+    relationship_contract(
+        "diagramColors",
+        {DIAGRAM_COLORS_CT},
+        {
+            (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDef"),
+            (DML_DIAGRAM_NS_STRICT, "colorsDef"),
+        },
+    ),
+    relationship_contract("image", IMAGE_CONTENT_TYPES, set()),
+]:
+    RELATIONSHIP_TARGET_CONTRACTS.update(contracts)
+
+EXTERNAL_TARGET_RELATIONSHIP_TYPES = (
+    rel_types("audio")
+    | rel_types("externalLinkPath")
+    | rel_types("hyperlink")
+    | rel_types("image")
+    | rel_types("video")
 )
 
 
@@ -416,6 +746,14 @@ def relationship_ref_id(element: ET.Element, local_name: str = "id") -> str | No
     return None
 
 
+def office_relationship_local_name(relationship_type: str) -> str | None:
+    for namespace in OD_REL_NAMESPACES:
+        prefix = namespace + "/"
+        if relationship_type.startswith(prefix):
+            return relationship_type[len(prefix) :]
+    return None
+
+
 def validate_linked_part(
     package: Path,
     archive: zipfile.ZipFile,
@@ -497,21 +835,107 @@ def validate_linked_part(
             )
         )
 
-    root = xml_roots.get(target_part)
-    if root is None:
-        root, root_results = parse_xml_root(package, archive, target_part)
-        results.extend(root_results)
-        if root is not None:
-            xml_roots[target_part] = root
-    if root is not None and split_tag(root.tag) not in contract.root_tags:
-        results.append(
-            fail(
-                package,
-                target_part,
-                check,
-                f"{relationship_id}: unexpected root element: {tag_display(root.tag)}",
+    if contract.root_tags:
+        root = xml_roots.get(target_part)
+        if root is None:
+            root, root_results = parse_xml_root(package, archive, target_part)
+            results.extend(root_results)
+            if root is not None:
+                xml_roots[target_part] = root
+        if root is not None and split_tag(root.tag) not in contract.root_tags:
+            results.append(
+                fail(
+                    package,
+                    target_part,
+                    check,
+                    f"{relationship_id}: unexpected root element: {tag_display(root.tag)}",
+                )
             )
-        )
+    return results
+
+
+def validate_relationship_target_contracts(
+    package: Path,
+    archive: zipfile.ZipFile,
+    defaults: dict[str, str],
+    overrides: dict[str, str],
+    relationships_by_source: dict[str | None, dict[str, Relationship]],
+    xml_roots: dict[str, ET.Element],
+) -> list[ValidationResult]:
+    results: list[ValidationResult] = []
+    for source_part, relationships in relationships_by_source.items():
+        source_label = source_part or "(package)"
+        for relationship in relationships.values():
+            local_name = office_relationship_local_name(relationship.relationship_type)
+            if relationship.target_mode == "External":
+                if relationship.relationship_type in EXTERNAL_TARGET_RELATIONSHIP_TYPES:
+                    continue
+                if local_name is not None:
+                    results.append(
+                        fail(
+                            package,
+                            source_label,
+                            "relationship-target",
+                            f"{relationship.relationship_id}: unexpected External target for {local_name}",
+                        )
+                    )
+                continue
+
+            contract = RELATIONSHIP_TARGET_CONTRACTS.get(relationship.relationship_type)
+            if contract is None:
+                if local_name is not None:
+                    results.append(
+                        fail(
+                            package,
+                            source_label,
+                            "relationship-target",
+                            f"{relationship.relationship_id}: unmapped Office relationship type: {relationship.relationship_type}",
+                        )
+                    )
+                continue
+
+            target_part = relationship.resolved_part
+            if target_part is None:
+                results.append(
+                    fail(
+                        package,
+                        source_label,
+                        "relationship-target",
+                        f"{relationship.relationship_id}: target does not resolve to a part: {relationship.target}",
+                    )
+                )
+                continue
+
+            content_type = content_type_for_part(target_part, defaults, overrides)
+            if content_type not in contract.content_types:
+                results.append(
+                    fail(
+                        package,
+                        target_part,
+                        "relationship-target",
+                        f"{relationship.relationship_id}: {relationship.relationship_type} target has unexpected content type: {content_type or '(missing)'}",
+                    )
+                )
+                continue
+
+            if not contract.root_tags:
+                continue
+
+            root = xml_roots.get(target_part)
+            if root is None:
+                root, root_results = parse_xml_root(package, archive, target_part)
+                results.extend(root_results)
+                if root is not None:
+                    xml_roots[target_part] = root
+            if root is not None and split_tag(root.tag) not in contract.root_tags:
+                results.append(
+                    fail(
+                        package,
+                        target_part,
+                        "relationship-target",
+                        f"{relationship.relationship_id}: {relationship.relationship_type} target has unexpected root element: {tag_display(root.tag)}",
+                    )
+                )
     return results
 
 
@@ -780,6 +1204,17 @@ def validate_package(package: Path) -> list[ValidationResult]:
                 xml_roots,
             )
             results.extend(main_results)
+
+            results.extend(
+                validate_relationship_target_contracts(
+                    package,
+                    archive,
+                    defaults,
+                    overrides,
+                    relationships_by_source,
+                    xml_roots,
+                )
+            )
 
             results.extend(
                 validate_relationship_reference_attrs(

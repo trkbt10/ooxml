@@ -131,6 +131,13 @@ The validator checks:
 - Every XML attribute in the Office document relationship-reference namespace
   (`r:id`, `r:embed`, `r:link`, and peers) resolves to an Id in the source
   part's own `.rels` part.
+- Internal Office document relationship types resolve to target parts with the
+  expected content type and, for XML targets, the expected root element. The
+  gate covers the generated fixture set's ECMA relationship contracts,
+  including themes, slide layouts, charts, diagrams, SpreadsheetML tables,
+  pivot parts, styles, shared strings, comments, numbering, headers/footers,
+  and media image parts. Unknown internal Office relationship types fail so new
+  generated coverage cannot silently bypass this contract.
 - SpreadsheetML workbook `<sheet r:id="...">` references resolve to worksheet,
   chartsheet, or dialogsheet parts with matching content type and XML root.
 - PresentationML `<sldId r:id="...">` and `<sldMasterId r:id="...">`
