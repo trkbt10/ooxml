@@ -1178,21 +1178,18 @@ fn decode_tav_list(
 
 ///|
 /// Decode a single `<p:tav>` (CT_TLTimeAnimateValue §19.5.79)
-/// keypoint. Required `tm` is either `indefinite`, a percentage, or an
-/// unsignedInt; we always normalise to `[0.0, 1.0]`.
+/// keypoint. Optional `tm` defaults to `indefinite`; present values
+/// are either `indefinite`, a percentage, or an unsignedInt. Numeric
+/// values are normalised to `[0.0, 1.0]`.
 pub fn decode_tav(
   element : @xml.Element,
 ) -> @domain.CT_TLTimeAnimateValue raise @opc_errors.SchemaViolation {
   let tm = attr_local(element, "tm")
   let tm_percent = match tm {
     Some(text) => parse_tav_time(text)
-    None =>
-      raise @opc_errors.SchemaViolation(
-        section=animation_section,
-        path="tav/@tm",
-        reason="missing required @tm attribute",
-      )
+    None => None
   }
+  validate_optional_child_element(element, "tav", "val")
   let value_el = first_child_by_local_name(element, "val")
   let value = match value_el {
     Some(v) => decode_anim_variant(v)
@@ -1203,6 +1200,37 @@ pub fn decode_tav(
     None => ""
   }
   { tm_percent, value, fmla }
+}
+
+///|
+fn validate_optional_child_element(
+  element : @xml.Element,
+  path : String,
+  expected_local_name : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let mut expected_count = 0
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name == expected_local_name {
+          expected_count = expected_count + 1
+        } else {
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path~,
+            reason="unsupported child element: " + e.name.local_name,
+          )
+        }
+      _ => ()
+    }
+  }
+  if expected_count > 1 {
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path~,
+      reason="allows at most one <" + expected_local_name + "> child",
+    )
+  }
 }
 
 ///|

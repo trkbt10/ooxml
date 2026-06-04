@@ -255,10 +255,14 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"bogus\"/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(tav)
-  let missing_tav_tm = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
-    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav/></tavLst></anim>" +
+  let unexpected_tav_value_child = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"0\"><val><fltVal val=\"0\"/></val><bogus/></tav></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
-  assert_timing_schema_violation(missing_tav_tm)
+  assert_timing_schema_violation(unexpected_tav_value_child)
+  let multiple_tav_values = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"0\"><val><fltVal val=\"0\"/></val><val><fltVal val=\"1\"/></val></tav></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(multiple_tav_values)
   let motion = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animMotion rAng=\"bad\"><cBhvr><cTn id=\"5\"/></cBhvr></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"
@@ -395,6 +399,22 @@ test "§19.5.2 animClr preserves endpoint payloads" {
     }
     _ => fail("expected animate color node")
   }
+}
+
+///|
+test "§19.5.79 tav defaults missing tm to indefinite" {
+  let tav = try! decode_tav(
+    parse_root("<tav><val><fltVal val=\"1.5\"/></val></tav>"),
+  )
+  match tav.tm_percent {
+    None => ()
+    Some(_) => fail("expected indefinite default")
+  }
+  match tav.value {
+    Some(@domain.AnimVariantFloat(value)) => assert_eq(value, 1.5)
+    _ => fail("expected float value")
+  }
+  assert_eq(tav.fmla, "")
 }
 
 ///|
