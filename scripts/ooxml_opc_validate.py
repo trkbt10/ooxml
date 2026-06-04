@@ -47,6 +47,7 @@ DEFAULT_FIXTURES = [
 ]
 
 PERCENT_ENCODED = re.compile(r"%([0-9A-Fa-f]{2})")
+MALFORMED_PERCENT_ENCODING = re.compile(r"%(?![0-9A-Fa-f]{2})")
 UNRESERVED = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
 MEDIA_TYPE_TOKEN = r"[A-Za-z0-9!#$%&'*+\-.^_`{|}~]+"
 MEDIA_TYPE = re.compile(rf"^{MEDIA_TYPE_TOKEN}/{MEDIA_TYPE_TOKEN}$")
@@ -171,6 +172,8 @@ def validate_part_name(part_name: str) -> str | None:
             return "part name must not contain empty segments"
         if segment.endswith("."):
             return "part name segment must not end with '.'"
+        if MALFORMED_PERCENT_ENCODING.search(segment):
+            return "part name segment must not contain malformed percent-encoding"
         for match in PERCENT_ENCODED.finditer(segment):
             value = int(match.group(1), 16)
             character = chr(value)

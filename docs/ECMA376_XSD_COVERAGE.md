@@ -97,8 +97,9 @@ python3 scripts/ooxml_opc_validate.py path/to/file.docx path/to/file.xlsx path/t
 The validator checks:
 
 - ZIP duplicate entries and invalid ZIP item names.
-- OPC part-name syntax, reserved Relationships part names, ASCII
-  case-insensitive uniqueness, and derivable part-name collisions.
+- OPC part-name syntax, including malformed percent-encoding, reserved
+  Relationships part names, ASCII case-insensitive uniqueness, and derivable
+  part-name collisions.
 - `[Content_Types].xml` Default/Override coverage for every part and
   Relationships part.
 - `[Content_Types].xml` structure: `Default` / `Override` children only,
