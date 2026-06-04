@@ -257,6 +257,9 @@ test "§19.5 media nodes reject malformed direct children" {
 test "§19.5.33 cTn rejects malformed scalar attributes" {
   let before = "<timing><tnLst><par><cTn id=\"1\" "
   let after = "/></par></tnLst></timing>"
+  assert_timing_schema_violation(
+    "<timing><tnLst><par><cTn id=\"4294967296\"/></par></tnLst></timing>",
+  )
   assert_timing_schema_violation(before + "accel=\"bad\"" + after)
   assert_timing_schema_violation(before + "accel=\"-1%\"" + after)
   assert_timing_schema_violation(before + "accel=\"100001\"" + after)
@@ -470,6 +473,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<stCondLst><cond><tn val=\"bad\"/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"
   assert_timing_schema_violation(condition)
+  let out_of_range_tn_val = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tn val=\"4294967296\"/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(out_of_range_tn_val)
   let missing_tn_val = "<timing><tnLst><par><cTn id=\"1\">" +
     "<stCondLst><cond><tn/></cond></stCondLst>" +
     "</cTn></par></tnLst></timing>"

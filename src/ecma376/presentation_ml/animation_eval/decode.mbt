@@ -349,16 +349,7 @@ fn decode_common_time_node_data(
   let node_id = match c_tn {
     Some(t) =>
       match attr_local(t, "id") {
-        Some(text) =>
-          match parse_unsigned_int(trim_whitespace(text)) {
-            Some(n) => n
-            None =>
-              raise @opc_errors.SchemaViolation(
-                section=animation_section,
-                path="cTn/@id",
-                reason="malformed unsignedInt: " + text,
-              )
-          }
+        Some(text) => parse_st_time_node_id_attr(text, "cTn/@id")
         None => 0
       }
     None => 0
@@ -708,7 +699,7 @@ fn decode_cond_target(
   let runtime_id = match tn {
     Some(t) =>
       match attr_local(t, "val") {
-        Some(text) => Some(parse_unsigned_int_attr(text, "tn/@val"))
+        Some(text) => Some(parse_st_time_node_id_attr(text, "tn/@val"))
         None =>
           raise @opc_errors.SchemaViolation(
             section=animation_section,
@@ -2408,6 +2399,31 @@ fn parse_st_tl_time_opt(
     }
   } noraise {
     v => Some(v)
+  }
+}
+
+///|
+fn parse_st_time_node_id_attr(
+  text : String,
+  path : String,
+) -> Int raise @opc_errors.SchemaViolation {
+  let trimmed = trim_whitespace(text)
+  try @domain.ST_TLTimeNodeID::parse(trimmed) catch {
+    e => {
+      raise_schema(path, e)
+      0
+    }
+  } noraise {
+    _ =>
+      match parse_unsigned_int(trimmed) {
+        Some(value) => value
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section=animation_section,
+            path~,
+            reason="malformed ST_TLTimeNodeID: " + text,
+          )
+      }
   }
 }
 
