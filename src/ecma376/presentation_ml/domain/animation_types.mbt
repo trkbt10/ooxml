@@ -120,8 +120,8 @@ pub(all) struct CT_TLCommonBehaviorData {
   /// §19.5.6 @rctx (ST_TLBehaviorRuntimeContext) — runtime context
   /// ("DOM" / "session"); `None` when absent.
   runtime_context : String?
-  /// §19.5.6 @xfrmType (ST_TLBehaviorTransformType) — "pt" / "img" /
-  /// "all"; `None` when absent.
+  /// §19.5.6 @xfrmType (ST_TLBehaviorTransformType) — "pt" / "img";
+  /// `None` when absent.
   transform_type : String?
 } derive(Eq, Debug)
 

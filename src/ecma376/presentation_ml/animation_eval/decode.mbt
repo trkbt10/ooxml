@@ -870,9 +870,15 @@ fn decode_cbhvr_inner(
   }
   let attr_names = decode_attr_name_list(cbhvr)
   // §19.5.6 — runtime/override/transform behaviour attributes on cBhvr.
-  let override_behavior = attr_local(cbhvr, "override")
+  let override_behavior = match attr_local(cbhvr, "override") {
+    Some(text) => Some(parse_st_behavior_override_type(text).to_string())
+    None => None
+  }
   let runtime_context = attr_local(cbhvr, "rctx")
-  let transform_type = attr_local(cbhvr, "xfrmType")
+  let transform_type = match attr_local(cbhvr, "xfrmType") {
+    Some(text) => Some(parse_st_behavior_transform_type(text).to_string())
+    None => None
+  }
   // cBhvr can also carry inline from/to/by as attributes on the
   // parent element; the helper that calls us folds those in.
   // tavLst lives on the behaviour element rather than on cBhvr.
@@ -2245,6 +2251,34 @@ fn parse_st_accumulate_type(
     e => {
       raise_schema("cBhvr/@accumulate", e)
       @domain.AccumulateNone
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_behavior_override_type(
+  text : String,
+) -> @domain.ST_TLBehaviorOverrideType raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLBehaviorOverrideType::parse(text) catch {
+    e => {
+      raise_schema("cBhvr/@override", e)
+      @domain.OverrideNormal
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_behavior_transform_type(
+  text : String,
+) -> @domain.ST_TLBehaviorTransformType raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLBehaviorTransformType::parse(text) catch {
+    e => {
+      raise_schema("cBhvr/@xfrmType", e)
+      @domain.TransformPt
     }
   } noraise {
     v => v

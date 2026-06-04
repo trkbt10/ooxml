@@ -463,6 +463,14 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<set><cBhvr><cTn id=\"14\"/><attrNameLst><attrName>style.visibility</attrName></attrNameLst><tgtEl><spTgt spid=\"5\"/></tgtEl></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(reversed_behavior_children)
+  let malformed_behavior_override = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr override=\"bogus\"><cTn id=\"15\"/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_behavior_override)
+  let malformed_behavior_transform = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr xfrmType=\"all\"><cTn id=\"16\"/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(malformed_behavior_transform)
   let empty_attr_name_list = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<set><cBhvr><cTn id=\"8\"/><attrNameLst/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
@@ -479,6 +487,18 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<set><cBhvr><cTn id=\"10\"/><attrNameLst><attrName>style.visibility</attrName><bogus/></attrNameLst></cBhvr><to><strVal val=\"visible\"/></to></set>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(unexpected_attr_name_child)
+}
+
+///|
+test "§19.5.22 cBhvr preserves enum-backed behavior attributes" {
+  let common = try! decode_cbhvr(
+    parse_root(
+      "<set><cBhvr override=\"childStyle\" xfrmType=\"img\" rctx=\"session\"><cTn id=\"17\"/></cBhvr></set>",
+    ),
+  )
+  assert_true(common.override_behavior == Some("childStyle"))
+  assert_true(common.transform_type == Some("img"))
+  assert_true(common.runtime_context == Some("session"))
 }
 
 ///|
