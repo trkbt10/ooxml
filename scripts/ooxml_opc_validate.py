@@ -550,7 +550,7 @@ def validate_package(package: Path) -> list[ValidationResult]:
                         fail(package, name, "zip", "ZIP item name must use ASCII characters")
                     )
 
-            for name, count in Counter(file_names).items():
+            for name, count in Counter(names).items():
                 if count > 1:
                     results.append(fail(package, name, "zip", f"duplicate ZIP item: {count} entries"))
 

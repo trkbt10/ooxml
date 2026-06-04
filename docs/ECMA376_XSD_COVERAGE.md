@@ -96,8 +96,8 @@ python3 scripts/ooxml_opc_validate.py path/to/file.docx path/to/file.xlsx path/t
 
 The validator checks:
 
-- ZIP duplicate entries and invalid ZIP item names, including raw non-ASCII
-  physical ZIP item names.
+- ZIP duplicate entries across all physical ZIP items, and invalid ZIP item
+  names, including raw non-ASCII physical ZIP item names.
 - OPC part-name syntax, including raw segment characters outside RFC 3987
   `ipchar`, malformed percent-encoding, reserved Relationships part names,
   ASCII case-insensitive uniqueness, and derivable part-name collisions.
