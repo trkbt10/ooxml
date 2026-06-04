@@ -319,6 +319,60 @@ test "§19.5.12 cTn decodes scalar timing metadata" {
 }
 
 ///|
+test "§19.5 animation leaves reject malformed enum attributes" {
+  let before = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>"
+  let after = "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(
+    before +
+    "<anim calcmode=\"linear\"><cBhvr><cTn id=\"70\"/></cBhvr></anim>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<anim valueType=\"color\"><cBhvr><cTn id=\"71\"/></cBhvr></anim>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<animEffect transition=\"fade\"><cBhvr><cTn id=\"72\"/></cBhvr></animEffect>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<animMotion origin=\"slide\"><cBhvr><cTn id=\"73\"/></cBhvr></animMotion>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<animMotion pathEditMode=\"locked\"><cBhvr><cTn id=\"74\"/></cBhvr></animMotion>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before + "<cmd type=\"event\"><cBhvr><cTn id=\"75\"/></cBhvr></cmd>" + after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<animClr clrSpc=\"lab\"><cBhvr><cTn id=\"76\"/></cBhvr></animClr>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<animClr dir=\"clockwise\"><cBhvr><cTn id=\"77\"/></cBhvr></animClr>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<set><cBhvr additive=\"add\"><cTn id=\"78\"/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    after,
+  )
+  assert_timing_schema_violation(
+    before +
+    "<set><cBhvr accumulate=\"sometimes\"><cTn id=\"79\"/></cBhvr><to><strVal val=\"visible\"/></to></set>" +
+    after,
+  )
+}
+
+///|
 test "§19.5.33 timing nodes reject missing required cTn children" {
   assert_timing_schema_violation("<timing><tnLst><par/></tnLst></timing>")
   let anim = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
