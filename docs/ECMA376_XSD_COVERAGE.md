@@ -143,6 +143,10 @@ The validator checks:
   registered root contract, fail this gate.
 - Bitmap image parts with known OOXML image content types declare content types
   matching their payload signatures (`bmp`, `gif`, `jpeg`, `png`, `tiff`).
+- Every standard OOXML XML or image part known to this validator is reachable
+  from the package root through internal Relationships traversal, so stale
+  worksheet, chart, media, theme, or diagram parts cannot remain as unreferenced
+  ZIP payloads.
 - Internal Office document relationship types resolve to target parts with the
   expected content type and, for XML targets, the expected root element. The
   gate covers the generated fixture set's ECMA relationship contracts,

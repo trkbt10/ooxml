@@ -1028,6 +1028,61 @@ def validate_binary_part_content_types(
     return results
 
 
+def collect_reachable_parts(
+    ordinary_parts: set[str],
+    relationships_by_source: dict[str | None, dict[str, Relationship]],
+) -> set[str]:
+    reachable: set[str] = set()
+    visited_sources: set[str | None] = set()
+    pending: list[str | None] = [None]
+
+    while pending:
+        source_part = pending.pop()
+        if source_part in visited_sources:
+            continue
+        visited_sources.add(source_part)
+
+        for relationship in relationships_by_source.get(source_part, {}).values():
+            if relationship.target_mode != "Internal":
+                continue
+            target_part = relationship.resolved_part
+            if target_part is None or target_part not in ordinary_parts:
+                continue
+            if target_part not in reachable:
+                reachable.add(target_part)
+                pending.append(target_part)
+    return reachable
+
+
+def validate_standard_part_reachability(
+    package: Path,
+    ordinary_parts: set[str],
+    defaults: dict[str, str],
+    overrides: dict[str, str],
+    relationships_by_source: dict[str | None, dict[str, Relationship]],
+) -> list[ValidationResult]:
+    if None not in relationships_by_source:
+        return []
+
+    results: list[ValidationResult] = []
+    reachable_parts = collect_reachable_parts(ordinary_parts, relationships_by_source)
+    for part_name in sorted(ordinary_parts):
+        content_type = content_type_for_part(part_name, defaults, overrides)
+        if content_type not in CONTENT_TYPE_ROOT_TAGS and content_type not in IMAGE_CONTENT_TYPES:
+            continue
+        if part_name in reachable_parts:
+            continue
+        results.append(
+            fail(
+                package,
+                part_name,
+                "part-reachability",
+                f"{content_type}: standard OOXML part is not reachable from package root relationships",
+            )
+        )
+    return results
+
+
 def validate_linked_part(
     package: Path,
     archive: zipfile.ZipFile,
@@ -1497,6 +1552,16 @@ def validate_package(package: Path) -> list[ValidationResult]:
                     ordinary_parts,
                     defaults,
                     overrides,
+                )
+            )
+
+            results.extend(
+                validate_standard_part_reachability(
+                    package,
+                    ordinary_parts,
+                    defaults,
+                    overrides,
+                    relationships_by_source,
                 )
             )
 
