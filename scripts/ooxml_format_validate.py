@@ -95,6 +95,18 @@ SPREADSHEET_CONNECTIONS_CT = "application/vnd.openxmlformats-officedocument.spre
 SPREADSHEET_SHEET_METADATA_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml"
 SPREADSHEET_XML_MAPS_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.xmlMaps+xml"
 SPREADSHEET_QUERY_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml"
+SPREADSHEET_REVISION_HEADERS_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionHeaders+xml"
+)
+SPREADSHEET_REVISION_LOG_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionLog+xml"
+)
+SPREADSHEET_USER_NAMES_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.userNames+xml"
+)
+SPREADSHEET_VOLATILE_DEPENDENCIES_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.volatileDependencies+xml"
+)
 PIVOT_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml"
 PIVOT_CACHE_DEFINITION_CT = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml"
@@ -462,6 +474,22 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (SML_NS_TRANSITIONAL, "queryTable"),
         (SML_NS_STRICT, "queryTable"),
     },
+    SPREADSHEET_REVISION_HEADERS_CT: {
+        (SML_NS_TRANSITIONAL, "headers"),
+        (SML_NS_STRICT, "headers"),
+    },
+    SPREADSHEET_REVISION_LOG_CT: {
+        (SML_NS_TRANSITIONAL, "revisions"),
+        (SML_NS_STRICT, "revisions"),
+    },
+    SPREADSHEET_USER_NAMES_CT: {
+        (SML_NS_TRANSITIONAL, "users"),
+        (SML_NS_STRICT, "users"),
+    },
+    SPREADSHEET_VOLATILE_DEPENDENCIES_CT: {
+        (SML_NS_TRANSITIONAL, "volTypes"),
+        (SML_NS_STRICT, "volTypes"),
+    },
     PIVOT_TABLE_CT: {
         (SML_NS_TRANSITIONAL, "pivotTableDefinition"),
         (SML_NS_STRICT, "pivotTableDefinition"),
@@ -801,6 +829,26 @@ for contracts in [
         "queryTable",
         {SPREADSHEET_QUERY_TABLE_CT},
         CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_QUERY_TABLE_CT],
+    ),
+    relationship_contract(
+        "revisionHeaders",
+        {SPREADSHEET_REVISION_HEADERS_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_REVISION_HEADERS_CT],
+    ),
+    relationship_contract(
+        "revisionLog",
+        {SPREADSHEET_REVISION_LOG_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_REVISION_LOG_CT],
+    ),
+    relationship_contract(
+        "usernames",
+        {SPREADSHEET_USER_NAMES_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_USER_NAMES_CT],
+    ),
+    relationship_contract(
+        "volatileDependencies",
+        {SPREADSHEET_VOLATILE_DEPENDENCIES_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_VOLATILE_DEPENDENCIES_CT],
     ),
     relationship_contract(
         "pivotTable",

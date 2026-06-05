@@ -835,6 +835,200 @@ fn sml_aux_query_table_part() -> @xml.Element {
 }
 
 ///|
+fn sml_aux_revision_headers_part() -> @xml.Element {
+  sml_aux_el(
+    "headers",
+    [
+      xa("guid", "{233BEE23-EB5C-4542-905D-0230EFFED88B}"),
+      xa("diskRevisions", "1"),
+      xa("revisionId", "12"),
+      xa("version", "3"),
+    ],
+    [
+      sml_aux_el(
+        "header",
+        [
+          xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000011}"),
+          xa("dateTime", "2026-06-06T00:00:00Z"),
+          xa("maxSheetId", "1"),
+          xa("userName", "Catalog User"),
+          sml_aux_rel_attr("id", "rId1"),
+          xa("minRId", "1"),
+          xa("maxRId", "12"),
+        ],
+        [
+          sml_aux_el("sheetIdMap", [xa("count", "1")], [
+            sml_aux_el("sheetId", [xa("val", "1")], []),
+          ]),
+          sml_aux_el("reviewedList", [xa("count", "1")], [
+            sml_aux_el("reviewed", [xa("rId", "12")], []),
+          ]),
+        ],
+      ),
+    ],
+  )
+}
+
+///|
+fn sml_aux_revision_cell(
+  name : String,
+  ref_ : String,
+  value : String,
+) -> @xml.Element {
+  sml_aux_el(name, [xa("r", ref_), xa("t", "str")], [sml_aux_text("v", value)])
+}
+
+///|
+fn sml_aux_revision_log_part() -> @xml.Element {
+  sml_aux_el("revisions", [], [
+    sml_aux_el(
+      "rrc",
+      [
+        xa("rId", "1"),
+        xa("sId", "1"),
+        xa("ref", "A1:A1"),
+        xa("action", "insertRow"),
+      ],
+      [
+        sml_aux_el(
+          "undo",
+          [
+            xa("index", "0"),
+            xa("exp", "ref"),
+            xa("dr", "A1"),
+            xa("r", "A1"),
+            xa("sId", "1"),
+          ],
+          [],
+        ),
+      ],
+    ),
+    sml_aux_el(
+      "rm",
+      [
+        xa("rId", "2"),
+        xa("sheetId", "1"),
+        xa("source", "A1:A1"),
+        xa("destination", "B1:B1"),
+      ],
+      [],
+    ),
+    sml_aux_el(
+      "rcv",
+      [
+        xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000012}"),
+        xa("action", "add"),
+      ],
+      [],
+    ),
+    sml_aux_el(
+      "rsnm",
+      [
+        xa("rId", "3"),
+        xa("sheetId", "1"),
+        xa("oldName", "OldName"),
+        xa("newName", "S1"),
+      ],
+      [],
+    ),
+    sml_aux_el(
+      "ris",
+      [
+        xa("rId", "4"),
+        xa("sheetId", "1"),
+        xa("name", "S1"),
+        xa("sheetPosition", "0"),
+      ],
+      [],
+    ),
+    sml_aux_el(
+      "rcc",
+      [xa("rId", "5"), xa("sId", "1"), xa("dxf", "1"), xa("odxf", "1")],
+      [
+        sml_aux_revision_cell("oc", "A1", "old"),
+        sml_aux_revision_cell("nc", "A1", "new"),
+        sml_aux_el("odxf", [], []),
+        sml_aux_el("ndxf", [], []),
+      ],
+    ),
+    sml_aux_el(
+      "rfmt",
+      [
+        xa("sheetId", "1"),
+        xa("sqref", "A1:B2"),
+        xa("start", "0"),
+        xa("length", "1"),
+      ],
+      [sml_aux_el("dxf", [], [])],
+    ),
+    sml_aux_el(
+      "raf",
+      [
+        xa("sheetId", "1"),
+        xa("ref", "A1:B2"),
+        xa("autoFormatId", "1"),
+        xa("applyNumberFormats", "1"),
+        xa("applyFontFormats", "1"),
+      ],
+      [],
+    ),
+    sml_aux_el("rdn", [xa("rId", "6"), xa("name", "CatalogName")], [
+      sml_aux_text("formula", "S1!$A$1"),
+      sml_aux_text("oldFormula", "S1!$B$1"),
+    ]),
+    sml_aux_el(
+      "rcmt",
+      [
+        xa("sheetId", "1"),
+        xa("cell", "A1"),
+        xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000013}"),
+        xa("action", "add"),
+        xa("author", "Catalog User"),
+        xa("newLength", "7"),
+      ],
+      [],
+    ),
+    sml_aux_el(
+      "rqt",
+      [xa("sheetId", "1"), xa("ref", "A1:B2"), xa("fieldId", "1")],
+      [],
+    ),
+    sml_aux_el("rcft", [xa("rId", "7"), xa("sheetId", "1")], []),
+  ])
+}
+
+///|
+fn sml_aux_users_part() -> @xml.Element {
+  sml_aux_el("users", [xa("count", "1")], [
+    sml_aux_el(
+      "userInfo",
+      [
+        xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000014}"),
+        xa("name", "Catalog User"),
+        xa("id", "1"),
+        xa("dateTime", "2026-06-06T00:00:00Z"),
+      ],
+      [],
+    ),
+  ])
+}
+
+///|
+fn sml_aux_volatile_dependencies_part() -> @xml.Element {
+  sml_aux_el("volTypes", [], [
+    sml_aux_el("volType", [xa("type", "realTimeData")], [
+      sml_aux_el("main", [xa("first", "RTD")], [
+        sml_aux_el("tp", [xa("t", "s")], [
+          sml_aux_text("v", "CatalogTopic"),
+          sml_aux_text("stp", "Server"),
+          sml_aux_el("tr", [xa("r", "A1"), xa("s", "1")], []),
+        ]),
+      ]),
+    ]),
+  ])
+}
+
+///|
 fn extras_sml_aux_parts(cases : Array[VisualCase]) -> Unit {
   cases.push({
     id: "workbook-aux-rich",
@@ -889,6 +1083,30 @@ fn extras_sml_aux_parts(cases : Array[VisualCase]) -> Unit {
     format: "xlsx:queryTable",
     category: "sml-aux",
     content: sml_aux_query_table_part(),
+  })
+  cases.push({
+    id: "revision-headers-rich",
+    format: "xlsx:revisionHeaders",
+    category: "sml-aux",
+    content: sml_aux_revision_headers_part(),
+  })
+  cases.push({
+    id: "revision-log-rich",
+    format: "xlsx:revisionLog",
+    category: "sml-aux",
+    content: sml_aux_revision_log_part(),
+  })
+  cases.push({
+    id: "shared-users-rich",
+    format: "xlsx:userNames",
+    category: "sml-aux",
+    content: sml_aux_users_part(),
+  })
+  cases.push({
+    id: "volatile-dependencies-rich",
+    format: "xlsx:volatileDependencies",
+    category: "sml-aux",
+    content: sml_aux_volatile_dependencies_part(),
   })
 }
 

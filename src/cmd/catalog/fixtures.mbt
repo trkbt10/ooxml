@@ -4872,6 +4872,12 @@ fn generate_visual_fixtures() -> Unit {
       "xlsx:metadata" => xlsx_with_aux_root_package("metadata", c.content)
       "xlsx:xmlMaps" => xlsx_with_aux_root_package("xmlMaps", c.content)
       "xlsx:queryTable" => xlsx_with_aux_root_package("queryTable", c.content)
+      "xlsx:revisionHeaders" =>
+        xlsx_with_aux_root_package("revisionHeaders", c.content)
+      "xlsx:revisionLog" => xlsx_with_aux_root_package("revisionLog", c.content)
+      "xlsx:userNames" => xlsx_with_aux_root_package("userNames", c.content)
+      "xlsx:volatileDependencies" =>
+        xlsx_with_aux_root_package("volatileDependencies", c.content)
       "docx:settings" => docx_aux_package("settings", c.content)
       "docx:styles" => docx_aux_package("styles", c.content)
       "docx:numbering" => docx_aux_package("numbering", c.content)
@@ -4908,6 +4914,10 @@ fn generate_visual_fixtures() -> Unit {
       "xlsx:metadata" => "xlsx"
       "xlsx:xmlMaps" => "xlsx"
       "xlsx:queryTable" => "xlsx"
+      "xlsx:revisionHeaders" => "xlsx"
+      "xlsx:revisionLog" => "xlsx"
+      "xlsx:userNames" => "xlsx"
+      "xlsx:volatileDependencies" => "xlsx"
       "docx:settings" => "docx"
       "docx:styles" => "docx"
       "docx:numbering" => "docx"

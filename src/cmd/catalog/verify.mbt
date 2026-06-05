@@ -6447,6 +6447,12 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:metadata" => xlsx_with_aux_root_package("metadata", content)
     "xlsx:xmlMaps" => xlsx_with_aux_root_package("xmlMaps", content)
     "xlsx:queryTable" => xlsx_with_aux_root_package("queryTable", content)
+    "xlsx:revisionHeaders" =>
+      xlsx_with_aux_root_package("revisionHeaders", content)
+    "xlsx:revisionLog" => xlsx_with_aux_root_package("revisionLog", content)
+    "xlsx:userNames" => xlsx_with_aux_root_package("userNames", content)
+    "xlsx:volatileDependencies" =>
+      xlsx_with_aux_root_package("volatileDependencies", content)
     "xlsx:drawing" => xlsx_with_drawing_root_package(content)
     "xlsx:pivot" => {
       let (sheet, cache_def, cache_records, pivot_def) = catalog_sml_pivot_parts(
@@ -9825,6 +9831,54 @@ fn xlsx_with_aux_root_package(
       }
       xlsx_package_with_query_table_part(query_table_root)
     }
+    "revisionHeaders" => {
+      let headers_root : @xml.Element = if content.name.local_name == "headers" {
+        content
+      } else {
+        xe(ns_s, "headers", [], [Element(content)])
+      }
+      xlsx_package_with_revision_parts(
+        headers_root,
+        catalog_sml_revisions_minimal(),
+      )
+    }
+    "revisionLog" => {
+      let revisions_root : @xml.Element = if content.name.local_name ==
+        "revisions" {
+        content
+      } else {
+        xe(ns_s, "revisions", [], [Element(content)])
+      }
+      xlsx_package_with_revision_parts(
+        catalog_sml_revision_headers_minimal(),
+        revisions_root,
+      )
+    }
+    "userNames" => {
+      let users_root : @xml.Element = if content.name.local_name == "users" {
+        content
+      } else {
+        xe(ns_s, "users", [], [Element(content)])
+      }
+      xlsx_package_with_aux_part(
+        "userNames", "revisions/userNames.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/usernames",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.userNames+xml",
+        users_root,
+      )
+    }
+    "volatileDependencies" => {
+      let vol_types_root : @xml.Element = if content.name.local_name ==
+        "volTypes" {
+        content
+      } else {
+        xe(ns_s, "volTypes", [], [Element(content)])
+      }
+      xlsx_package_with_aux_part(
+        "volatileDependencies", "volatileDependencies.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/volatileDependencies",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.volatileDependencies+xml",
+        vol_types_root,
+      )
+    }
     _ => xlsx_package(content)
   }
 }
@@ -10899,6 +10953,173 @@ fn xlsx_package_with_aux_part(
 }
 
 ///|
+/// Minimal Shared Workbook Revision Headers part.  The `<header>`'s
+/// `r:id` is resolved by `xlsx_package_with_revision_parts` to the
+/// companion revision log part.
+fn catalog_sml_revision_headers_minimal() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "headers", [xa("guid", "{233BEE23-EB5C-4542-905D-0230EFFED88B}")], [
+    Element(
+      xe(
+        ns_s,
+        "header",
+        [
+          xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000001}"),
+          xa("dateTime", "2026-06-06T00:00:00Z"),
+          xa("maxSheetId", "1"),
+          xa("userName", "Catalog User"),
+          {
+            name: {
+              prefix: Some("r"),
+              local_name: "id",
+              ns: Some(NS_OFFICE_REL),
+            },
+            value: "rId1",
+          },
+        ],
+        [
+          Element(
+            xe(ns_s, "sheetIdMap", [xa("count", "1")], [
+              Element(xe(ns_s, "sheetId", [xa("val", "1")], [])),
+            ]),
+          ),
+        ],
+      ),
+    ),
+  ])
+}
+
+///|
+/// Minimal Shared Workbook Revision Log part used as a companion when
+/// the target fixture is the revision headers root.
+fn catalog_sml_revisions_minimal() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "revisions", [], [
+    Element(
+      xe(
+        ns_s,
+        "rcv",
+        [
+          xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000002}"),
+          xa("action", "add"),
+        ],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+/// `.xlsx` package carrying the shared-workbook revision header/log
+/// relationship stack: workbook -> revisionHeaders -> revisionLog.
+/// Revision logs are explicit relationships from the headers part, so
+/// `xlsx_package_with_aux_part` cannot model this graph.
+fn xlsx_package_with_revision_parts(
+  headers_root : @xml.Element,
+  revisions_root : @xml.Element,
+) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let workbook : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/revisionHeaders",
+          ),
+          xa("Target", "revisions/revisionHeaders.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let header_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/revisionLog",
+          ),
+          xa("Target", "revisionLog1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet : @xml.Element = xe(ns_s, "worksheet", [], [
+    Element(xe(ns_s, "sheetData", [], [])),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        (
+          "/xl/revisions/revisionHeaders.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionHeaders+xml",
+        ),
+        (
+          "/xl/revisions/revisionLog1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionLog+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/revisions/revisionHeaders.xml", write_part(headers_root)),
+    ("xl/revisions/_rels/revisionHeaders.xml.rels", write_part(header_rels)),
+    ("xl/revisions/revisionLog1.xml", write_part(revisions_root)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// `.xlsx` package whose worksheet owns a queryTable relationship.
 /// The queryTable references connection id 1, so the host includes a
 /// minimal workbook-level connections part as its referent.
@@ -11421,6 +11642,35 @@ fn empty_body_package(format : String) -> Bytes {
       xlsx_with_aux_root_package("xmlMaps", xe(ns_s, "MapInfo", [], []))
     "xlsx:queryTable" =>
       xlsx_with_aux_root_package("queryTable", xe(ns_s, "queryTable", [], []))
+    "xlsx:revisionHeaders" =>
+      xlsx_with_aux_root_package(
+        "revisionHeaders",
+        catalog_sml_revision_headers_minimal(),
+      )
+    "xlsx:revisionLog" =>
+      xlsx_with_aux_root_package("revisionLog", catalog_sml_revisions_minimal())
+    "xlsx:userNames" =>
+      xlsx_with_aux_root_package("userNames", xe(ns_s, "users", [], []))
+    "xlsx:volatileDependencies" =>
+      xlsx_with_aux_root_package(
+        "volatileDependencies",
+        xe(ns_s, "volTypes", [], [
+          Element(
+            xe(ns_s, "volType", [xa("type", "realTimeData")], [
+              Element(
+                xe(ns_s, "main", [xa("first", "RTD")], [
+                  Element(
+                    xe(ns_s, "tp", [], [
+                      Element(xe(ns_s, "v", [], [Text("0")])),
+                      Element(xe(ns_s, "tr", [xa("r", "A1"), xa("s", "1")], [])),
+                    ]),
+                  ),
+                ]),
+              ),
+            ]),
+          ),
+        ]),
+      )
     "xlsx:drawing" =>
       xlsx_with_drawing_root_package(
         xep(
