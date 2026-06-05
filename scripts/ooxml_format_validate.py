@@ -774,6 +774,17 @@ def ok(package: Path) -> ValidationResult:
     return ValidationResult(package_label(package), "(package)", "ok", "format", "")
 
 
+def ascii_case_key(value: str) -> str:
+    return "".join(
+        chr(ord(character) + 32) if "A" <= character <= "Z" else character
+        for character in value
+    )
+
+
+def content_type_key(content_type: str) -> str:
+    return ascii_case_key(content_type)
+
+
 def part_name_for_item(item_name: str) -> str:
     return "/" + item_name
 
@@ -842,11 +853,11 @@ def parse_content_types(
         if child.tag == f"{{{CONTENT_TYPES_NS}}}Default":
             extension = child.get("Extension", "")
             content_type = child.get("ContentType", "")
-            defaults[extension] = content_type
+            defaults[ascii_case_key(extension)] = content_type
         elif child.tag == f"{{{CONTENT_TYPES_NS}}}Override":
             part_name = child.get("PartName", "")
             content_type = child.get("ContentType", "")
-            overrides[part_name] = content_type
+            overrides[ascii_case_key(part_name)] = content_type
     return defaults, overrides, []
 
 
@@ -855,14 +866,15 @@ def content_type_for_part(
     defaults: dict[str, str],
     overrides: dict[str, str],
 ) -> str | None:
-    if part_name in overrides:
-        return overrides[part_name]
+    override_key = ascii_case_key(part_name)
+    if override_key in overrides:
+        return overrides[override_key]
     item_name = item_name_for_part(part_name)
     basename = item_name.rsplit("/", 1)[-1]
     if "." not in basename:
         return None
     extension = basename.rsplit(".", 1)[-1]
-    return defaults.get(extension)
+    return defaults.get(ascii_case_key(extension))
 
 
 def resolve_internal_target(source_part: str | None, target: str) -> tuple[str | None, str | None]:
@@ -999,10 +1011,46 @@ def office_relationship_local_name(relationship_type: str) -> str | None:
 
 
 def is_standardized_ooxml_xml_content_type(content_type: str) -> bool:
-    if not content_type.endswith("+xml"):
+    normalized = content_type_key(content_type)
+    if not normalized.endswith("+xml"):
         return False
-    return content_type.startswith("application/vnd.openxmlformats-officedocument.") or (
-        content_type.startswith("application/vnd.openxmlformats-package.")
+    return normalized.startswith("application/vnd.openxmlformats-officedocument.") or (
+        normalized.startswith("application/vnd.openxmlformats-package.")
+    )
+
+
+CONTENT_TYPE_ROOT_TAGS_BY_KEY = {
+    content_type_key(content_type): root_tags
+    for content_type, root_tags in CONTENT_TYPE_ROOT_TAGS.items()
+}
+IMAGE_SIGNATURES_BY_CONTENT_TYPE_KEY = {
+    content_type_key(content_type): signatures
+    for content_type, signatures in IMAGE_SIGNATURES.items()
+}
+STANDARD_PART_CONTENT_TYPE_KEYS = set(CONTENT_TYPE_ROOT_TAGS_BY_KEY) | {
+    content_type_key(content_type) for content_type in IMAGE_CONTENT_TYPES
+}
+
+
+def expected_root_tags_for_content_type(
+    content_type: str | None,
+) -> set[tuple[str, str]] | None:
+    if content_type is None:
+        return None
+    return CONTENT_TYPE_ROOT_TAGS_BY_KEY.get(content_type_key(content_type))
+
+
+def content_type_in_set(content_type: str | None, expected: set[str]) -> bool:
+    if content_type is None:
+        return False
+    key = content_type_key(content_type)
+    return any(key == content_type_key(candidate) for candidate in expected)
+
+
+def is_standard_part_content_type(content_type: str | None) -> bool:
+    return (
+        content_type is not None
+        and content_type_key(content_type) in STANDARD_PART_CONTENT_TYPE_KEYS
     )
 
 
@@ -1029,7 +1077,7 @@ def validate_xml_part_content_type_roots(
             xml_roots[part_name] = root
 
         root_tag = split_tag(root.tag)
-        expected_root_tags = CONTENT_TYPE_ROOT_TAGS.get(content_type or "")
+        expected_root_tags = expected_root_tags_for_content_type(content_type)
         if expected_root_tags is not None:
             if root_tag not in expected_root_tags:
                 results.append(
@@ -1044,7 +1092,10 @@ def validate_xml_part_content_type_roots(
 
         if content_type is None:
             continue
-        if content_type == "application/xml" and root_tag[0] in STANDARD_XML_ROOT_NAMESPACES:
+        if (
+            content_type_key(content_type) == "application/xml"
+            and root_tag[0] in STANDARD_XML_ROOT_NAMESPACES
+        ):
             results.append(
                 fail(
                     package,
@@ -1076,7 +1127,11 @@ def validate_binary_part_content_types(
     results: list[ValidationResult] = []
     for part_name in sorted(ordinary_parts):
         content_type = content_type_for_part(part_name, defaults, overrides)
-        signatures = IMAGE_SIGNATURES.get(content_type or "")
+        signatures = (
+            IMAGE_SIGNATURES_BY_CONTENT_TYPE_KEY.get(content_type_key(content_type))
+            if content_type is not None
+            else None
+        )
         if signatures is None:
             continue
 
@@ -1138,7 +1193,7 @@ def validate_standard_part_reachability(
     reachable_parts = collect_reachable_parts(ordinary_parts, relationships_by_source)
     for part_name in sorted(ordinary_parts):
         content_type = content_type_for_part(part_name, defaults, overrides)
-        if content_type not in CONTENT_TYPE_ROOT_TAGS and content_type not in IMAGE_CONTENT_TYPES:
+        if not is_standard_part_content_type(content_type):
             continue
         if part_name in reachable_parts:
             continue
@@ -1224,7 +1279,7 @@ def validate_linked_part(
         return results
 
     content_type = content_type_for_part(target_part, defaults, overrides)
-    if content_type not in contract.content_types:
+    if not content_type_in_set(content_type, contract.content_types):
         results.append(
             fail(
                 package,
@@ -1306,7 +1361,7 @@ def validate_relationship_target_contracts(
                 continue
 
             content_type = content_type_for_part(target_part, defaults, overrides)
-            if content_type not in contract.content_types:
+            if not content_type_in_set(content_type, contract.content_types):
                 results.append(
                     fail(
                         package,
