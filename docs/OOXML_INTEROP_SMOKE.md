@@ -53,13 +53,13 @@ If they are absent, generate them first:
 moon run src/cmd/catalog -- fixtures
 ```
 
-Recent interop evidence on 2026-06-04:
+Recent interop evidence:
 
-| Scope | Result |
-|---|---|
-| LibreOffice default representative fixtures | `ok (3 file(s))` |
-| Microsoft Office default representative fixtures | `ok (3 file(s))` |
-| LibreOffice `docx/drawing`, `xlsx/cf`, `pptx/diagram` categories | `ok (59 file(s))` |
+| Date | Scope | Result |
+|---|---|---|
+| 2026-06-05 | LibreOffice default representative fixtures | `ok (3 file(s))` |
+| 2026-06-05 | Microsoft Office default representative fixtures | `ok (3 file(s))` |
+| 2026-06-04 | LibreOffice `docx/drawing`, `xlsx/cf`, `pptx/diagram` categories | `ok (59 file(s))` |
 
 The category run covers the ECMA Transitional VML drawing fixtures, SpreadsheetML
 conditional-formatting/dataBar fixtures, and PresentationML diagram fixtures
