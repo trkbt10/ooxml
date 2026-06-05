@@ -98,6 +98,29 @@ fn extras_wml_extras(cases : Array[VisualCase]) -> Unit {
     xe(NS_W, "p", [], kids)
   }
 
+  // `<w:r>` with arbitrary run inner-content elements.  Used for
+  // revision payloads where `<w:t>` is not the only legal text carrier
+  // (`delText`, `delInstrText`, `ptab`, etc.).
+  let run_with = fn(children : Array[@xml.Element]) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
+    for child in children {
+      kids.push(Element(child))
+    }
+    xe(NS_W, "r", [], kids)
+  }
+
+  let text_leaf = fn(name : String, text : String) -> @xml.Element {
+    xe(NS_W, name, [], [Text(text)])
+  }
+
+  let change_attrs = fn(id_ : String) -> Array[@xml.Attribute] {
+    [
+      w_attr("id", id_),
+      w_attr("author", "Catalog User"),
+      w_attr("date", "2026-06-06T00:00:00Z"),
+    ]
+  }
+
   // Wrap a list of paragraphs inside a `<w:body>`.
   let body_with = fn(paras : Array[@xml.Element]) -> @xml.Element {
     let kids : Array[@xml.Node] = []
@@ -433,6 +456,180 @@ fn extras_wml_extras(cases : Array[VisualCase]) -> Unit {
           [Element(w_run(None, "(Smith 2024)"))],
         ),
         w_run(None, ", the result follows."),
+      ]),
+    ]),
+  })
+
+  // `<w:customXmlPr>` carries custom XML placeholder/attribute metadata
+  // before the wrapped inline content.  This fixture adds the property
+  // branch that the transparent citation wrapper above intentionally
+  // omits.
+  cases.push({
+    id: "extras-wml-customxml-properties",
+    format: "docx",
+    category: "customXml",
+    content: body_with([
+      wrap_in_paragraph([
+        w_run(None, "Custom XML metadata: "),
+        xe(
+          NS_W,
+          "customXml",
+          [
+            w_attr("uri", "urn:catalog:customxml"),
+            w_attr("element", "annotated"),
+          ],
+          [
+            Element(
+              xe(NS_W, "customXmlPr", [], [
+                Element(w_val("placeholder", "Catalog placeholder")),
+                Element(
+                  xe(
+                    NS_W,
+                    "attr",
+                    [
+                      w_attr("uri", "urn:catalog:customxml"),
+                      w_attr("name", "role"),
+                      w_attr("val", "sample"),
+                    ],
+                    [],
+                  ),
+                ),
+              ]),
+            ),
+            Element(w_run(None, "inline payload")),
+          ],
+        ),
+        w_run(None, "."),
+      ]),
+    ]),
+  })
+
+  // Bidirectional embedding/override wrappers.  They are transparent
+  // containers over EG_PContent, but a parser/viewer must recurse
+  // through them instead of dropping the nested runs.
+  cases.push({
+    id: "extras-wml-bidi-run-wrappers",
+    format: "docx",
+    category: "bidi",
+    content: body_with([
+      wrap_in_paragraph([
+        w_run(None, "Bidi wrappers: "),
+        xe(NS_W, "dir", [w_attr("val", "rtl")], [
+          Element(w_run(None, "RTL embedded text")),
+        ]),
+        w_run(None, " / "),
+        xe(NS_W, "bdo", [w_attr("val", "ltr")], [
+          Element(w_run(None, "LTR override text")),
+        ]),
+      ]),
+    ]),
+  })
+
+  // Revision/range markers that live directly in paragraph content.
+  // This covers run-level track-change containers, move/custom-XML
+  // range pairs, permission ranges, proof-error ranges, and deleted
+  // run text carriers.  The elements are intentionally adjacent to
+  // visible runs so a viewer that drops or renders the markers
+  // incorrectly changes the fixture output.
+  cases.push({
+    id: "extras-wml-revision-range-gallery",
+    format: "docx",
+    category: "revision",
+    content: body_with([
+      wrap_in_paragraph([
+        w_run(None, "Revision gallery: "),
+        xe(NS_W, "proofErr", [w_attr("type", "spellStart")], []),
+        w_run(None, "mispelled"),
+        xe(NS_W, "proofErr", [w_attr("type", "spellEnd")], []),
+        w_run(None, " "),
+        xe(
+          NS_W,
+          "permStart",
+          [w_attr("id", "perm1"), w_attr("edGrp", "everyone")],
+          [],
+        ),
+        w_run(None, "editable range"),
+        xe(NS_W, "permEnd", [w_attr("id", "perm1")], []),
+      ]),
+      wrap_in_paragraph([
+        xe(NS_W, "customXmlInsRangeStart", change_attrs("201"), []),
+        w_run(None, "custom XML inserted range"),
+        xe(NS_W, "customXmlInsRangeEnd", [w_attr("id", "201")], []),
+        w_run(None, " "),
+        xe(NS_W, "customXmlDelRangeStart", change_attrs("202"), []),
+        w_run(None, "custom XML deleted range"),
+        xe(NS_W, "customXmlDelRangeEnd", [w_attr("id", "202")], []),
+      ]),
+      wrap_in_paragraph([
+        xe(NS_W, "customXmlMoveFromRangeStart", change_attrs("203"), []),
+        w_run(None, "custom XML move-from range"),
+        xe(NS_W, "customXmlMoveFromRangeEnd", [w_attr("id", "203")], []),
+        w_run(None, " "),
+        xe(NS_W, "customXmlMoveToRangeStart", change_attrs("204"), []),
+        w_run(None, "custom XML move-to range"),
+        xe(NS_W, "customXmlMoveToRangeEnd", [w_attr("id", "204")], []),
+      ]),
+      wrap_in_paragraph([
+        xe(
+          NS_W,
+          "moveFromRangeStart",
+          [
+            w_attr("id", "205"),
+            w_attr("name", "move-from-bookmark"),
+            w_attr("author", "Catalog User"),
+            w_attr("date", "2026-06-06T00:00:00Z"),
+          ],
+          [],
+        ),
+        w_run(None, "moved-from marked range"),
+        xe(NS_W, "moveFromRangeEnd", [w_attr("id", "205")], []),
+        w_run(None, " "),
+        xe(
+          NS_W,
+          "moveToRangeStart",
+          [
+            w_attr("id", "206"),
+            w_attr("name", "move-to-bookmark"),
+            w_attr("author", "Catalog User"),
+            w_attr("date", "2026-06-06T00:00:00Z"),
+          ],
+          [],
+        ),
+        w_run(None, "moved-to marked range"),
+        xe(NS_W, "moveToRangeEnd", [w_attr("id", "206")], []),
+      ]),
+      wrap_in_paragraph([
+        xe(NS_W, "ins", change_attrs("207"), [
+          Element(w_run(None, "inserted run")),
+        ]),
+        w_run(None, " "),
+        xe(NS_W, "del", change_attrs("208"), [
+          Element(run_with([text_leaf("delText", "deleted run")])),
+        ]),
+        w_run(None, " "),
+        xe(NS_W, "moveFrom", change_attrs("209"), [
+          Element(run_with([text_leaf("delInstrText", " MERGEFIELD OldName ")])),
+        ]),
+        w_run(None, " "),
+        xe(NS_W, "moveTo", change_attrs("210"), [
+          Element(w_run(None, "moved-to run")),
+        ]),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Absolute tab"),
+        run_with([
+          xe(
+            NS_W,
+            "ptab",
+            [
+              w_attr("alignment", "right"),
+              w_attr("relativeTo", "margin"),
+              w_attr("leader", "dot"),
+            ],
+            [],
+          ),
+        ]),
+        w_run(None, "42"),
       ]),
     ]),
   })
