@@ -64,6 +64,24 @@ fn extras_wml_fields(cases : Array[VisualCase]) -> Unit {
     ])
   }
 
+  let ffdata = fn(children : Array[@xml.Element]) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
+    for c in children {
+      kids.push(Element(c))
+    }
+    xe(NS_W, "ffData", [], kids)
+  }
+
+  let fldchar_form_run = fn(children : Array[@xml.Element]) -> @xml.Element {
+    xe(NS_W, "r", [], [
+      Element(
+        xe(NS_W, "fldChar", [w_attr("fldCharType", "begin")], [
+          Element(ffdata(children)),
+        ]),
+      ),
+    ])
+  }
+
   // `<w:fldSimple w:instr="…">(runs)</w:fldSimple>` — simple field
   // wrapper that carries the instruction in the `w:instr` attribute
   // and the cached display result as child runs.
@@ -201,6 +219,91 @@ fn extras_wml_fields(cases : Array[VisualCase]) -> Unit {
           w_run(None, "Document author: "),
           fldsimple("AUTHOR", [w_run(None, "Catalog Author")]),
           w_run(None, "."),
+        ]),
+      ),
+    ]),
+  })
+
+  // Legacy form fields — `<w:fldChar><w:ffData>...`.
+  cases.push({
+    id: "field-legacy-form-controls",
+    format: "docx",
+    category: "field",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(None, [
+          w_run(None, "Checkbox: "),
+          fldchar_form_run([
+            w_val("name", "AcceptTerms"),
+            w_val("label", "1"),
+            w_val("tabIndex", "1"),
+            w_val("enabled", "1"),
+            w_val("calcOnExit", "0"),
+            w_val("entryMacro", "OnEnterAcceptTerms"),
+            w_val("exitMacro", "OnExitAcceptTerms"),
+            xe(
+              NS_W,
+              "helpText",
+              [w_attr("type", "text"), w_attr("val", "Check to accept")],
+              [],
+            ),
+            xe(
+              NS_W,
+              "statusText",
+              [w_attr("type", "text"), w_attr("val", "Required checkbox")],
+              [],
+            ),
+            xe(NS_W, "checkBox", [], [
+              Element(w_val("sizeAuto", "1")),
+              Element(w_val("default", "0")),
+              Element(w_val("checked", "1")),
+            ]),
+          ]),
+          fldchar_run("separate"),
+          w_run(None, "checked"),
+          fldchar_run("end"),
+        ]),
+      ),
+      Element(
+        w_p(None, [
+          w_run(None, "Drop-down: "),
+          fldchar_form_run([
+            w_val("name", "Choice"),
+            w_val("label", "2"),
+            w_val("tabIndex", "2"),
+            w_val("enabled", "1"),
+            w_val("calcOnExit", "1"),
+            xe(NS_W, "ddList", [], [
+              Element(w_val("result", "1")),
+              Element(w_val("default", "0")),
+              Element(w_val("listEntry", "One")),
+              Element(w_val("listEntry", "Two")),
+            ]),
+          ]),
+          fldchar_run("separate"),
+          w_run(None, "Two"),
+          fldchar_run("end"),
+        ]),
+      ),
+      Element(
+        w_p(None, [
+          w_run(None, "Text input: "),
+          fldchar_form_run([
+            w_val("name", "ShortText"),
+            w_val("label", "3"),
+            w_val("tabIndex", "3"),
+            w_val("enabled", "1"),
+            w_val("calcOnExit", "0"),
+            xe(NS_W, "textInput", [], [
+              Element(w_val("type", "regular")),
+              Element(w_val("default", "Catalog")),
+              Element(w_val("maxLength", "32")),
+              Element(w_val("format", "Title Case")),
+            ]),
+          ]),
+          fldchar_run("separate"),
+          w_run(None, "Catalog"),
+          fldchar_run("end"),
         ]),
       ),
     ]),

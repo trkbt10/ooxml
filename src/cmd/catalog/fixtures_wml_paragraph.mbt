@@ -59,6 +59,15 @@ fn extras_wml_paragraph(cases : Array[VisualCase]) -> Unit {
       [],
     )
   }
+  // `<w:shd>` paragraph shading.
+  let shd = fn(fill : String) -> @xml.Element {
+    xe(
+      NS_W,
+      "shd",
+      [w_attr("val", "clear"), w_attr("color", "auto"), w_attr("fill", fill)],
+      [],
+    )
+  }
   // `<w:numPr>` with explicit ilvl + numId, for nested-list
   // demonstrations (note: without a real `numbering.xml` this only
   // exercises the layout/indent path, not the bullet glyph).
@@ -798,6 +807,98 @@ fn extras_wml_paragraph(cases : Array[VisualCase]) -> Unit {
         ),
       ),
       Element(w_p(None, [w_run(None, "Body after the quotation.")])),
+    ]),
+  })
+
+  // ---- CT_PPrBase comprehensive toggles -----------------------
+  // Schema-order coverage for paragraph properties that have little
+  // standalone visual surface but still need fixture observation.
+  cases.push({
+    id: "paragraph-ppr-comprehensive",
+    format: "docx",
+    category: "paragraph",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(
+          Some(
+            ppr([
+              w_val("pStyle", "CatalogParagraph"),
+              xe(NS_W, "keepNext", [], []),
+              xe(NS_W, "keepLines", [], []),
+              xe(NS_W, "pageBreakBefore", [w_attr("val", "0")], []),
+              xe(
+                NS_W,
+                "framePr",
+                [
+                  w_attr("w", "3600"),
+                  w_attr("h", "900"),
+                  w_attr("hAnchor", "margin"),
+                  w_attr("vAnchor", "text"),
+                  w_attr("wrap", "around"),
+                  w_attr("x", "3600"),
+                  w_attr("y", "0"),
+                ],
+                [],
+              ),
+              xe(NS_W, "widowControl", [w_attr("val", "1")], []),
+              numpr("0", "1"),
+              xe(NS_W, "suppressLineNumbers", [], []),
+              xe(NS_W, "pBdr", [], [
+                Element(bdr_side("top", "single", "6", "4472C4")),
+                Element(bdr_side("bottom", "single", "6", "4472C4")),
+              ]),
+              shd("EAF2F8"),
+              xe(NS_W, "tabs", [], [
+                Element(tab_stop("left", "1440", None)),
+                Element(tab_stop("right", "7200", Some("dot"))),
+              ]),
+              xe(NS_W, "suppressAutoHyphens", [], []),
+              xe(NS_W, "kinsoku", [], []),
+              xe(NS_W, "wordWrap", [], []),
+              xe(NS_W, "overflowPunct", [], []),
+              xe(NS_W, "topLinePunct", [], []),
+              xe(NS_W, "autoSpaceDE", [], []),
+              xe(NS_W, "autoSpaceDN", [], []),
+              xe(NS_W, "bidi", [], []),
+              xe(NS_W, "adjustRightInd", [], []),
+              xe(NS_W, "snapToGrid", [], []),
+              spacing([("before", "120"), ("after", "120"), ("line", "360")]),
+              ind([
+                ("start", "360"),
+                ("end", "360"),
+                ("hanging", "180"),
+                ("firstLineChars", "100"),
+              ]),
+              xe(NS_W, "contextualSpacing", [], []),
+              xe(NS_W, "mirrorIndents", [], []),
+              xe(NS_W, "suppressOverlap", [], []),
+              w_val("jc", "both"),
+              w_val("textDirection", "lrTb"),
+              w_val("textAlignment", "baseline"),
+              w_val("textboxTightWrap", "none"),
+              w_val("outlineLvl", "4"),
+              w_val("divId", "42"),
+              xe(
+                NS_W,
+                "cnfStyle",
+                [
+                  w_attr("firstRow", "1"),
+                  w_attr("lastRow", "0"),
+                  w_attr("firstColumn", "1"),
+                  w_attr("lastColumn", "0"),
+                ],
+                [],
+              ),
+            ]),
+          ),
+          [
+            w_run(
+              None,
+              "Paragraph properties fixture with schema-order CT_PPrBase coverage.",
+            ),
+          ],
+        ),
+      ),
     ]),
   })
 }
