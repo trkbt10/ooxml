@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `872` |
-| XML parts scanned | `5848` |
-| catalog QNames observed in fixtures | `1200/2296 (52.3%)` |
-| catalog declaration entries observed by QName | `2482/4560 (54.4%)` |
-| observed fixture QNames that are catalog ECMA QNames | `1200/1290 (93.0%)` |
+| package fixtures scanned | `874` |
+| XML parts scanned | `5854` |
+| catalog QNames observed in fixtures | `1216/2296 (53.0%)` |
+| catalog declaration entries observed by QName | `2516/4560 (55.2%)` |
+| observed fixture QNames that are catalog ECMA QNames | `1216/1311 (92.8%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -98,12 +98,19 @@ relationship branches. The `contentPart` target is intentionally an arbitrary
 XML content part, so the target payload itself is not counted as an ECMA XSD
 validation target.
 
-The Wordprocessing Drawing namespace is now `15/31` QNames observed. The
+The Wordprocessing Drawing namespace is now `31/31` QNames observed. The
 `drawing-content-part-cp-locks` fixture wraps `wp:contentPart` in a real DOCX
 document relationship to a Custom XML Data Storage item and covers the
-non-visual content part properties, `a:cpLocks`, and transform branches. This
-improves fixture occurrence and package-contract coverage for WPD content
-parts; it does not prove embedded content rendering or office-suite interop.
+non-visual content part properties, `a:cpLocks`, and transform branches. The
+`drawing-anchor-polygon-wraps-align` fixture covers aligned anchor positioning,
+`effectExtent`, and tight/through polygon wrapping (`wrapPolygon`, `start`,
+and `lineTo`). The `drawing-wpc-shape-group-frame` fixture embeds a rich
+`wp:wpc` payload under `a:graphicData` and covers `wp:wsp`, connector
+non-visual properties, text-box and linked text-box branches, `wp:wgp`,
+nested `grpSp`, and `wp:graphicFrame` / `cNvFrPr`. This completes generated
+fixture QName occurrence coverage for Wordprocessing Drawing; it does not
+prove embedded content rendering, shape editing semantics, text wrapping
+fidelity, or office-suite interop.
 
 ## Package XSD validation gate
 
@@ -167,13 +174,14 @@ fixture, the Chart Drawing `userShapes` fixture, the DrawingML chart
 rare/3-D/surface fixture expansion, the chart relationship fixture expansion,
 the DrawingML diagram rich optional-branch and header/list fixture expansions,
 the DrawingML Spreadsheet Drawing rich anchor fixture expansion, the DrawingML
-Locked Canvas GVML-rich fixture expansion, the Wordprocessing Drawing
-content-part fixture expansion, and the DrawingML main fixture completion:
+Locked Canvas GVML-rich fixture expansion, the DrawingML main fixture
+completion, and the Wordprocessing Drawing fixture completion:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5846`, `skip: 2`, `fail: 0` |
+| all generated fixtures | `ok: 5852`, `skip: 2`, `fail: 0` |
+| previous full-fixture baseline before Wordprocessing Drawing completion | `ok: 5846`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before DrawingML main completion | `ok: 5751`, `skip: 1`, `fail: 0` |
 | previous full-fixture baseline before DrawingML main geometry/text/table/color expansion | `ok: 5674`, `skip: 1`, `fail: 0` |
 | previous full-fixture baseline before diagram header/list and Locked Canvas expansion | `ok: 5633`, `skip: 1`, `fail: 0` |
@@ -251,7 +259,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 872`, `fail: 0` |
+| all generated fixtures | `ok: 874`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -334,14 +342,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 872`, `fail: 0` |
+| all generated fixtures | `ok: 874`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5846`, `skip: 2` across the regenerated fixture parts.
+reports `ok: 5852`, `skip: 2` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 

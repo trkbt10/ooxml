@@ -199,6 +199,95 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       ],
     )
   }
+  let effect_extent = fn() -> @xml.Element {
+    wp_el(
+      "effectExtent",
+      [xa("l", "22860"), xa("t", "22860"), xa("r", "45720"), xa("b", "45720")],
+      [],
+    )
+  }
+  let wrap_polygon = fn() -> @xml.Element {
+    wp_el("wrapPolygon", [xa("edited", "1")], [
+      Element(wp_el("start", [xa("x", "0"), xa("y", "0")], [])),
+      Element(wp_el("lineTo", [xa("x", "1828800"), xa("y", "0")], [])),
+      Element(wp_el("lineTo", [xa("x", "1828800"), xa("y", "914400")], [])),
+      Element(wp_el("lineTo", [xa("x", "0"), xa("y", "914400")], [])),
+    ])
+  }
+  let wrap_tight = fn() -> @xml.Element {
+    wp_el("wrapTight", [xa("wrapText", "bothSides")], [Element(wrap_polygon())])
+  }
+  let wrap_through = fn() -> @xml.Element {
+    wp_el("wrapThrough", [xa("wrapText", "largest")], [Element(wrap_polygon())])
+  }
+  let position_h_align = fn(
+    relative_from : String,
+    align : String,
+  ) -> @xml.Element {
+    wp_el("positionH", [xa("relativeFrom", relative_from)], [
+      Element(wp_el("align", [], [Text(align)])),
+    ])
+  }
+  let position_v_align = fn(
+    relative_from : String,
+    align : String,
+  ) -> @xml.Element {
+    wp_el("positionV", [xa("relativeFrom", relative_from)], [
+      Element(wp_el("align", [], [Text(align)])),
+    ])
+  }
+  let position_h_offset = fn(
+    relative_from : String,
+    offset : String,
+  ) -> @xml.Element {
+    wp_el("positionH", [xa("relativeFrom", relative_from)], [
+      Element(wp_el("posOffset", [], [Text(offset)])),
+    ])
+  }
+  let position_v_offset = fn(
+    relative_from : String,
+    offset : String,
+  ) -> @xml.Element {
+    wp_el("positionV", [xa("relativeFrom", relative_from)], [
+      Element(wp_el("posOffset", [], [Text(offset)])),
+    ])
+  }
+  let anchor_with_wrap = fn(
+    position_h : @xml.Element,
+    position_v : @xml.Element,
+    cx : String,
+    cy : String,
+    wrap_el : @xml.Element,
+    id_ : String,
+    name : String,
+    graphic : @xml.Element,
+  ) -> @xml.Element {
+    wp_el(
+      "anchor",
+      [
+        xa("distT", "0"),
+        xa("distB", "0"),
+        xa("distL", "114300"),
+        xa("distR", "114300"),
+        xa("simplePos", "0"),
+        xa("relativeHeight", "251658240"),
+        xa("behindDoc", "0"),
+        xa("locked", "0"),
+        xa("layoutInCell", "1"),
+        xa("allowOverlap", "1"),
+      ],
+      [
+        Element(wp_el("simplePos", [xa("x", "0"), xa("y", "0")], [])),
+        Element(position_h),
+        Element(position_v),
+        Element(extent(cx, cy)),
+        Element(effect_extent()),
+        Element(wrap_el),
+        Element(docpr(id_, name)),
+        Element(graphic),
+      ],
+    )
+  }
   // `<pic:nvPicPr><pic:cNvPr id name/><pic:cNvPicPr/></pic:nvPicPr>` —
   // non-visual picture properties (id + name).  Required for the
   // `<pic:pic>` payload even when no `<pic:blipFill>` follows.
@@ -281,6 +370,120 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       kids.push(Element(vml_txbx(text)))
     }
     vml_shape_with_children(id_, prst, fill_hex, kids)
+  }
+  let wp_shape_xfrm = fn(cx : String, cy : String) -> @xml.Element {
+    a_el("xfrm", [], [
+      Element(a_el("off", [xa("x", "0"), xa("y", "0")], [])),
+      Element(a_el("ext", [xa("cx", cx), xa("cy", cy)], [])),
+    ])
+  }
+  let wp_group_xfrm = fn() -> @xml.Element {
+    a_el("xfrm", [], [
+      Element(a_el("off", [xa("x", "0"), xa("y", "0")], [])),
+      Element(a_el("ext", [xa("cx", "2743200"), xa("cy", "1371600")], [])),
+      Element(a_el("chOff", [xa("x", "0"), xa("y", "0")], [])),
+      Element(a_el("chExt", [xa("cx", "2743200"), xa("cy", "1371600")], [])),
+    ])
+  }
+  let wp_shape_pr = fn(
+    cx : String,
+    cy : String,
+    fill_hex : String,
+  ) -> @xml.Element {
+    wp_el("spPr", [], [
+      Element(wp_shape_xfrm(cx, cy)),
+      Element(
+        a_el("prstGeom", [xa("prst", "rect")], [Element(a_el("avLst", [], []))]),
+      ),
+      Element(
+        a_el("solidFill", [], [
+          Element(a_el("srgbClr", [xa("val", fill_hex)], [])),
+        ]),
+      ),
+    ])
+  }
+  let wp_body_pr = fn() -> @xml.Element {
+    wp_el("bodyPr", [xa("wrap", "square")], [])
+  }
+  let wp_textbox = fn(text : String) -> @xml.Element {
+    wp_el("txbx", [xa("id", "1")], [
+      Element(
+        wp_el("txbxContent", [], [Element(w_p(None, [w_run(None, text)]))]),
+      ),
+    ])
+  }
+  let wp_text_shape = fn(
+    id_ : String,
+    name : String,
+    text : String,
+  ) -> @xml.Element {
+    wp_el("wsp", [], [
+      Element(wp_el("cNvPr", [xa("id", id_), xa("name", name)], [])),
+      Element(wp_el("cNvSpPr", [xa("txBox", "1")], [])),
+      Element(wp_shape_pr("1371600", "685800", "D9EAD3")),
+      Element(wp_textbox(text)),
+      Element(wp_body_pr()),
+    ])
+  }
+  let wp_linked_connector_shape = fn() -> @xml.Element {
+    wp_el("wsp", [xa("normalEastAsianFlow", "0")], [
+      Element(
+        wp_el("cNvPr", [xa("id", "32"), xa("name", "Linked Connector")], []),
+      ),
+      Element(
+        wp_el("cNvCnPr", [], [
+          Element(a_el("cxnSpLocks", [xa("noChangeShapeType", "1")], [])),
+        ]),
+      ),
+      Element(wp_shape_pr("1371600", "457200", "CFE2F3")),
+      Element(wp_el("linkedTxbx", [xa("id", "1"), xa("seq", "2")], [])),
+      Element(wp_body_pr()),
+    ])
+  }
+  let wp_graphic_frame = fn() -> @xml.Element {
+    wp_el("graphicFrame", [], [
+      Element(
+        wp_el("cNvPr", [xa("id", "40"), xa("name", "WP Graphic Frame")], []),
+      ),
+      Element(
+        wp_el("cNvFrPr", [], [
+          Element(a_el("graphicFrameLocks", [xa("noGrp", "1")], [])),
+        ]),
+      ),
+      Element(
+        wp_el("xfrm", [], [
+          Element(a_el("off", [xa("x", "1524000"), xa("y", "0")], [])),
+          Element(a_el("ext", [xa("cx", "914400"), xa("cy", "685800")], [])),
+        ]),
+      ),
+      Element(
+        a_el("graphic", [], [
+          Element(
+            a_el("graphicData", [xa("uri", "urn:ooxml-fixture:empty")], []),
+          ),
+        ]),
+      ),
+    ])
+  }
+  let wp_group = fn(name : String, child : @xml.Element?) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(wp_el("cNvPr", [xa("id", "50"), xa("name", name)], [])),
+      Element(
+        wp_el("cNvGrpSpPr", [], [
+          Element(a_el("grpSpLocks", [xa("noUngrp", "1")], [])),
+        ]),
+      ),
+      Element(wp_el("grpSpPr", [], [Element(wp_group_xfrm())])),
+    ]
+    match child {
+      Some(c) => kids.push(Element(c))
+      None => ()
+    }
+    wp_el("wgp", [], kids)
+  }
+  let wp_nested_group = fn() -> @xml.Element {
+    let base = wp_group("Nested WP Group", None)
+    wp_el("grpSp", base.attributes, base.children)
   }
 
   // Wrap a `<w:drawing>` element as a paragraph child via a `<w:r>`
@@ -817,6 +1020,96 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
             ),
           ),
           w_run(None, " after."),
+        ]),
+      ),
+    ]),
+  })
+
+  // ============================================================
+  // 16. Anchor drawing — tight/through polygon wrapping with align
+  // ============================================================
+  //
+  // §20.4.2.10 / §20.4.2.17 / §20.4.2.18 / §20.4.2.21 —
+  // `positionH/positionV` can select `<wp:align>` instead of
+  // `<wp:posOffset>`, and tight/through wrapping requires an
+  // explicit `<wp:wrapPolygon>` path with one start point and at
+  // least two lineTo points.
+  cases.push({
+    id: "drawing-anchor-polygon-wraps-align",
+    format: "docx",
+    category: "drawing",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(None, [
+          drawing_run(
+            anchor_with_wrap(
+              position_h_align("page", "center"),
+              position_v_align("margin", "top"),
+              "1828800",
+              "914400",
+              wrap_tight(),
+              "20",
+              "TightPolygon",
+              vml_graphic([Element(vml_shape("v-tight", "rect", "EADCF8", ""))]),
+            ),
+          ),
+          w_run(
+            None,
+            "Tight polygon wrapping uses an edited rectangular path and " +
+            "alignment-based positioning instead of raw position offsets.",
+          ),
+        ]),
+      ),
+      Element(
+        w_p(None, [
+          drawing_run(
+            anchor_with_wrap(
+              position_h_offset("column", "457200"),
+              position_v_offset("paragraph", "228600"),
+              "1828800",
+              "914400",
+              wrap_through(),
+              "21",
+              "ThroughPolygon",
+              vml_graphic([
+                Element(vml_shape("v-through", "rect", "FCE5CD", "")),
+              ]),
+            ),
+          ),
+          w_run(
+            None,
+            "Through polygon wrapping follows the same path model but " +
+            "lets text flow through the transparent interior region.",
+          ),
+        ]),
+      ),
+    ]),
+  })
+
+  let wpc_rich = wp_el("wpc", [], [
+    Element(wp_text_shape("30", "WP Text Shape", "Text inside wp:wsp.")),
+    Element(wp_linked_connector_shape()),
+    Element(wp_group("Top WP Group", Some(wp_nested_group()))),
+    Element(wp_graphic_frame()),
+  ])
+  cases.push({
+    id: "drawing-wpc-shape-group-frame",
+    format: "docx",
+    category: "drawing",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(None, [
+          w_run(None, "Canvas "),
+          drawing_run(
+            inline(
+              "3200400",
+              "1600200",
+              "22",
+              "WordprocessingCanvasRich",
+              wpc_graphic([Element(wpc_rich)]),
+            ),
+          ),
+          w_run(None, " branches."),
         ]),
       ),
     ]),
