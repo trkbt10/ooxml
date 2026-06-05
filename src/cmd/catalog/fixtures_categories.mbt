@@ -35,6 +35,8 @@ fn extra_cases() -> Array[VisualCase] {
   extras_sml_cf(cases)
   extras_sml_cf_complete(cases)
   extras_sml_autofilter_inline(cases)
+  extras_sml_aux_parts(cases)
+  extras_sml_worksheet_coverage(cases)
   extras_pml_shape(cases)
   extras_pml_text(cases)
   extras_pml_extra(cases)

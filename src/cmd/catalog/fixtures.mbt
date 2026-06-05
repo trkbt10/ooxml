@@ -4815,6 +4815,7 @@ fn extended_cases() -> Array[ExtendedCase] {
   extras_sml_styled(xcases)
   extras_sml_cf_complete_styled(xcases)
   extras_sml_autofilter_styled(xcases)
+  extras_sml_aux_parts_styled(xcases)
 
   xcases
 }
@@ -4850,6 +4851,11 @@ fn generate_visual_fixtures() -> Unit {
         pptx_with_aux_root_package("themeOverride", c.content)
       "pptx:themeManager" =>
         pptx_with_aux_root_package("themeManager", c.content)
+      "xlsx:workbook" => xlsx_with_aux_root_package("workbook", c.content)
+      "xlsx:sharedStrings" =>
+        xlsx_with_aux_root_package("sharedStrings", c.content)
+      "xlsx:styles" => xlsx_with_aux_root_package("styles", c.content)
+      "xlsx:comments" => xlsx_with_aux_root_package("comments", c.content)
       "docx:settings" => docx_aux_package("settings", c.content)
       "docx:styles" => docx_aux_package("styles", c.content)
       "docx:numbering" => docx_aux_package("numbering", c.content)
@@ -4868,6 +4874,10 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:viewPr" => "pptx"
       "pptx:themeOverride" => "pptx"
       "pptx:themeManager" => "pptx"
+      "xlsx:workbook" => "xlsx"
+      "xlsx:sharedStrings" => "xlsx"
+      "xlsx:styles" => "xlsx"
+      "xlsx:comments" => "xlsx"
       "docx:settings" => "docx"
       "docx:styles" => "docx"
       "docx:numbering" => "docx"
