@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `851` |
-| XML parts scanned | `5610` |
-| catalog QNames observed in fixtures | `955/2296 (41.6%)` |
-| catalog declaration entries observed by QName | `1981/4560 (43.4%)` |
-| observed fixture QNames that are catalog ECMA QNames | `955/1013 (94.3%)` |
+| package fixtures scanned | `852` |
+| XML parts scanned | `5625` |
+| catalog QNames observed in fixtures | `979/2296 (42.6%)` |
+| catalog declaration entries observed by QName | `2033/4560 (44.6%)` |
+| observed fixture QNames that are catalog ECMA QNames | `979/1039 (94.2%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -51,6 +51,16 @@ part now has real chart-side relationships for the user-shapes part, an
 External workbook target, and a VML Drawing header/footer part. This completes
 fixture occurrence coverage for §21.2 chart QNames, not semantic chart editing
 or Office/LibreOffice interop coverage.
+
+The DrawingML diagram namespace is now `57/63` QNames observed. The
+`diagram-rich-options` fixture covers optional SmartArt branches in schema
+order, including `presLayoutVars`, layout variables, point property sets,
+background/whole formatting, sample/style/color data, category lists,
+algorithm parameters, shape adjustments, rule lists, and fallback choices. The
+remaining diagram QNames are the six standalone header/list roots
+(`layoutDefHdr`, `layoutDefHdrLst`, `styleDefHdr`, `styleDefHdrLst`,
+`colorsDefHdr`, `colorsDefHdrLst`), which require package relationship and
+content-type contracts before they should be added as generated parts.
 
 ## Package XSD validation gate
 
@@ -108,12 +118,12 @@ Current package-validation snapshot, after ECMA/VML fixture repairs,
 schema-set wildcard validation, the bibliography Custom XML Data Storage
 fixture, the Chart Drawing `userShapes` fixture, the DrawingML chart
 rare/3-D/surface fixture expansion, and the chart relationship fixture
-expansion:
+expansion, plus the DrawingML diagram rich optional-branch fixture expansion:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5610`, `fail: 0` |
+| all generated fixtures | `ok: 5625`, `fail: 0` |
 | previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
 | earlier full-fixture baseline before schema-order repairs | `ok: 5365`, `fail: 120` |
 
@@ -187,7 +197,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 851`, `fail: 0` |
+| all generated fixtures | `ok: 852`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -269,14 +279,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 851`, `fail: 0` |
+| all generated fixtures | `ok: 852`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5610` across the regenerated fixture parts.
+reports `ok: 5625` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 

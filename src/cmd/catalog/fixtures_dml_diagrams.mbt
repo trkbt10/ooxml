@@ -78,6 +78,10 @@ const NS_DGM : String = "http://schemas.openxmlformats.org/drawingml/2006/diagra
 const DIAGRAM_URI : String = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
 
 ///|
+/// Fixture-only extension payload namespace used under diagram `<dgm:extLst>`.
+const DIAGRAM_FIXTURE_EXT_NS : String = "urn:ooxml:fixture:diagram-ext"
+
+///|
 const DIAGRAM_REL_ID_DATA_MODEL : String = "rId2"
 
 ///|
@@ -128,6 +132,20 @@ fn dgm_elem(
 }
 
 ///|
+/// `<dgm:extLst>` using DrawingML's `a:CT_OfficeArtExtensionList`
+/// payload shape. The extension body is lax, so the catalog-local
+/// namespace is schema-valid without another Office relationship.
+fn dgm_ext_lst() -> @xml.Element {
+  dgm_elem("extLst", [], [
+    Element(
+      xe(NS_A, "ext", [xa("uri", "{D91A8F76-7C71-44B8-BB3D-0000DGM00001}")], [
+        Element(xep("fx", DIAGRAM_FIXTURE_EXT_NS, "covered", [], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
 /// `<a:t>NAME</a:t>` text run inside an `<a:r>` — shared between
 /// point text bodies.
 fn a_text_run(text : String) -> @xml.Element {
@@ -150,6 +168,68 @@ fn point_text_body(text : String) -> @xml.Element {
 }
 
 ///|
+/// Diagram layout variable children in canonical schema order. Shared by
+/// layout-node `varLst` and point `presLayoutVars`.
+fn dgm_layout_vars_children() -> Array[@xml.Node] {
+  [
+    Element(dgm_elem("orgChart", [xa("val", "1")], [])),
+    Element(dgm_elem("chMax", [xa("val", "4")], [])),
+    Element(dgm_elem("chPref", [xa("val", "2")], [])),
+    Element(dgm_elem("bulletEnabled", [xa("val", "1")], [])),
+    Element(dgm_elem("dir", [xa("val", "rev")], [])),
+    Element(dgm_elem("hierBranch", [xa("val", "hang")], [])),
+    Element(dgm_elem("animOne", [xa("val", "branch")], [])),
+    Element(dgm_elem("animLvl", [xa("val", "lvl")], [])),
+    Element(dgm_elem("resizeHandles", [xa("val", "exact")], [])),
+  ]
+}
+
+///|
+/// Diagram layout variable set with every §21.4.5 variable child in
+/// canonical schema order.
+fn dgm_var_lst_rich() -> @xml.Element {
+  dgm_elem("varLst", [], dgm_layout_vars_children())
+}
+
+///|
+/// `<dgm:presLayoutVars>` branch for `CT_ElemPropSet`. This wraps the
+/// same variable set accepted by layout-node `varLst`.
+fn dgm_pres_layout_vars_rich() -> @xml.Element {
+  dgm_elem("presLayoutVars", [], dgm_layout_vars_children())
+}
+
+///|
+/// Shape style branch used inside `<dgm:prSet>` and diagram
+/// definitions. Mirrors `diagram_shape_style` but remains available
+/// before that helper's section in the file.
+fn dgm_shape_style_refs() -> @xml.Element {
+  dgm_elem("style", [], [
+    Element(xe(NS_A, "lnRef", [xa("idx", "1")], [])),
+    Element(xe(NS_A, "fillRef", [xa("idx", "1")], [])),
+    Element(xe(NS_A, "effectRef", [xa("idx", "1")], [])),
+    Element(xe(NS_A, "fontRef", [xa("idx", "minor")], [])),
+  ])
+}
+
+///|
+/// `<dgm:prSet>` with presentation variables and a shape-style
+/// reference.  Kept separate from ordinary points so existing
+/// renderer-oriented fixtures remain minimal.
+fn dgm_pr_set_rich() -> @xml.Element {
+  dgm_elem(
+    "prSet",
+    [
+      xa("presName", "richPoint"),
+      xa("presStyleLbl", "node1"),
+      xa("presStyleIdx", "1"),
+      xa("presStyleCnt", "1"),
+      xa("phldr", "0"),
+    ],
+    [Element(dgm_pres_layout_vars_rich()), Element(dgm_shape_style_refs())],
+  )
+}
+
+///|
 /// `<dgm:pt modelId="…" type="…">` — one SmartArt data point.
 /// `type` defaults to `"node"` when omitted (§21.4.3.5 CT_Pt).
 fn dgm_pt(model_id : String, type_ : String, text : String?) -> @xml.Element {
@@ -163,6 +243,26 @@ fn dgm_pt(model_id : String, type_ : String, text : String?) -> @xml.Element {
     None => ()
   }
   dgm_elem("pt", attrs, kids)
+}
+
+///|
+/// Rich point variant carrying `prSet`, shape properties, text, and
+/// a diagram extension list in CT_Pt order.
+fn dgm_pt_rich(model_id : String, text : String) -> @xml.Element {
+  dgm_elem("pt", [xa("modelId", model_id)], [
+    Element(dgm_pr_set_rich()),
+    Element(
+      dgm_elem("spPr", [], [
+        Element(
+          xe(NS_A, "solidFill", [], [
+            Element(xe(NS_A, "srgbClr", [xa("val", "DCEBFF")], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(point_text_body(text)),
+    Element(dgm_ext_lst()),
+  ])
 }
 
 ///|
@@ -216,6 +316,44 @@ fn shared_data_model(labels : Array[String]) -> @xml.Element {
 }
 
 ///|
+/// §21.4.2.10 dataModel with optional formatting branches:
+/// `prSet`, `bg`, `whole`, and diagram extension list.
+fn rich_data_model() -> @xml.Element {
+  dgm_elem("dataModel", [], [
+    Element(
+      dgm_elem("ptLst", [], [
+        Element(dgm_pt("0", "doc", None)),
+        Element(dgm_pt_rich("1", "Rich")),
+      ]),
+    ),
+    Element(dgm_elem("cxnLst", [], [Element(dgm_cxn("101", "0", "1", 0))])),
+    Element(
+      dgm_elem("bg", [], [
+        Element(
+          xe(NS_A, "solidFill", [], [
+            Element(xe(NS_A, "srgbClr", [xa("val", "F8FBFF")], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      dgm_elem("whole", [], [
+        Element(
+          xe(NS_A, "ln", [xa("w", "9525")], [
+            Element(
+              xe(NS_A, "solidFill", [], [
+                Element(xe(NS_A, "srgbClr", [xa("val", "2F5597")], [])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+    Element(dgm_ext_lst()),
+  ])
+}
+
+///|
 /// `<dgm:scene3d>` is declared in the diagram namespace but uses the
 /// DrawingML `a:CT_Scene3D` content model, where both camera and
 /// lightRig are required.
@@ -230,12 +368,205 @@ fn diagram_scene3d() -> @xml.Element {
 /// `<dgm:style>` is declared in the diagram namespace but uses the
 /// DrawingML `a:CT_ShapeStyle` content model.
 fn diagram_shape_style() -> @xml.Element {
-  dgm_elem("style", [], [
-    Element(xe(NS_A, "lnRef", [xa("idx", "1")], [])),
-    Element(xe(NS_A, "fillRef", [xa("idx", "1")], [])),
-    Element(xe(NS_A, "effectRef", [xa("idx", "1")], [])),
-    Element(xe(NS_A, "fontRef", [xa("idx", "minor")], [])),
+  dgm_shape_style_refs()
+}
+
+///|
+/// Category list with one ECMA diagram category entry.  The same
+/// QName is used by layout/color/style definitions and their
+/// headers, so one concrete category is enough for occurrence
+/// coverage.
+fn dgm_cat_lst_rich() -> @xml.Element {
+  dgm_elem("catLst", [], [
+    Element(
+      dgm_elem(
+        "cat",
+        [xa("type", "urn:ooxml:fixture:diagram"), xa("pri", "1")],
+        [],
+      ),
+    ),
   ])
+}
+
+///|
+/// Algorithm with parameters in CT_Algorithm order.
+fn dgm_alg_with_param(alg_type : String) -> @xml.Element {
+  dgm_elem("alg", [xa("type", alg_type)], [
+    Element(dgm_elem("param", [xa("type", "horzAlign"), xa("val", "ctr")], [])),
+  ])
+}
+
+///|
+/// Shape with adjustment metadata and an extension list in CT_Shape
+/// order.
+fn dgm_shape_with_adjustments(shape_type : String) -> @xml.Element {
+  dgm_elem("shape", [xa("type", shape_type)], [
+    Element(
+      dgm_elem("adjLst", [], [
+        Element(dgm_elem("adj", [xa("idx", "1"), xa("val", "0.25")], [])),
+      ]),
+    ),
+    Element(dgm_ext_lst()),
+  ])
+}
+
+///|
+/// Numeric layout rules in CT_Rules order.
+fn dgm_rule_lst_rich() -> @xml.Element {
+  dgm_elem("ruleLst", [], [
+    Element(
+      dgm_elem(
+        "rule",
+        [xa("type", "w"), xa("val", "500000"), xa("max", "900000")],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+/// Layout definition carrying optional branches that ordinary
+/// renderer-oriented fixtures leave out: sample/style/color data,
+/// full variable list, alg params, shape adjustments, rules, and
+/// choose/else.
+fn rich_layout_def(unique_id : String) -> @xml.Element {
+  let inner_node = dgm_elem(
+    "layoutNode",
+    [xa("name", "richLeaf"), xa("styleLbl", "node1")],
+    [
+      Element(dgm_alg_with_param("sp")),
+      Element(dgm_shape_with_adjustments("rect")),
+      Element(dgm_elem("presOf", [xa("axis", "self"), xa("ptType", "all")], [])),
+      Element(dgm_elem("constrLst", [], [])),
+      Element(dgm_rule_lst_rich()),
+    ],
+  )
+  let root_node = dgm_elem(
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(dgm_var_lst_rich()),
+      Element(dgm_alg_with_param("lin")),
+      Element(dgm_shape_with_adjustments("roundRect")),
+      Element(dgm_elem("presOf", [], [])),
+      Element(
+        dgm_elem("choose", [xa("name", "richChoice")], [
+          Element(
+            dgm_elem(
+              "if",
+              [xa("func", "cnt"), xa("op", "gte"), xa("val", "1")],
+              [Element(dgm_rule_lst_rich())],
+            ),
+          ),
+          Element(dgm_elem("else", [xa("name", "fallback")], [])),
+        ]),
+      ),
+      Element(
+        dgm_elem("constrLst", [], [
+          Element(
+            dgm_elem("constr", [xa("type", "w"), xa("val", "700000")], []),
+          ),
+          Element(
+            dgm_elem("constr", [xa("type", "h"), xa("val", "350000")], []),
+          ),
+        ]),
+      ),
+      Element(dgm_rule_lst_rich()),
+      Element(
+        dgm_elem(
+          "forEach",
+          [xa("name", "n"), xa("axis", "ch"), xa("ptType", "node")],
+          [Element(inner_node)],
+        ),
+      ),
+      Element(dgm_ext_lst()),
+    ],
+  )
+  dgm_elem(
+    "layoutDef",
+    [
+      xa("uniqueId", unique_id),
+      xa("minVer", "http://schemas.openxmlformats.org/drawingml/2006/diagram"),
+    ],
+    [
+      Element(dgm_elem("title", [xa("val", unique_id)], [])),
+      Element(dgm_elem("desc", [xa("val", unique_id)], [])),
+      Element(dgm_cat_lst_rich()),
+      Element(
+        dgm_elem("sampData", [xa("useDef", "0")], [
+          Element(shared_data_model(["Sample"])),
+        ]),
+      ),
+      Element(
+        dgm_elem("styleData", [xa("useDef", "0")], [
+          Element(shared_data_model(["Style"])),
+        ]),
+      ),
+      Element(
+        dgm_elem("clrData", [xa("useDef", "0")], [
+          Element(shared_data_model(["Color"])),
+        ]),
+      ),
+      Element(root_node),
+      Element(dgm_ext_lst()),
+    ],
+  )
+}
+
+///|
+/// Rich color transform with a concrete category and extension
+/// list. Keeps the required color-list children minimal.
+fn rich_colors_def(unique_id : String) -> @xml.Element {
+  let style_lbl = dgm_elem("styleLbl", [xa("name", "node1")], [
+    Element(dgm_elem("fillClrLst", [], [])),
+    Element(dgm_elem("linClrLst", [], [])),
+    Element(dgm_elem("effectClrLst", [], [])),
+    Element(dgm_elem("txLinClrLst", [], [])),
+    Element(dgm_elem("txFillClrLst", [], [])),
+    Element(dgm_elem("txEffectClrLst", [], [])),
+    Element(dgm_ext_lst()),
+  ])
+  dgm_elem(
+    "colorsDef",
+    [
+      xa("uniqueId", unique_id),
+      xa("minVer", "http://schemas.openxmlformats.org/drawingml/2006/diagram"),
+    ],
+    [
+      Element(dgm_elem("title", [xa("val", unique_id)], [])),
+      Element(dgm_elem("desc", [xa("val", unique_id)], [])),
+      Element(dgm_cat_lst_rich()),
+      Element(style_lbl),
+      Element(dgm_ext_lst()),
+    ],
+  )
+}
+
+///|
+/// Rich quick-style definition with a category and extension list.
+fn rich_style_def(unique_id : String) -> @xml.Element {
+  let style_lbl = dgm_elem("styleLbl", [xa("name", "node1")], [
+    Element(diagram_scene3d()),
+    Element(dgm_elem("sp3d", [], [])),
+    Element(dgm_elem("txPr", [], [])),
+    Element(diagram_shape_style()),
+    Element(dgm_ext_lst()),
+  ])
+  dgm_elem(
+    "styleDef",
+    [
+      xa("uniqueId", unique_id),
+      xa("minVer", "http://schemas.openxmlformats.org/drawingml/2006/diagram"),
+    ],
+    [
+      Element(dgm_elem("title", [xa("val", unique_id)], [])),
+      Element(dgm_elem("desc", [xa("val", unique_id)], [])),
+      Element(dgm_cat_lst_rich()),
+      Element(diagram_scene3d()),
+      Element(style_lbl),
+      Element(dgm_ext_lst()),
+    ],
+  )
 }
 
 ///|
@@ -486,6 +817,23 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: proc_layout,
     style_def: make_style_def("urn:test:diagram:process:style"),
     colors_def: make_colors_def("urn:test:diagram:process:colors"),
+    drawing: None,
+  })
+
+  // ---- rich optional branches -----------------------------------
+  // Covers diagram QName buckets ordinary renderer-oriented fixtures
+  // intentionally omit: dataModel bg/whole/extLst, point prSet,
+  // layout sample/style/color data, varLst children, alg params,
+  // shape adjustments, rule lists, and choose/else.
+  dcases.push({
+    id: "diagram-rich-options",
+    format: "pptx",
+    category: "diagram",
+    content: sp_tree([diagram_graphic_frame("2", "Diagram Rich Options")]),
+    data_model: rich_data_model(),
+    layout_def: rich_layout_def("urn:test:diagram:rich-options"),
+    style_def: rich_style_def("urn:test:diagram:rich-options:style"),
+    colors_def: rich_colors_def("urn:test:diagram:rich-options:colors"),
     drawing: None,
   })
 
