@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `879` |
-| XML parts scanned | `5889` |
-| catalog QNames observed in fixtures | `1225/2296 (53.4%)` |
-| catalog declaration entries observed by QName | `2529/4560 (55.5%)` |
-| observed fixture QNames that are catalog ECMA QNames | `1225/1320 (92.8%)` |
+| package fixtures scanned | `880` |
+| XML parts scanned | `5897` |
+| catalog QNames observed in fixtures | `1294/2296 (56.4%)` |
+| catalog declaration entries observed by QName | `2598/4560 (57.0%)` |
+| observed fixture QNames that are catalog ECMA QNames | `1294/1390 (93.1%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -132,6 +132,18 @@ against `opc-digSig.xsd` and keep OPC/format package validation green, but
 they are not signed packages and do not claim XMLDSig validation, signature
 verification, or Office/LibreOffice signed-document interop.
 
+The Excel VML Spreadsheet Drawing namespace is now `68/68` QNames observed.
+The `vml-spreadsheet-drawing` XLSX fixture references a real
+`xl/drawings/vmlDrawing1.vml` part through worksheet `<legacyDrawing r:id>`.
+That part uses the ECMA-376 Part 4 §8.2 null-namespace `<xml>` wrapper and
+carries one `v:shape` with `x:ClientData` and all 67 child choice elements
+from `vml-spreadsheetDrawing.xsd`. The fixture occurrence script now scans
+`.vml` parts, and the XSD validator validates the wrapper's child elements
+against the appropriate Transitional VML schema. This is schema occurrence and
+package-wiring coverage for the deprecated VML compatibility surface, not a
+claim that Excel form-control semantics, rendering, editing, or
+Office/LibreOffice interop are complete.
+
 ## Package XSD validation gate
 
 The identifier audit above proves that every vendored ECMA-376 Strict,
@@ -197,12 +209,13 @@ the DrawingML Spreadsheet Drawing rich anchor fixture expansion, the DrawingML
 Locked Canvas GVML-rich fixture expansion, the DrawingML main fixture
 completion, the Wordprocessing Drawing fixture completion, the shared
 ancillary Custom XML Data Storage fixtures, and the OPC digital-signature
-schema fixtures:
+schema fixtures, and the Excel VML Spreadsheet Drawing fixture:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5887`, `skip: 2`, `fail: 0` |
+| all generated fixtures | `ok: 5895`, `skip: 2`, `fail: 0` |
+| previous full-fixture baseline before Excel VML Spreadsheet Drawing completion | `ok: 5887`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before OPC digital-signature fixture completion | `ok: 5866`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before shared ancillary completion | `ok: 5852`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before Wordprocessing Drawing completion | `ok: 5846`, `skip: 2`, `fail: 0` |
@@ -283,7 +296,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 879`, `fail: 0` |
+| all generated fixtures | `ok: 880`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -366,14 +379,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 879`, `fail: 0` |
+| all generated fixtures | `ok: 880`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5887`, `skip: 2` across the regenerated fixture parts.
+reports `ok: 5895`, `skip: 2` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 

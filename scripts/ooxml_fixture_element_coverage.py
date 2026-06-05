@@ -45,7 +45,7 @@ GENERATION_MARKER_TAILS = (
 )
 
 OOXML_EXTENSIONS = {".docx", ".xlsx", ".pptx"}
-XML_PART_SUFFIXES = (".xml", ".rels")
+XML_PART_SUFFIXES = (".xml", ".rels", ".vml")
 
 
 @dataclass(frozen=True, order=True)

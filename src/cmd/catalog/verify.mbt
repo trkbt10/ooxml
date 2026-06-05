@@ -46,6 +46,10 @@ const RT_CUSTOM_XML : String = "http://schemas.openxmlformats.org/officeDocument
 const RT_CUSTOM_XML_PROPS : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps"
 
 ///|
+/// Worksheet / slide relationship type for legacy VML Drawing parts.
+const RT_VML_DRAWING : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing"
+
+///|
 /// Core-properties content type.
 const CT_CORE_PROPERTIES : String = "application/vnd.openxmlformats-package.core-properties+xml"
 
@@ -60,6 +64,10 @@ const CT_CUSTOM_PROPERTIES : String = "application/vnd.openxmlformats-officedocu
 ///|
 /// Custom XML Data Storage properties content type.
 const CT_CUSTOM_XML_PROPERTIES : String = "application/vnd.openxmlformats-officedocument.customXmlProperties+xml"
+
+///|
+/// Legacy VML Drawing part content type.
+const CT_VML_DRAWING : String = "application/vnd.openxmlformats-officedocument.vmlDrawing"
 
 ///|
 /// The office-document relationship-reference namespace.
@@ -678,6 +686,124 @@ fn xlsx_package(content : @xml.Element) -> Bytes {
     ("xl/workbook.xml", write_part(workbook)),
     ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
     ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.xlsx` package whose worksheet references one legacy VML Drawing
+/// part through `<legacyDrawing r:id="rId1"/>`.
+///
+/// ECMA-376 Part 4 §8.2 says the VML Drawing part root is a
+/// null-namespace `<xml>` wrapper containing VML markup.  The caller
+/// supplies that root; this builder owns only the OPC graph and the
+/// worksheet sequence slot for `<legacyDrawing>`.
+fn xlsx_package_with_vml_drawing(
+  content : @xml.Element,
+  vml_drawing : @xml.Element,
+) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let workbook : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa("Type", RT_VML_DRAWING),
+          xa("Target", "../drawings/vmlDrawing1.vml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet_body : @xml.Element = if content.name.local_name == "worksheet" {
+    content
+  } else {
+    {
+      name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+      attributes: [],
+      children: [Element(content)],
+    }
+  }
+  let legacy_drawing = xe(
+    ns_s,
+    "legacyDrawing",
+    [
+      {
+        name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+        value: "rId1",
+      },
+    ],
+    [],
+  )
+  let worksheet_children : Array[@xml.Node] = []
+  for child in worksheet_body.children {
+    worksheet_children.push(child)
+  }
+  worksheet_children.push(Element(legacy_drawing))
+  let worksheet : @xml.Element = {
+    name: worksheet_body.name,
+    attributes: worksheet_body.attributes,
+    children: worksheet_children,
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        ("/xl/drawings/vmlDrawing1.vml", CT_VML_DRAWING),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/worksheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    ("xl/drawings/vmlDrawing1.vml", write_part(vml_drawing)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }

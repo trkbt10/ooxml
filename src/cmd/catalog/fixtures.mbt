@@ -127,6 +127,21 @@ struct SpreadsheetDrawingCase {
 }
 
 ///|
+/// A `.xlsx` fixture whose worksheet references one legacy VML
+/// Drawing part via `<legacyDrawing r:id="...">`.  VML Drawing
+/// parts use a null-namespace `<xml>` wrapper with VML payloads
+/// beneath it; the builder owns the worksheet relationship and
+/// `application/vnd.openxmlformats-officedocument.vmlDrawing`
+/// content-type override.
+struct VmlDrawingCase {
+  id : String
+  format : String
+  category : String
+  content : @xml.Element
+  vml_drawing : @xml.Element
+}
+
+///|
 /// A `.xlsx` fixture exercising §18.10 PivotTable plumbing — three
 /// extra parts on top of the worksheet (the pivot table definition,
 /// the pivot cache definition, and the pivot cache records) wired
@@ -4955,6 +4970,24 @@ fn generate_visual_fixtures() -> Unit {
       _ => written = written + 1
     }
   }
+  // VML-drawing-case pass: xlsx fixtures whose worksheet references
+  // a legacy VML Drawing part through `<legacyDrawing r:id>`.  Built
+  // by `xlsx_package_with_vml_drawing` so the worksheet relationship,
+  // VML content type, and null-namespace `<xml>` wrapper are
+  // validated together.
+  for c in vml_drawing_cases() {
+    total = total + 1
+    let bytes = xlsx_package_with_vml_drawing(c.content, c.vml_drawing)
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
+    }
+  }
   // Pivot-case pass: xlsx fixtures whose worksheet references a
   // §18.10 `<pivotTable>` part.  Built by `xlsx_package_with_pivot`
   // which wires the workbook `<pivotCaches>` entry, the workbook /
@@ -5163,6 +5196,16 @@ fn spreadsheet_drawing_cases() -> Array[SpreadsheetDrawingCase] {
   let xdcases : Array[SpreadsheetDrawingCase] = []
   extras_dml_spreadsheet_drawing(xdcases)
   xdcases
+}
+
+///|
+/// Collect every legacy VML Drawing package fixture.  These cover
+/// Transitional VML namespaces reached through a worksheet's
+/// `vmlDrawing` relationship.
+fn vml_drawing_cases() -> Array[VmlDrawingCase] {
+  let vcases : Array[VmlDrawingCase] = []
+  extras_vml_spreadsheet_drawing(vcases)
+  vcases
 }
 
 ///|

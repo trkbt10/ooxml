@@ -47,6 +47,8 @@ type TabledCase
 
 type VisualCase
 
+type VmlDrawingCase
+
 // Type aliases
 
 // Traits

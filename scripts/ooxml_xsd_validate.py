@@ -82,6 +82,7 @@ DEFAULT_FIXTURES = [
     / "shape"
     / "pml-slide-grid-with-text.pptx",
 ]
+XML_PART_SUFFIXES = (".xml", ".rels", ".vml")
 
 XML_XSD = f"""<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema targetNamespace="{XML_NS}"
@@ -780,6 +781,10 @@ def part_output_path(parts_root: Path, package: Path, part: str) -> Path:
     return out
 
 
+def is_xml_part(part_name: str) -> bool:
+    return part_name == "[Content_Types].xml" or part_name.endswith(XML_PART_SUFFIXES)
+
+
 def validate_part(
     xmllint: str,
     package: Path,
@@ -818,6 +823,59 @@ def validate_part(
     )
 
 
+def validate_vml_drawing_part(
+    xmllint: str,
+    package: Path,
+    part: str,
+    xml_bytes: bytes,
+    namespace_to_schema: dict[str, SchemaBinding],
+    parts_root: Path,
+    allow_unknown: bool,
+) -> list[ValidationResult]:
+    package_label = str(package.relative_to(REPO) if package.is_relative_to(REPO) else package)
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError as error:
+        return [ValidationResult(package_label, part, "fail", "", f"xml parse: {error}")]
+
+    namespace, local = split_tag(root.tag)
+    if namespace is not None or local != "xml":
+        return [
+            ValidationResult(
+                package_label,
+                part,
+                "fail",
+                "(vml-wrapper)",
+                "VML Drawing part root must be null-namespace <xml>",
+            )
+        ]
+
+    results: list[ValidationResult] = []
+    child_index = 0
+    for child in root:
+        child_index += 1
+        child_namespace, child_local = split_tag(child.tag)
+        child_part = f"{part}#child{child_index}:{child_local}"
+        binding = namespace_to_schema.get(child_namespace or "")
+        if binding is None:
+            status = "skip" if allow_unknown else "fail"
+            results.append(
+                ValidationResult(
+                    package_label,
+                    child_part,
+                    status,
+                    "",
+                    f"no ECMA-376 XSD for VML child root namespace: {child_namespace or '(none)'}",
+                )
+            )
+            continue
+        child_bytes = ET.tostring(child, encoding="utf-8", xml_declaration=True)
+        results.append(
+            validate_part(xmllint, package, child_part, child_bytes, binding, parts_root)
+        )
+    return results
+
+
 def validate_package(
     xmllint: str,
     package: Path,
@@ -835,11 +893,24 @@ def validate_package(
                 name
                 for name in archive.namelist()
                 if not name.endswith("/")
-                and (name.endswith(".xml") or name.endswith(".rels"))
+                and is_xml_part(name)
             )
             for part in parts:
                 try:
                     xml_bytes = archive.read(part)
+                    if part.endswith(".vml"):
+                        results.extend(
+                            validate_vml_drawing_part(
+                                xmllint,
+                                package,
+                                part,
+                                xml_bytes,
+                                namespace_to_schema,
+                                parts_root,
+                                allow_unknown,
+                            )
+                        )
+                        continue
                     if mc_preprocess:
                         xml_bytes = mc_preprocess_xml(
                             xml_bytes,
