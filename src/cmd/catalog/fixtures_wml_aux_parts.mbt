@@ -490,6 +490,101 @@ fn wml_styles_part() -> @xml.Element {
         Element(w_val("rsid", "8899AABB")),
       ],
     ),
+    xe(
+      NS_W,
+      "style",
+      [
+        wml_aux_attr("type", "table"),
+        wml_aux_attr("styleId", "CatalogTable"),
+        wml_aux_attr("customStyle", "1"),
+      ],
+      [
+        Element(w_val("name", "Catalog Table")),
+        Element(w_val("basedOn", "TableNormal")),
+        Element(w_val("uiPriority", "12")),
+        Element(w_flag("qFormat")),
+        Element(
+          wml_aux_el("tblPr", [], [
+            xe(
+              NS_W,
+              "tblW",
+              [wml_aux_attr("w", "5000"), wml_aux_attr("type", "dxa")],
+              [],
+            ),
+            xe(
+              NS_W,
+              "tblLook",
+              [
+                wml_aux_attr("firstRow", "1"),
+                wml_aux_attr("lastRow", "0"),
+                wml_aux_attr("firstColumn", "1"),
+                wml_aux_attr("lastColumn", "0"),
+              ],
+              [],
+            ),
+          ]),
+        ),
+        Element(
+          wml_aux_el("trPr", [], [
+            xe(NS_W, "tblHeader", [wml_aux_attr("val", "1")], []),
+          ]),
+        ),
+        Element(
+          wml_aux_el("tcPr", [], [
+            xe(
+              NS_W,
+              "tcW",
+              [wml_aux_attr("w", "2400"), wml_aux_attr("type", "dxa")],
+              [],
+            ),
+            xe(
+              NS_W,
+              "shd",
+              [
+                wml_aux_attr("val", "clear"),
+                wml_aux_attr("color", "auto"),
+                wml_aux_attr("fill", "DDEBF7"),
+              ],
+              [],
+            ),
+          ]),
+        ),
+        Element(
+          xe(NS_W, "tblStylePr", [wml_aux_attr("type", "firstRow")], [
+            Element(w_rpr([w_flag("b")])),
+            Element(
+              wml_aux_el("tblPr", [], [
+                xe(
+                  NS_W,
+                  "tblW",
+                  [wml_aux_attr("w", "5000"), wml_aux_attr("type", "dxa")],
+                  [],
+                ),
+              ]),
+            ),
+            Element(
+              wml_aux_el("trPr", [], [
+                xe(NS_W, "tblHeader", [wml_aux_attr("val", "1")], []),
+              ]),
+            ),
+            Element(
+              wml_aux_el("tcPr", [], [
+                xe(
+                  NS_W,
+                  "shd",
+                  [
+                    wml_aux_attr("val", "clear"),
+                    wml_aux_attr("color", "auto"),
+                    wml_aux_attr("fill", "BDD7EE"),
+                  ],
+                  [],
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ],
+    ),
   ])
 }
 

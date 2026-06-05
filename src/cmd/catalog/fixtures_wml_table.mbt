@@ -35,6 +35,27 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
     xe(NS_W, "tblGrid", [], kids)
   }
 
+  // `<w:tblGrid>` with a tracked previous-grid snapshot at the end.
+  let tbl_grid_with_change = fn(widths : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
+    for w in widths {
+      kids.push(Element(grid_col(w)))
+    }
+    kids.push(
+      Element(
+        xe(NS_W, "tblGridChange", [wa("id", "41")], [
+          Element(
+            xe(NS_W, "tblGrid", [], [
+              Element(grid_col("1800")),
+              Element(grid_col("1800")),
+            ]),
+          ),
+        ]),
+      ),
+    )
+    xe(NS_W, "tblGrid", [], kids)
+  }
+
   // Generic border side, `<w:top w:val="single" w:sz="N" w:color="..."/>`.
   let bdr = fn(
     side : String,
@@ -49,6 +70,10 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
   }
   let bdr_none = fn(side : String) -> @xml.Element {
     xe(NS_W, side, [wa("val", "nil")], [])
+  }
+
+  let rev_attrs = fn(id : String) -> Array[@xml.Attribute] {
+    [wa("id", id), wa("author", "Catalog"), wa("date", "2024-01-01T00:00:00Z")]
   }
 
   // Standard single-border surround used by most fixtures.
@@ -116,6 +141,24 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
     ])
   }
 
+  // Strict logical side variant: top/start/bottom/end.
+  let tbl_cell_mar_logical = fn(
+    top : String,
+    start : String,
+    bottom : String,
+    end_ : String,
+  ) -> @xml.Element {
+    let side = fn(name : String, w : String) -> @xml.Element {
+      xe(NS_W, name, [wa("w", w), wa("type", "dxa")], [])
+    }
+    xe(NS_W, "tblCellMar", [], [
+      Element(side("top", top)),
+      Element(side("start", start)),
+      Element(side("bottom", bottom)),
+      Element(side("end", end_)),
+    ])
+  }
+
   // Per-cell margin override.
   let tc_mar = fn(
     top : String,
@@ -131,6 +174,24 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
       Element(side("left", left)),
       Element(side("bottom", bottom)),
       Element(side("right", right)),
+    ])
+  }
+
+  // Strict logical side variant: top/start/bottom/end.
+  let tc_mar_logical = fn(
+    top : String,
+    start : String,
+    bottom : String,
+    end_ : String,
+  ) -> @xml.Element {
+    let side = fn(name : String, w : String) -> @xml.Element {
+      xe(NS_W, name, [wa("w", w), wa("type", "dxa")], [])
+    }
+    xe(NS_W, "tcMar", [], [
+      Element(side("top", top)),
+      Element(side("start", start)),
+      Element(side("bottom", bottom)),
+      Element(side("end", end_)),
     ])
   }
 
@@ -1019,6 +1080,211 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
           tc_w_text("2400", "fixed layout"),
         ]),
       ]),
+    ),
+  })
+
+  // ----------------------------------------------------------------
+  // 26. table-revision-property-carriers — table/cell/row revision
+  //     snapshots and cell-level change markers.  This fixture is a
+  //     schema-valid carrier for low-frequency §17.13 table elements:
+  //     tblGridChange, tblPrChange, tblPrEx, tblPrExChange,
+  //     trPrChange, cellIns/cellDel/cellMerge, headers/header,
+  //     tcPrChange, plus paragraph/run property changes in cell text.
+  // ----------------------------------------------------------------
+  let logical_tbl_borders = xe(NS_W, "tblBorders", [], [
+    Element(bdr("top", "single", "8", "5B9BD5")),
+    Element(bdr("start", "single", "8", "70AD47")),
+    Element(bdr("bottom", "single", "8", "FFC000")),
+    Element(bdr("end", "single", "8", "C00000")),
+    Element(bdr("insideH", "single", "4", "808080")),
+    Element(bdr("insideV", "single", "4", "808080")),
+  ])
+  let tbl_pr_base_snapshot = fn() -> @xml.Element {
+    xe(NS_W, "tblPr", [], [
+      Element(tbl_w("4800", "dxa")),
+      Element(xe(NS_W, "jc", [wa("val", "left")], [])),
+      Element(
+        xe(NS_W, "tblCellSpacing", [wa("w", "40"), wa("type", "dxa")], []),
+      ),
+      Element(tbl_ind("120", "dxa")),
+      Element(logical_tbl_borders),
+      Element(shd("FFF2CC")),
+      Element(tbl_layout("fixed")),
+      Element(tbl_cell_mar_logical("80", "100", "80", "100")),
+      Element(tbl_look("1", "0", "0", "0")),
+    ])
+  }
+  let tbl_pr_ex_base_snapshot = fn() -> @xml.Element {
+    xe(NS_W, "tblPrEx", [], [
+      Element(tbl_w("4200", "dxa")),
+      Element(xe(NS_W, "jc", [wa("val", "center")], [])),
+      Element(
+        xe(NS_W, "tblCellSpacing", [wa("w", "20"), wa("type", "dxa")], []),
+      ),
+      Element(tbl_ind("60", "dxa")),
+      Element(logical_tbl_borders),
+      Element(shd("E2F0D9")),
+      Element(tbl_layout("fixed")),
+      Element(tbl_cell_mar_logical("60", "80", "60", "80")),
+      Element(tbl_look("1", "0", "1", "0")),
+    ])
+  }
+  let tbl_pr_ex_with_change = xe(NS_W, "tblPrEx", [], [
+    Element(tbl_w("4400", "dxa")),
+    Element(xe(NS_W, "jc", [wa("val", "right")], [])),
+    Element(xe(NS_W, "tblCellSpacing", [wa("w", "30"), wa("type", "dxa")], [])),
+    Element(tbl_ind("90", "dxa")),
+    Element(logical_tbl_borders),
+    Element(shd("D9EAF7")),
+    Element(tbl_layout("fixed")),
+    Element(tbl_cell_mar_logical("70", "90", "70", "90")),
+    Element(tbl_look("1", "1", "0", "0")),
+    Element(
+      xe(NS_W, "tblPrExChange", rev_attrs("42"), [
+        Element(tbl_pr_ex_base_snapshot()),
+      ]),
+    ),
+  ])
+  let tr_pr_with_change = xe(NS_W, "trPr", [], [
+    Element(xe(NS_W, "gridBefore", [wa("val", "1")], [])),
+    Element(xe(NS_W, "gridAfter", [wa("val", "1")], [])),
+    Element(tr_height("560", "atLeast")),
+    Element(xe(NS_W, "tblHeader", [wa("val", "1")], [])),
+    Element(xe(NS_W, "jc", [wa("val", "center")], [])),
+    Element(xe(NS_W, "hidden", [wa("val", "0")], [])),
+    Element(
+      xe(NS_W, "trPrChange", rev_attrs("43"), [
+        Element(
+          xe(NS_W, "trPr", [], [
+            Element(tr_height("360", "atLeast")),
+            Element(xe(NS_W, "hidden", [wa("val", "1")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let logical_tc_borders = xe(NS_W, "tcBorders", [], [
+    Element(bdr("top", "single", "6", "4472C4")),
+    Element(bdr("start", "single", "6", "70AD47")),
+    Element(bdr("bottom", "single", "6", "FFC000")),
+    Element(bdr("end", "single", "6", "C00000")),
+  ])
+  let tc_pr_with_change = [
+    xe(
+      NS_W,
+      "cnfStyle",
+      [
+        wa("firstRow", "1"),
+        wa("firstColumn", "1"),
+        wa("lastRow", "0"),
+        wa("lastColumn", "0"),
+      ],
+      [],
+    ),
+    xe(NS_W, "tcW", [wa("w", "2400"), wa("type", "dxa")], []),
+    grid_span("1"),
+    xe(NS_W, "hMerge", [wa("val", "restart")], []),
+    v_merge_restart(),
+    logical_tc_borders,
+    shd("FCE4D6"),
+    xe(NS_W, "noWrap", [wa("val", "0")], []),
+    tc_mar_logical("80", "100", "80", "100"),
+    xe(NS_W, "textDirection", [wa("val", "lrTb")], []),
+    xe(NS_W, "tcFitText", [wa("val", "0")], []),
+    v_align("center"),
+    xe(NS_W, "hideMark", [wa("val", "0")], []),
+    xe(NS_W, "headers", [], [
+      Element(xe(NS_W, "header", [wa("val", "catalog-h1")], [])),
+    ]),
+    xe(NS_W, "cellIns", rev_attrs("44"), []),
+    xe(NS_W, "tcPrChange", rev_attrs("47"), [
+      Element(
+        xe(NS_W, "tcPr", [], [
+          Element(xe(NS_W, "tcW", [wa("w", "1800"), wa("type", "dxa")], [])),
+          Element(v_align("top")),
+        ]),
+      ),
+    ]),
+  ]
+  let tc_pr_cell_del = [
+    xe(NS_W, "tcW", [wa("w", "2400"), wa("type", "dxa")], []),
+    shd("EDEDED"),
+    xe(NS_W, "cellDel", rev_attrs("45"), []),
+  ]
+  let tc_pr_cell_merge = [
+    xe(NS_W, "tcW", [wa("w", "2400"), wa("type", "dxa")], []),
+    v_merge_continue(),
+    xe(
+      NS_W,
+      "cellMerge",
+      [
+        wa("id", "46"),
+        wa("author", "Catalog"),
+        wa("date", "2024-01-01T00:00:00Z"),
+        wa("vMerge", "rest"),
+        wa("vMergeOrig", "cont"),
+      ],
+      [],
+    ),
+  ]
+  let paragraph_props_change = xe(NS_W, "pPr", [], [
+    Element(
+      xe(NS_W, "pPrChange", rev_attrs("48"), [Element(xe(NS_W, "pPr", [], []))]),
+    ),
+  ])
+  let run_props_change = w_rpr([
+    w_flag("b"),
+    xe(NS_W, "rPrChange", rev_attrs("49"), [Element(w_rpr([w_flag("i")]))]),
+  ])
+  let revision_row = xe(
+    NS_W,
+    "tr",
+    [
+      wa("rsidRPr", "00112233"),
+      wa("rsidR", "00112234"),
+      wa("rsidDel", "00112235"),
+      wa("rsidTr", "00112236"),
+    ],
+    [
+      Element(tbl_pr_ex_with_change),
+      Element(tr_pr_with_change),
+      Element(
+        tc_full(tc_pr_with_change, [
+          w_p(Some(paragraph_props_change), [
+            w_run(Some(run_props_change), "Tracked cell properties"),
+          ]),
+        ]),
+      ),
+      Element(
+        tc_full(tc_pr_cell_del, [
+          w_p(None, [w_run(None, "Deleted cell marker")]),
+        ]),
+      ),
+    ],
+  )
+  cases.push({
+    id: "table-revision-property-carriers",
+    format: "docx",
+    category: "table",
+    content: body_of(
+      tbl(
+        [
+          tbl_w("4800", "dxa"),
+          xe(NS_W, "tblPrChange", rev_attrs("40"), [
+            Element(tbl_pr_base_snapshot()),
+          ]),
+        ],
+        tbl_grid_with_change(["2400", "2400"]),
+        [
+          revision_row,
+          tr([
+            tc_full(tc_pr_cell_merge, [
+              w_p(None, [w_run(None, "Merged cell marker")]),
+            ]),
+            tc_w_text("2400", "Base"),
+          ]),
+        ],
+      ),
     ),
   })
 }
