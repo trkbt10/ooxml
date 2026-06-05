@@ -108,6 +108,12 @@ fn dml_main_custom_geometry() -> @xml.Element {
                 [],
               ),
             ),
+            Element(
+              xe(NS_A, "quadBezTo", [], [
+                dml_main_path_pt("90000", "70000"),
+                dml_main_path_pt("50000", "100000"),
+              ]),
+            ),
             Element(xe(NS_A, "cubicBezTo", [], cubic_pts)),
             Element(xe(NS_A, "close", [], [])),
           ]),
@@ -262,6 +268,14 @@ fn dml_main_effect_dag() -> @xml.Element {
                   ]),
                 ),
               ]),
+            ),
+            Element(
+              xe(NS_A, "prstShdw", [xa("prst", "shdw2"), xa("dist", "12700")], [
+                Element(xe(NS_A, "srgbClr", [xa("val", "404040")], [])),
+              ]),
+            ),
+            Element(
+              xe(NS_A, "relOff", [xa("tx", "5000"), xa("ty", "5000")], []),
             ),
           ]),
         ),
@@ -557,6 +571,8 @@ fn dml_main_table_style_part() -> @xml.Element {
             Element(dml_main_table_border("bottom", "5B9BD5")),
             Element(dml_main_table_border("insideH", "70AD47")),
             Element(dml_main_table_border("insideV", "70AD47")),
+            Element(dml_main_table_border("tl2br", "A5A5A5")),
+            Element(dml_main_table_border("tr2bl", "A5A5A5")),
           ]),
         ),
         Element(
@@ -747,6 +763,561 @@ fn dml_main_table_graphic_frame() -> @xml.Element {
 }
 
 ///|
+fn dml_main_table_properties_with_style_id() -> @xml.Element {
+  xe(NS_A, "tblPr", [xa("firstRow", "1")], [
+    Element(
+      xe(NS_A, "tableStyleId", [], [
+        Text("{11111111-1111-1111-1111-111111111111}"),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_table_style_id_root() -> @xml.Element {
+  xe(NS_A, "tbl", [], [
+    Element(dml_main_table_properties_with_style_id()),
+    Element(
+      xe(NS_A, "tblGrid", [], [
+        Element(xe(NS_A, "gridCol", [xa("w", "2743200")], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_A, "tr", [xa("h", "914400")], [
+        Element(dml_main_table_cell("style id")),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_table_style_list_root() -> @xml.Element {
+  let inline_style = dml_main_table_style()
+  xe(
+    NS_A,
+    "tblStyleLst",
+    [xa("def", "{11111111-1111-1111-1111-111111111111}")],
+    [
+      Element(
+        xe(NS_A, "tblStyle", inline_style.attributes, inline_style.children),
+      ),
+    ],
+  )
+}
+
+///|
+fn dml_main_table_style_id_graphic_frame() -> @xml.Element {
+  xe(NS_PML, "graphicFrame", [], [
+    Element(
+      xe(NS_PML, "nvGraphicFramePr", [], [
+        Element(
+          xe(
+            NS_PML,
+            "cNvPr",
+            [xa("id", "7"), xa("name", "DML Table Style Id")],
+            [],
+          ),
+        ),
+        Element(xe(NS_PML, "cNvGraphicFramePr", [], [])),
+        Element(xe(NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_PML, "xfrm", [], [
+        Element(xe(NS_A, "off", [xa("x", "914400"), xa("y", "3200400")], [])),
+        Element(xe(NS_A, "ext", [xa("cx", "5486400"), xa("cy", "1371600")], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_A, "graphic", [], [
+        Element(
+          xe(NS_A, "graphicData", [xa("uri", DML_MAIN_TABLE_URI)], [
+            Element(dml_main_table_style_id_root()),
+            Element(dml_main_table_style_list_root()),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_scheme_color(name : String, hex : String) -> @xml.Element {
+  xe(NS_A, name, [], [Element(xe(NS_A, "srgbClr", [xa("val", hex)], []))])
+}
+
+///|
+fn dml_main_color_scheme(name : String) -> @xml.Element {
+  xe(NS_A, "clrScheme", [xa("name", name)], [
+    Element(dml_main_scheme_color("dk1", "000000")),
+    Element(dml_main_scheme_color("lt1", "FFFFFF")),
+    Element(dml_main_scheme_color("dk2", "1F4E79")),
+    Element(dml_main_scheme_color("lt2", "E2F0D9")),
+    Element(dml_main_scheme_color("accent1", "5B9BD5")),
+    Element(dml_main_scheme_color("accent2", "ED7D31")),
+    Element(dml_main_scheme_color("accent3", "A5A5A5")),
+    Element(dml_main_scheme_color("accent4", "FFC000")),
+    Element(dml_main_scheme_color("accent5", "4472C4")),
+    Element(dml_main_scheme_color("accent6", "70AD47")),
+    Element(dml_main_scheme_color("hlink", "0563C1")),
+    Element(dml_main_scheme_color("folHlink", "954F72")),
+  ])
+}
+
+///|
+fn dml_main_color_mapping(name : String) -> @xml.Element {
+  xe(
+    NS_A,
+    name,
+    [
+      xa("bg1", "lt1"),
+      xa("tx1", "dk1"),
+      xa("bg2", "lt2"),
+      xa("tx2", "dk2"),
+      xa("accent1", "accent1"),
+      xa("accent2", "accent2"),
+      xa("accent3", "accent3"),
+      xa("accent4", "accent4"),
+      xa("accent5", "accent5"),
+      xa("accent6", "accent6"),
+      xa("hlink", "hlink"),
+      xa("folHlink", "folHlink"),
+    ],
+    [],
+  )
+}
+
+///|
+fn dml_main_style_ref(
+  name : String,
+  idx : String,
+  clr : String,
+) -> @xml.Element {
+  xe(NS_A, name, [xa("idx", idx)], [
+    Element(xe(NS_A, "schemeClr", [xa("val", clr)], [])),
+  ])
+}
+
+///|
+fn dml_main_shape_style() -> @xml.Element {
+  xe(NS_A, "style", [], [
+    Element(dml_main_style_ref("lnRef", "1", "accent1")),
+    Element(dml_main_style_ref("fillRef", "1", "accent2")),
+    Element(dml_main_style_ref("effectRef", "1", "accent3")),
+    Element(dml_main_style_ref("fontRef", "minor", "tx1")),
+  ])
+}
+
+///|
+fn dml_main_group_fill_shape() -> @xml.Element {
+  xe(NS_PML, "sp", [], [
+    Element(
+      xe(NS_PML, "nvSpPr", [], [
+        Element(
+          xe(NS_PML, "cNvPr", [xa("id", "20"), xa("name", "Group Fill")], []),
+        ),
+        Element(xe(NS_PML, "cNvSpPr", [], [])),
+        Element(xe(NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_PML, "spPr", [], [
+        Element(sp_xfrm("5943600", "914400", "1371600", "914400")),
+        Element(
+          xe(NS_A, "prstGeom", [xa("prst", "rect")], [
+            Element(xe(NS_A, "avLst", [], [])),
+          ]),
+        ),
+        Element(xe(NS_A, "grpFill", [], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_gradient_fill_for_defaults() -> @xml.Element {
+  xe(NS_A, "gradFill", [], [
+    Element(
+      xe(NS_A, "gsLst", [], [
+        Element(
+          xe(NS_A, "gs", [xa("pos", "0")], [
+            Element(xe(NS_A, "srgbClr", [xa("val", "5B9BD5")], [])),
+          ]),
+        ),
+        Element(
+          xe(NS_A, "gs", [xa("pos", "100000")], [
+            Element(xe(NS_A, "srgbClr", [xa("val", "FFFFFF")], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xe(NS_A, "path", [xa("path", "rect")], [
+        Element(
+          xe(
+            NS_A,
+            "fillToRect",
+            [
+              xa("l", "10000"),
+              xa("t", "10000"),
+              xa("r", "90000"),
+              xa("b", "90000"),
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(
+      xe(
+        NS_A,
+        "tileRect",
+        [xa("l", "5000"), xa("t", "5000"), xa("r", "95000"), xa("b", "95000")],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn dml_main_theme_line() -> @xml.Element {
+  xe(NS_A, "ln", [xa("w", "12700")], [
+    Element(solid_fill("1F4E79")),
+    Element(
+      xe(NS_A, "custDash", [], [
+        Element(xe(NS_A, "ds", [xa("d", "25000"), xa("sp", "15000")], [])),
+      ]),
+    ),
+    Element(xe(NS_A, "round", [], [])),
+  ])
+}
+
+///|
+fn dml_main_default_text_list_style(follow : Bool) -> @xml.Element {
+  let underline_children : Array[@xml.Node] = if follow {
+    [Element(xe(NS_A, "uLnTx", [], [])), Element(xe(NS_A, "uFillTx", [], []))]
+  } else {
+    [
+      Element(xe(NS_A, "uLn", [], [Element(solid_fill("C00000"))])),
+      Element(xe(NS_A, "uFill", [], [Element(solid_fill("FFC000"))])),
+    ]
+  }
+  xe(NS_A, "lstStyle", [], [
+    Element(
+      xe(NS_A, "defPPr", [], [
+        Element(xe(NS_A, "defRPr", [xa("sz", "1800")], underline_children)),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_default_shape_definition(
+  name : String,
+  follow : Bool,
+) -> @xml.Element {
+  xe(NS_A, name, [], [
+    Element(
+      xe(NS_A, "spPr", [], [
+        Element(
+          xe(NS_A, "prstGeom", [xa("prst", "rect")], [
+            Element(xe(NS_A, "avLst", [], [])),
+          ]),
+        ),
+        Element(dml_main_gradient_fill_for_defaults()),
+        Element(dml_main_theme_line()),
+      ]),
+    ),
+    Element(xe(NS_A, "bodyPr", [], [Element(xe(NS_A, "spAutoFit", [], []))])),
+    Element(dml_main_default_text_list_style(follow)),
+    Element(dml_main_shape_style()),
+  ])
+}
+
+///|
+fn dml_main_object_defaults() -> @xml.Element {
+  xe(NS_A, "objectDefaults", [], [
+    Element(dml_main_default_shape_definition("spDef", false)),
+    Element(dml_main_default_shape_definition("lnDef", true)),
+    Element(dml_main_default_shape_definition("txDef", false)),
+  ])
+}
+
+///|
+fn dml_main_extra_color_scheme_list() -> @xml.Element {
+  xe(NS_A, "extraClrSchemeLst", [], [
+    Element(
+      xe(NS_A, "extraClrScheme", [], [
+        Element(dml_main_color_scheme("Coverage Extra")),
+        Element(dml_main_color_mapping("clrMap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_custom_color_list() -> @xml.Element {
+  xe(NS_A, "custClrLst", [], [
+    Element(
+      xe(NS_A, "custClr", [xa("name", "Coverage Purple")], [
+        Element(xe(NS_A, "srgbClr", [xa("val", "7030A0")], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_theme_defaults_root() -> @xml.Element {
+  xep("a", NS_A, "theme", [xa("name", "Coverage Theme")], [
+    Element(dml_main_object_defaults()),
+    Element(dml_main_extra_color_scheme_list()),
+    Element(dml_main_custom_color_list()),
+  ])
+}
+
+///|
+fn dml_main_theme_override_root() -> @xml.Element {
+  xep("a", NS_A, "themeOverride", [], [
+    Element(dml_main_color_scheme("Coverage Override")),
+  ])
+}
+
+///|
+fn dml_main_theme_manager_root() -> @xml.Element {
+  xep("a", NS_A, "themeManager", [], [])
+}
+
+///|
+fn dml_main_override_color_map() -> @xml.Element {
+  xep("p", NS_PML, "clrMapOvr", [], [
+    Element(dml_main_color_mapping("overrideClrMapping")),
+  ])
+}
+
+///|
+fn dml_main_view_props_root() -> @xml.Element {
+  xep("p", NS_PML, "viewPr", [xa("lastView", "sldView")], [
+    Element(
+      xep("p", NS_PML, "notesTextViewPr", [], [
+        Element(
+          xep("p", NS_PML, "cViewPr", [], [
+            Element(
+              xep("p", NS_PML, "scale", [], [
+                Element(xe(NS_A, "sx", [xa("n", "1"), xa("d", "1")], [])),
+                Element(xe(NS_A, "sy", [xa("n", "1"), xa("d", "1")], [])),
+              ]),
+            ),
+            Element(
+              xep("p", NS_PML, "origin", [xa("x", "0"), xa("y", "0")], []),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_media_shape(
+  id : String,
+  name : String,
+  x : String,
+  y : String,
+  fill : String,
+  media : @xml.Element,
+) -> @xml.Element {
+  xe(NS_PML, "sp", [], [
+    Element(
+      xe(NS_PML, "nvSpPr", [], [
+        Element(xe(NS_PML, "cNvPr", [xa("id", id), xa("name", name)], [])),
+        Element(xe(NS_PML, "cNvSpPr", [], [])),
+        Element(xe(NS_PML, "nvPr", [], [Element(media)])),
+      ]),
+    ),
+    Element(
+      xe(NS_PML, "spPr", [], [
+        Element(sp_xfrm(x, y, "2286000", "914400")),
+        Element(
+          xe(NS_A, "prstGeom", [xa("prst", "rect")], [
+            Element(xe(NS_A, "avLst", [], [])),
+          ]),
+        ),
+        Element(solid_fill(fill)),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_audio_cd() -> @xml.Element {
+  xe(NS_A, "audioCd", [], [
+    Element(xe(NS_A, "st", [xa("track", "1"), xa("time", "0")], [])),
+    Element(xe(NS_A, "end", [xa("track", "1"), xa("time", "1000")], [])),
+  ])
+}
+
+///|
+fn extras_dml_main_media_slides(cases : Array[MediaSlideCase]) -> Unit {
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let wav = xe(
+    NS_A,
+    "wavAudioFile",
+    [
+      {
+        name: { prefix: Some("r"), local_name: "embed", ns: Some(ns_r) },
+        value: "rId2",
+      },
+      xa("name", "coverage.wav"),
+    ],
+    [],
+  )
+  let quicktime = xe(
+    NS_A,
+    "quickTimeFile",
+    [
+      {
+        name: { prefix: Some("r"), local_name: "link", ns: Some(ns_r) },
+        value: "rId3",
+      },
+    ],
+    [],
+  )
+  let extra_rels : Array[(String, String, String, String)] = [
+    (
+      "rId2", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio",
+      "https://example.com/coverage.wav", "External",
+    ),
+    (
+      "rId3", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video",
+      "https://example.com/coverage.mov", "External",
+    ),
+  ]
+  cases.push({
+    id: "dml-main-media-choice-remaining",
+    format: "pptx",
+    category: "drawing/main",
+    content: sp_tree([
+      dml_main_media_shape(
+        "2",
+        "Audio CD",
+        "914400",
+        "914400",
+        "DDEBF7",
+        dml_main_audio_cd(),
+      ),
+      dml_main_media_shape("3", "WAV Audio", "3200400", "914400", "E2F0D9", wav),
+      dml_main_media_shape(
+        "4", "QuickTime", "5486400", "914400", "FCE4D6", quicktime,
+      ),
+    ]),
+    extra_rels,
+  })
+}
+
+///|
+fn dml_main_graphic_target_anim(
+  id : String,
+  target : @xml.Element,
+) -> @xml.Element {
+  xep("p", NS_PML, "anim", [xa("valueType", "num"), xa("calcmode", "lin")], [
+    Element(
+      xep("p", NS_PML, "cBhvr", [], [
+        Element(xep("p", NS_PML, "cTn", [xa("id", id)], [])),
+        Element(
+          xep("p", NS_PML, "tgtEl", [], [
+            Element(
+              xep("p", NS_PML, "spTgt", [xa("spid", "2")], [
+                Element(xep("p", NS_PML, "graphicEl", [], [Element(target)])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn dml_main_timing_build_fixture() -> @xml.Element {
+  let dgm_target = xe(
+    NS_A,
+    "dgm",
+    [xa("id", "{22222222-2222-2222-2222-222222222222}"), xa("bldStep", "sp")],
+    [],
+  )
+  let chart_target = xe(
+    NS_A,
+    "chart",
+    [xa("bldStep", "series"), xa("seriesIdx", "0"), xa("categoryIdx", "0")],
+    [],
+  )
+  let anim_dgm = dml_main_graphic_target_anim("2", dgm_target)
+  let anim_chart = dml_main_graphic_target_anim("3", chart_target)
+  let par_inner = xep("p", NS_PML, "par", [], [
+    Element(
+      xep("p", NS_PML, "cTn", [xa("id", "1")], [
+        Element(
+          xep("p", NS_PML, "childTnLst", [], [
+            Element(anim_dgm),
+            Element(anim_chart),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let tn_lst = xep("p", NS_PML, "tnLst", [], [Element(par_inner)])
+  let bld_lst = xep("p", NS_PML, "bldLst", [], [
+    Element(
+      xep("p", NS_PML, "bldGraphic", [xa("spid", "2"), xa("grpId", "0")], [
+        Element(
+          xep("p", NS_PML, "bldSub", [], [
+            Element(xe(NS_A, "bldDgm", [xa("bld", "one"), xa("rev", "0")], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "bldGraphic", [xa("spid", "2"), xa("grpId", "1")], [
+        Element(
+          xep("p", NS_PML, "bldSub", [], [
+            Element(
+              xe(NS_A, "bldChart", [xa("bld", "series"), xa("animBg", "1")], []),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  xep("p", NS_PML, "timing", [], [Element(tn_lst), Element(bld_lst)])
+}
+
+///|
+fn dml_main_timing_shape() -> @xml.Element {
+  xe(NS_PML, "sp", [], [
+    Element(
+      xe(NS_PML, "nvSpPr", [], [
+        Element(
+          xe(NS_PML, "cNvPr", [xa("id", "2"), xa("name", "Timing Target")], []),
+        ),
+        Element(xe(NS_PML, "cNvSpPr", [], [])),
+        Element(xe(NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_PML, "spPr", [], [
+        Element(sp_xfrm("914400", "914400", "2743200", "1371600")),
+        Element(
+          xe(NS_A, "prstGeom", [xa("prst", "rect")], [
+            Element(xe(NS_A, "avLst", [], [])),
+          ]),
+        ),
+        Element(solid_fill("D9EAF7")),
+      ]),
+    ),
+  ])
+}
+
+///|
 fn extras_dml_main_coverage(cases : Array[VisualCase]) -> Unit {
   cases.push({
     id: "dml-main-custom-geometry-3d-effects-text",
@@ -757,6 +1328,7 @@ fn extras_dml_main_coverage(cases : Array[VisualCase]) -> Unit {
       dml_main_shape_3d_scene(),
       dml_main_effect_dag_shape(),
       dml_main_rich_text_shape(),
+      dml_main_group_fill_shape(),
     ]),
   })
 
@@ -765,5 +1337,50 @@ fn extras_dml_main_coverage(cases : Array[VisualCase]) -> Unit {
     format: "pptx",
     category: "drawing/main",
     content: sp_tree([dml_main_table_graphic_frame()]),
+  })
+
+  cases.push({
+    id: "dml-main-table-style-id-and-list",
+    format: "pptx",
+    category: "drawing/main",
+    content: sp_tree([dml_main_table_style_id_graphic_frame()]),
+  })
+
+  cases.push({
+    id: "dml-main-theme-defaults-and-colors",
+    format: "pptx:theme",
+    category: "drawing/main",
+    content: dml_main_theme_defaults_root(),
+  })
+
+  cases.push({
+    id: "dml-main-theme-override",
+    format: "pptx:themeOverride",
+    category: "drawing/main",
+    content: dml_main_theme_override_root(),
+  })
+
+  cases.push({
+    id: "dml-main-theme-manager",
+    format: "pptx:themeManager",
+    category: "drawing/main",
+    content: dml_main_theme_manager_root(),
+  })
+
+  cases.push({
+    id: "dml-main-view-scale",
+    format: "pptx:viewPr",
+    category: "drawing/main",
+    content: dml_main_view_props_root(),
+  })
+
+  cases.push({
+    id: "dml-main-animation-builds",
+    format: "pptx",
+    category: "drawing/main",
+    content: pml_ml_cSld_with_extras([dml_main_timing_shape()], [
+      dml_main_override_color_map(),
+      dml_main_timing_build_fixture(),
+    ]),
   })
 }

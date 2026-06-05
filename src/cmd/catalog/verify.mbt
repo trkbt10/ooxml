@@ -455,6 +455,61 @@ fn docx_package_with_custom_xml(
 }
 
 ///|
+fn docx_package_with_content_part(body : @xml.Element) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let document : @xml.Element = if body.name.local_name == "document" {
+    body
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(body)],
+    }
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rIdContentPart"),
+          xa("Type", RT_CUSTOM_XML),
+          xa("Target", "../customXml/item1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let custom_xml = xe(
+    "http://www.w3.org/2000/svg",
+    "svg",
+    [xa("viewBox", "0 0 10 10")],
+    [
+      Element(
+        xe("http://www.w3.org/2000/svg", "title", [], [
+          Text("OOXML contentPart"),
+        ]),
+      ),
+    ],
+  )
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("customXml/item1.xml", write_part(custom_xml)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// `.docx` package whose main document embeds a binary image part at
 /// `word/media/image1.png` and wires `r:embed="rId2"` through
 /// `word/_rels/document.xml.rels`.  The renderer still resolves images
@@ -6228,6 +6283,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "docx:comments" => docx_aux_package("comments", content)
     "docx:footnotes" => docx_aux_package("footnotes", content)
     "docx:endnotes" => docx_aux_package("endnotes", content)
+    "docx:contentPart" => docx_package_with_content_part(content)
     "docx:picture-blip" =>
       docx_package_with_embedded_image(
         catalog_wml_picture_blip_root(content),
@@ -6235,6 +6291,9 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
       )
     "pptx:theme" => pptx_with_aux_root_package("theme", content)
     "pptx:presentation" => pptx_with_aux_root_package("presentation", content)
+    "pptx:viewPr" => pptx_with_aux_root_package("viewPr", content)
+    "pptx:themeOverride" => pptx_with_aux_root_package("themeOverride", content)
+    "pptx:themeManager" => pptx_with_aux_root_package("themeManager", content)
     "pptx:master-txstyle" => pptx_package_with_master_tx_styles(content)
     "pptx:placeholder-chain" => pptx_package_with_placeholder_chain(content)
     "pptx:picture-blip" =>
@@ -8979,8 +9038,129 @@ fn pptx_with_aux_root_package(
       }
       pptx_package_with_replaced_presentation(pres_root)
     }
+    "viewPr" =>
+      pptx_package_with_standard_aux_part(
+        "ppt/viewProps.xml", "application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/viewProps",
+        "viewProps.xml", content,
+      )
+    "themeOverride" =>
+      pptx_package_with_standard_aux_part(
+        "ppt/theme/themeOverride1.xml", "application/vnd.openxmlformats-officedocument.themeOverride+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/themeOverride",
+        "theme/themeOverride1.xml", content,
+      )
+    "themeManager" =>
+      pptx_package_with_standard_aux_part(
+        "ppt/theme/themeManager.xml", "application/vnd.openxmlformats-officedocument.themeManager+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/themeManager",
+        "theme/themeManager.xml", content,
+      )
     _ => pptx_package(content)
   }
+}
+
+///|
+/// Add one standard PresentationML auxiliary XML part to the
+/// canonical one-slide package.  The existing slide/master/layout
+/// scaffolding is kept byte-for-byte except for the content types and
+/// presentation relationship table required to make the new part a
+/// reachable OOXML part.
+fn pptx_package_with_standard_aux_part(
+  part_name : String,
+  content_type : String,
+  relationship_type : String,
+  target : String,
+  content : @xml.Element,
+) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let base = pptx_package(pptx_common_slide_data(ns_p, []))
+  let archive = @zip.read(base) catch { _ => return Bytes::new(0) }
+  let parts : Array[(String, Bytes)] = []
+  for entry in archive.entries {
+    if entry.name != "[Content_Types].xml" &&
+      entry.name != "ppt/_rels/presentation.xml.rels" {
+      parts.push((entry.name, entry.data))
+    }
+  }
+  parts.push(
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+        ),
+        (
+          "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+        ),
+        (
+          "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+        ),
+        (
+          "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+        ),
+        (
+          "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+        ),
+        ("/" + part_name, content_type),
+      ]),
+    ),
+  )
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
+          ),
+          xa("Target", "slides/slide1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [xa("Id", "rId4"), xa("Type", relationship_type), xa("Target", target)],
+        [],
+      ),
+    ),
+  ])
+  parts.push(("ppt/_rels/presentation.xml.rels", write_part(pres_rels)))
+  parts.push((part_name, write_part(content)))
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
 ///|
@@ -10438,6 +10618,8 @@ fn empty_body_package(format : String) -> Bytes {
       docx_aux_package("footnotes", xep("w", ns_w, "footnotes", [], []))
     "docx:endnotes" =>
       docx_aux_package("endnotes", xep("w", ns_w, "endnotes", [], []))
+    "docx:contentPart" =>
+      docx_package_with_content_part(xep("w", ns_w, "body", [], []))
     "pptx:theme" =>
       pptx_with_aux_root_package(
         "theme",
@@ -10447,6 +10629,18 @@ fn empty_body_package(format : String) -> Bytes {
       pptx_with_aux_root_package(
         "presentation",
         xep("p", ns_p, "presentation", [], []),
+      )
+    "pptx:viewPr" =>
+      pptx_with_aux_root_package("viewPr", xep("p", ns_p, "viewPr", [], []))
+    "pptx:themeOverride" =>
+      pptx_with_aux_root_package(
+        "themeOverride",
+        xep("a", ns_a, "themeOverride", [], []),
+      )
+    "pptx:themeManager" =>
+      pptx_with_aux_root_package(
+        "themeManager",
+        xep("a", ns_a, "themeManager", [], []),
       )
     "pptx:table" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:master-txstyle" => pptx_package(pptx_common_slide_data(ns_p, []))

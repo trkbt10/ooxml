@@ -38,6 +38,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   let ns_pic = "http://schemas.openxmlformats.org/drawingml/2006/picture"
   // VML namespace — Transitional ECMA-376 §19 legacy shapes.
   let ns_vml = "urn:schemas-microsoft-com:vml"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
   // ---- Element-builder helpers ---------------------------------
   //
@@ -110,6 +111,11 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   let vml_graphic = fn(inner : Array[@xml.Node]) -> @xml.Element {
     a_el("graphic", [], [
       Element(a_el("graphicData", [xa("uri", ns_vml)], inner)),
+    ])
+  }
+  let wpc_graphic = fn(inner : Array[@xml.Node]) -> @xml.Element {
+    a_el("graphic", [], [
+      Element(a_el("graphicData", [xa("uri", ns_wp)], inner)),
     ])
   }
   // `<wp:inline distT="0" distB="0" distL="0" distR="0">extent docPr graphic</wp:inline>`
@@ -808,6 +814,61 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
               "1",
               "MultiTB",
               vml_graphic([Element(multi_shape)]),
+            ),
+          ),
+          w_run(None, " after."),
+        ]),
+      ),
+    ]),
+  })
+
+  let content_part = wp_el(
+    "contentPart",
+    [
+      {
+        name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+        value: "rIdContentPart",
+      },
+    ],
+    [
+      Element(
+        wp_el("nvContentPartPr", [], [
+          Element(
+            wp_el("cNvPr", [xa("id", "7"), xa("name", "Locked Content Part")], []),
+          ),
+          Element(
+            wp_el("cNvContentPartPr", [], [
+              Element(
+                a_el("cpLocks", [xa("noGrp", "1"), xa("noSelect", "1")], []),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+      Element(
+        wp_el("xfrm", [], [
+          Element(a_el("off", [xa("x", "0"), xa("y", "0")], [])),
+          Element(a_el("ext", [xa("cx", "914400"), xa("cy", "914400")], [])),
+        ]),
+      ),
+    ],
+  )
+  let wpc = wp_el("wpc", [], [Element(content_part)])
+  cases.push({
+    id: "drawing-content-part-cp-locks",
+    format: "docx:contentPart",
+    category: "drawing",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(None, [
+          w_run(None, "Before "),
+          drawing_run(
+            inline(
+              "914400",
+              "914400",
+              "1",
+              "ContentPartLocks",
+              wpc_graphic([Element(wpc)]),
             ),
           ),
           w_run(None, " after."),

@@ -66,6 +66,7 @@ fn external_ref_cases() -> Array[ExternalRefCase] {
 fn media_slide_cases() -> Array[MediaSlideCase] {
   let cases : Array[MediaSlideCase] = []
   extras_pml_media_slides(cases)
+  extras_dml_main_media_slides(cases)
   extras_r29_media_slides_pic(cases)
   extras_r29_media_slides_shape(cases)
   cases

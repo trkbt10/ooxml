@@ -4825,12 +4825,27 @@ fn generate_visual_fixtures() -> Unit {
     let bytes = match c.format {
       "xlsx" => xlsx_package(c.content)
       "pptx" => pptx_package(c.content)
+      "pptx:theme" => pptx_with_aux_root_package("theme", c.content)
+      "pptx:viewPr" => pptx_with_aux_root_package("viewPr", c.content)
+      "pptx:themeOverride" =>
+        pptx_with_aux_root_package("themeOverride", c.content)
+      "pptx:themeManager" =>
+        pptx_with_aux_root_package("themeManager", c.content)
+      "docx:contentPart" => docx_package_with_content_part(c.content)
       _ => docx_package(c.content)
     }
-    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
-    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let output_format = match c.format {
+      "pptx:theme" => "pptx"
+      "pptx:viewPr" => "pptx"
+      "pptx:themeOverride" => "pptx"
+      "pptx:themeManager" => "pptx"
+      "docx:contentPart" => "docx"
+      _ => c.format
+    }
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + output_format)
+    let dir = ".snapshots/fixtures/" + output_format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
-    let path = dir + "/" + c.id + "." + c.format
+    let path = dir + "/" + c.id + "." + output_format
     try @fs.write_bytes_to_file(path, bytes) catch {
       _ => println("!! failed to write " + path)
     } noraise {

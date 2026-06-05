@@ -107,7 +107,12 @@ SLIDE_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.presentationml.
 PRESENTATION_COMMENTS_CT = (
     "application/vnd.openxmlformats-officedocument.presentationml.comments+xml"
 )
+PRESENTATION_VIEW_PROPS_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"
+)
 THEME_CT = "application/vnd.openxmlformats-officedocument.theme+xml"
+THEME_OVERRIDE_CT = "application/vnd.openxmlformats-officedocument.themeOverride+xml"
+THEME_MANAGER_CT = "application/vnd.openxmlformats-officedocument.themeManager+xml"
 CHART_CT = "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"
 CHART_USER_SHAPES_CT = "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml"
 VML_DRAWING_CT = "application/vnd.openxmlformats-officedocument.vmlDrawing"
@@ -446,9 +451,21 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (PML_NS_TRANSITIONAL, "cmLst"),
         (PML_NS_STRICT, "cmLst"),
     },
+    PRESENTATION_VIEW_PROPS_CT: {
+        (PML_NS_TRANSITIONAL, "viewPr"),
+        (PML_NS_STRICT, "viewPr"),
+    },
     THEME_CT: {
         (DML_NS_TRANSITIONAL, "theme"),
         (DML_NS_STRICT, "theme"),
+    },
+    THEME_OVERRIDE_CT: {
+        (DML_NS_TRANSITIONAL, "themeOverride"),
+        (DML_NS_STRICT, "themeOverride"),
+    },
+    THEME_MANAGER_CT: {
+        (DML_NS_TRANSITIONAL, "themeManager"),
+        (DML_NS_STRICT, "themeManager"),
     },
     CHART_CT: {
         (DML_CHART_NS_TRANSITIONAL, "chartSpace"),
@@ -744,6 +761,21 @@ for contracts in [
             (DML_NS_TRANSITIONAL, "theme"),
             (DML_NS_STRICT, "theme"),
         },
+    ),
+    relationship_contract(
+        "viewProps",
+        {PRESENTATION_VIEW_PROPS_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_VIEW_PROPS_CT],
+    ),
+    relationship_contract(
+        "themeOverride",
+        {THEME_OVERRIDE_CT},
+        CONTENT_TYPE_ROOT_TAGS[THEME_OVERRIDE_CT],
+    ),
+    relationship_contract(
+        "themeManager",
+        {THEME_MANAGER_CT},
+        CONTENT_TYPE_ROOT_TAGS[THEME_MANAGER_CT],
     ),
     relationship_contract(
         "chart",
