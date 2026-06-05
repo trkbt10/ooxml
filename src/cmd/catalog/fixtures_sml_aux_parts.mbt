@@ -581,6 +581,260 @@ fn sml_aux_workbook_part() -> @xml.Element {
 }
 
 ///|
+fn sml_aux_calc_chain_part() -> @xml.Element {
+  sml_aux_el("calcChain", [], [
+    sml_aux_el(
+      "c",
+      [
+        xa("r", "A1"),
+        xa("ref", "A1"),
+        xa("i", "1"),
+        xa("s", "1"),
+        xa("l", "0"),
+        xa("t", "0"),
+        xa("a", "1"),
+      ],
+      [],
+    ),
+  ])
+}
+
+///|
+fn sml_aux_xml_maps_part() -> @xml.Element {
+  // CT_Schema / CT_DataBinding require strict xsd:any children.
+  // Use a globally declared SML element so the fixture stays XSD-valid
+  // with the vendored ECMA schema set.
+  let any_payload = sml_aux_el("metadata", [], [])
+  sml_aux_el(
+    "MapInfo",
+    [xa("SelectionNamespaces", "xmlns:cat='urn:ooxml:catalog'")],
+    [
+      sml_aux_el(
+        "Schema",
+        [
+          xa("ID", "schema1"),
+          xa("Namespace", "urn:ooxml:catalog"),
+          xa("SchemaLanguage", "XML Schema"),
+        ],
+        [any_payload],
+      ),
+      sml_aux_el(
+        "Map",
+        [
+          xa("ID", "1"),
+          xa("Name", "CatalogMap"),
+          xa("RootElement", "root"),
+          xa("SchemaID", "schema1"),
+          xa("ShowImportExportValidationErrors", "0"),
+          xa("AutoFit", "1"),
+          xa("Append", "0"),
+          xa("PreserveSortAFLayout", "1"),
+          xa("PreserveFormat", "1"),
+        ],
+        [
+          sml_aux_el(
+            "DataBinding",
+            [
+              xa("DataBindingLoadMode", "1"),
+              xa("DataBindingName", "CatalogBinding"),
+              xa("FileBinding", "1"),
+              xa("ConnectionID", "1"),
+              xa("FileBindingName", "catalog.xml"),
+            ],
+            [sml_aux_calc_chain_part()],
+          ),
+        ],
+      ),
+    ],
+  )
+}
+
+///|
+fn sml_aux_connections_part() -> @xml.Element {
+  sml_aux_el("connections", [], [
+    sml_aux_el(
+      "connection",
+      [
+        xa("id", "1"),
+        xa("refreshedVersion", "3"),
+        xa("name", "CatalogConnection"),
+        xa("description", "Catalog coverage connection"),
+        xa("type", "1"),
+        xa("saveData", "1"),
+        xa("background", "0"),
+        xa("refreshOnLoad", "0"),
+      ],
+      [
+        xe(
+          NS_S,
+          "dbPr",
+          [
+            xa("connection", "Provider=MSDASQL;Data Source=Catalog;"),
+            xa("command", "SELECT 1"),
+            xa("commandType", "2"),
+          ],
+          [],
+        ),
+        xe(
+          NS_S,
+          "olapPr",
+          [xa("local", "0"), xa("localRefresh", "1"), xa("rowDrillCount", "2")],
+          [],
+        ),
+        sml_aux_el(
+          "webPr",
+          [
+            xa("xml", "1"),
+            xa("sourceData", "1"),
+            xa("htmlTables", "1"),
+            xa("htmlFormat", "all"),
+            xa("url", "https://example.invalid/catalog"),
+          ],
+          [
+            sml_aux_el("tables", [xa("count", "3")], [
+              xe(NS_S, "m", [], []),
+              xe(NS_S, "s", [xa("v", "CatalogTable")], []),
+              xe(NS_S, "x", [xa("v", "0")], []),
+            ]),
+          ],
+        ),
+        sml_aux_el(
+          "textPr",
+          [
+            xa("fileType", "win"),
+            xa("firstRow", "1"),
+            xa("delimited", "1"),
+            xa("comma", "1"),
+            xa("qualifier", "doubleQuote"),
+          ],
+          [
+            sml_aux_el("textFields", [xa("count", "1")], [
+              xe(
+                NS_S,
+                "textField",
+                [xa("type", "general"), xa("position", "1")],
+                [],
+              ),
+            ]),
+          ],
+        ),
+        sml_aux_el("parameters", [xa("count", "1")], [
+          xe(
+            NS_S,
+            "parameter",
+            [
+              xa("name", "Region"),
+              xa("sqlType", "12"),
+              xa("parameterType", "value"),
+              xa("refreshOnChange", "0"),
+              xa("string", "North"),
+            ],
+            [],
+          ),
+        ]),
+      ],
+    ),
+  ])
+}
+
+///|
+fn sml_aux_metadata_part() -> @xml.Element {
+  sml_aux_el("metadata", [], [
+    sml_aux_el("metadataTypes", [xa("count", "1")], [
+      xe(
+        NS_S,
+        "metadataType",
+        [
+          xa("name", "CatalogMeta"),
+          xa("minSupportedVersion", "1"),
+          xa("assign", "1"),
+          xa("copy", "1"),
+          xa("pasteAll", "1"),
+          xa("cellMeta", "1"),
+        ],
+        [],
+      ),
+    ]),
+    sml_aux_el("metadataStrings", [xa("count", "2")], [
+      xe(NS_S, "s", [xa("v", "CatalogCube")], []),
+      xe(NS_S, "s", [xa("v", "CatalogMember")], []),
+    ]),
+    sml_aux_el("mdxMetadata", [xa("count", "4")], [
+      sml_aux_el("mdx", [xa("n", "0"), xa("f", "m")], [
+        sml_aux_el("t", [xa("c", "1")], [xe(NS_S, "n", [xa("x", "0")], [])]),
+      ]),
+      sml_aux_el("mdx", [xa("n", "1"), xa("f", "s")], [
+        sml_aux_el("ms", [xa("ns", "1"), xa("c", "1"), xa("o", "a")], [
+          xe(NS_S, "n", [xa("x", "1")], []),
+        ]),
+      ]),
+      sml_aux_el("mdx", [xa("n", "2"), xa("f", "p")], [
+        xe(NS_S, "p", [xa("n", "0"), xa("np", "1")], []),
+      ]),
+      sml_aux_el("mdx", [xa("n", "3"), xa("f", "k")], [
+        xe(NS_S, "k", [xa("n", "0"), xa("np", "1"), xa("p", "v")], []),
+      ]),
+    ]),
+    sml_aux_el(
+      "futureMetadata",
+      [xa("name", "CatalogFuture"), xa("count", "1")],
+      [xe(NS_S, "bk", [], [])],
+    ),
+    sml_aux_el("cellMetadata", [xa("count", "1")], [
+      sml_aux_el("bk", [], [xe(NS_S, "rc", [xa("t", "0"), xa("v", "0")], [])]),
+    ]),
+    sml_aux_el("valueMetadata", [xa("count", "1")], [
+      sml_aux_el("bk", [], [xe(NS_S, "rc", [xa("t", "0"), xa("v", "0")], [])]),
+    ]),
+  ])
+}
+
+///|
+fn sml_aux_query_table_part() -> @xml.Element {
+  sml_aux_el(
+    "queryTable",
+    [
+      xa("name", "CatalogQuery"),
+      xa("connectionId", "1"),
+      xa("headers", "1"),
+      xa("refreshOnLoad", "0"),
+      xa("preserveFormatting", "1"),
+      xa("adjustColumnWidth", "1"),
+    ],
+    [
+      sml_aux_el(
+        "queryTableRefresh",
+        [xa("nextId", "3"), xa("preserveSortFilterLayout", "1")],
+        [
+          sml_aux_el("queryTableFields", [xa("count", "2")], [
+            xe(
+              NS_S,
+              "queryTableField",
+              [xa("id", "1"), xa("name", "Region"), xa("tableColumnId", "1")],
+              [],
+            ),
+            xe(
+              NS_S,
+              "queryTableField",
+              [
+                xa("id", "2"),
+                xa("name", "Sales"),
+                xa("dataBound", "1"),
+                xa("tableColumnId", "2"),
+              ],
+              [],
+            ),
+          ]),
+          sml_aux_el("queryTableDeletedFields", [xa("count", "1")], [
+            xe(NS_S, "deletedField", [xa("name", "OldField")], []),
+          ]),
+        ],
+      ),
+    ],
+  )
+}
+
+///|
 fn extras_sml_aux_parts(cases : Array[VisualCase]) -> Unit {
   cases.push({
     id: "workbook-aux-rich",
@@ -605,6 +859,36 @@ fn extras_sml_aux_parts(cases : Array[VisualCase]) -> Unit {
     format: "xlsx:comments",
     category: "sml-aux",
     content: sml_aux_comments_part(),
+  })
+  cases.push({
+    id: "calc-chain-rich",
+    format: "xlsx:calcChain",
+    category: "sml-aux",
+    content: sml_aux_calc_chain_part(),
+  })
+  cases.push({
+    id: "xml-maps-rich",
+    format: "xlsx:xmlMaps",
+    category: "sml-aux",
+    content: sml_aux_xml_maps_part(),
+  })
+  cases.push({
+    id: "connections-rich",
+    format: "xlsx:connections",
+    category: "sml-aux",
+    content: sml_aux_connections_part(),
+  })
+  cases.push({
+    id: "metadata-rich",
+    format: "xlsx:metadata",
+    category: "sml-aux",
+    content: sml_aux_metadata_part(),
+  })
+  cases.push({
+    id: "query-table-rich",
+    format: "xlsx:queryTable",
+    category: "sml-aux",
+    content: sml_aux_query_table_part(),
   })
 }
 

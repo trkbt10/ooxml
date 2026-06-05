@@ -6431,6 +6431,11 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
     "xlsx:comments" => xlsx_with_aux_root_package("comments", content)
+    "xlsx:calcChain" => xlsx_with_aux_root_package("calcChain", content)
+    "xlsx:connections" => xlsx_with_aux_root_package("connections", content)
+    "xlsx:metadata" => xlsx_with_aux_root_package("metadata", content)
+    "xlsx:xmlMaps" => xlsx_with_aux_root_package("xmlMaps", content)
+    "xlsx:queryTable" => xlsx_with_aux_root_package("queryTable", content)
     "xlsx:drawing" => xlsx_with_drawing_root_package(content)
     "xlsx:pivot" => {
       let (sheet, cache_def, cache_records, pivot_def) = catalog_sml_pivot_parts(
@@ -9349,6 +9354,66 @@ fn xlsx_with_aux_root_package(
         retarget_spreadsheet_comment_refs(comments_root),
       )
     }
+    "calcChain" => {
+      let calc_chain_root : @xml.Element = if content.name.local_name ==
+        "calcChain" {
+        content
+      } else {
+        xe(ns_s, "calcChain", [], [Element(content)])
+      }
+      xlsx_package_with_aux_part(
+        "calcChain", "calcChain.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml",
+        calc_chain_root,
+      )
+    }
+    "connections" => {
+      let connections_root : @xml.Element = if content.name.local_name ==
+        "connections" {
+        content
+      } else {
+        xe(ns_s, "connections", [], [Element(content)])
+      }
+      xlsx_package_with_aux_part(
+        "connections", "connections.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/connections",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml",
+        connections_root,
+      )
+    }
+    "metadata" => {
+      let metadata_root : @xml.Element = if content.name.local_name ==
+        "metadata" {
+        content
+      } else {
+        xe(ns_s, "metadata", [], [Element(content)])
+      }
+      xlsx_package_with_aux_part(
+        "metadata", "metadata.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml",
+        metadata_root,
+      )
+    }
+    "xmlMaps" => {
+      let xml_maps_root : @xml.Element = if content.name.local_name == "MapInfo" {
+        content
+      } else {
+        xe(ns_s, "MapInfo", [], [Element(content)])
+      }
+      xlsx_package_with_aux_part(
+        "xmlMaps", "xmlMaps.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/xmlMaps",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.xmlMaps+xml",
+        xml_maps_root,
+      )
+    }
+    "queryTable" => {
+      let query_table_root : @xml.Element = if content.name.local_name ==
+        "queryTable" {
+        content
+      } else {
+        xe(ns_s, "queryTable", [], [Element(content)])
+      }
+      xlsx_package_with_query_table_part(query_table_root)
+    }
     _ => xlsx_package(content)
   }
 }
@@ -10423,6 +10488,134 @@ fn xlsx_package_with_aux_part(
 }
 
 ///|
+/// `.xlsx` package whose worksheet owns a queryTable relationship.
+/// The queryTable references connection id 1, so the host includes a
+/// minimal workbook-level connections part as its referent.
+fn xlsx_package_with_query_table_part(query_table_root : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let workbook : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/connections",
+          ),
+          xa("Target", "connections.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet : @xml.Element = xe(ns_s, "worksheet", [], [
+    Element(
+      xe(ns_s, "sheetData", [], [
+        Element(
+          xe(ns_s, "row", [xa("r", "1")], [
+            Element(
+              xe(ns_s, "c", [xa("r", "A1"), xa("t", "str")], [
+                Element(xe(ns_s, "v", [], [Text("query-table")])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable",
+          ),
+          xa("Target", "../queryTables/queryTable1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let connections_root : @xml.Element = xe(ns_s, "connections", [], [
+    Element(
+      xe(
+        ns_s,
+        "connection",
+        [xa("id", "1"), xa("refreshedVersion", "3"), xa("name", "CatalogQuery")],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        (
+          "/xl/queryTables/queryTable1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml",
+        ),
+        (
+          "/xl/connections.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/worksheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    ("xl/queryTables/queryTable1.xml", write_part(query_table_root)),
+    ("xl/connections.xml", write_part(connections_root)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// Render the present / absent SVG pair for one catalog entry — the
 /// differential-check inputs, exposed for the `debug` probe.
 fn debug_render_pair(
@@ -10785,6 +10978,16 @@ fn empty_body_package(format : String) -> Bytes {
       xlsx_with_aux_root_package("styles", xe(ns_s, "styleSheet", [], []))
     "xlsx:comments" =>
       xlsx_with_aux_root_package("comments", xe(ns_s, "comments", [], []))
+    "xlsx:calcChain" =>
+      xlsx_with_aux_root_package("calcChain", xe(ns_s, "calcChain", [], []))
+    "xlsx:connections" =>
+      xlsx_with_aux_root_package("connections", xe(ns_s, "connections", [], []))
+    "xlsx:metadata" =>
+      xlsx_with_aux_root_package("metadata", xe(ns_s, "metadata", [], []))
+    "xlsx:xmlMaps" =>
+      xlsx_with_aux_root_package("xmlMaps", xe(ns_s, "MapInfo", [], []))
+    "xlsx:queryTable" =>
+      xlsx_with_aux_root_package("queryTable", xe(ns_s, "queryTable", [], []))
     "xlsx:drawing" =>
       xlsx_with_drawing_root_package(
         xep(

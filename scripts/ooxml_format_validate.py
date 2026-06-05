@@ -90,6 +90,11 @@ SHARED_STRINGS_CT = (
 )
 SPREADSHEET_COMMENTS_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"
 SPREADSHEET_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"
+CALC_CHAIN_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"
+SPREADSHEET_CONNECTIONS_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml"
+SPREADSHEET_SHEET_METADATA_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml"
+SPREADSHEET_XML_MAPS_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.xmlMaps+xml"
+SPREADSHEET_QUERY_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml"
 PIVOT_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml"
 PIVOT_CACHE_DEFINITION_CT = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml"
@@ -421,6 +426,26 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (SML_NS_TRANSITIONAL, "table"),
         (SML_NS_STRICT, "table"),
     },
+    CALC_CHAIN_CT: {
+        (SML_NS_TRANSITIONAL, "calcChain"),
+        (SML_NS_STRICT, "calcChain"),
+    },
+    SPREADSHEET_CONNECTIONS_CT: {
+        (SML_NS_TRANSITIONAL, "connections"),
+        (SML_NS_STRICT, "connections"),
+    },
+    SPREADSHEET_SHEET_METADATA_CT: {
+        (SML_NS_TRANSITIONAL, "metadata"),
+        (SML_NS_STRICT, "metadata"),
+    },
+    SPREADSHEET_XML_MAPS_CT: {
+        (SML_NS_TRANSITIONAL, "MapInfo"),
+        (SML_NS_STRICT, "MapInfo"),
+    },
+    SPREADSHEET_QUERY_TABLE_CT: {
+        (SML_NS_TRANSITIONAL, "queryTable"),
+        (SML_NS_STRICT, "queryTable"),
+    },
     PIVOT_TABLE_CT: {
         (SML_NS_TRANSITIONAL, "pivotTableDefinition"),
         (SML_NS_STRICT, "pivotTableDefinition"),
@@ -711,6 +736,31 @@ for contracts in [
             (SML_NS_TRANSITIONAL, "table"),
             (SML_NS_STRICT, "table"),
         },
+    ),
+    relationship_contract(
+        "calcChain",
+        {CALC_CHAIN_CT},
+        CONTENT_TYPE_ROOT_TAGS[CALC_CHAIN_CT],
+    ),
+    relationship_contract(
+        "connections",
+        {SPREADSHEET_CONNECTIONS_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_CONNECTIONS_CT],
+    ),
+    relationship_contract(
+        "sheetMetadata",
+        {SPREADSHEET_SHEET_METADATA_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_SHEET_METADATA_CT],
+    ),
+    relationship_contract(
+        "xmlMaps",
+        {SPREADSHEET_XML_MAPS_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_XML_MAPS_CT],
+    ),
+    relationship_contract(
+        "queryTable",
+        {SPREADSHEET_QUERY_TABLE_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_QUERY_TABLE_CT],
     ),
     relationship_contract(
         "pivotTable",

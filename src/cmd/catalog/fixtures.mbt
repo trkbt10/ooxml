@@ -4857,6 +4857,11 @@ fn generate_visual_fixtures() -> Unit {
         xlsx_with_aux_root_package("sharedStrings", c.content)
       "xlsx:styles" => xlsx_with_aux_root_package("styles", c.content)
       "xlsx:comments" => xlsx_with_aux_root_package("comments", c.content)
+      "xlsx:calcChain" => xlsx_with_aux_root_package("calcChain", c.content)
+      "xlsx:connections" => xlsx_with_aux_root_package("connections", c.content)
+      "xlsx:metadata" => xlsx_with_aux_root_package("metadata", c.content)
+      "xlsx:xmlMaps" => xlsx_with_aux_root_package("xmlMaps", c.content)
+      "xlsx:queryTable" => xlsx_with_aux_root_package("queryTable", c.content)
       "docx:settings" => docx_aux_package("settings", c.content)
       "docx:styles" => docx_aux_package("styles", c.content)
       "docx:numbering" => docx_aux_package("numbering", c.content)
@@ -4880,6 +4885,11 @@ fn generate_visual_fixtures() -> Unit {
       "xlsx:sharedStrings" => "xlsx"
       "xlsx:styles" => "xlsx"
       "xlsx:comments" => "xlsx"
+      "xlsx:calcChain" => "xlsx"
+      "xlsx:connections" => "xlsx"
+      "xlsx:metadata" => "xlsx"
+      "xlsx:xmlMaps" => "xlsx"
+      "xlsx:queryTable" => "xlsx"
       "docx:settings" => "docx"
       "docx:styles" => "docx"
       "docx:numbering" => "docx"
