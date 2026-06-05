@@ -467,4 +467,81 @@ fn extras_wml_run(cases : Array[VisualCase]) -> Unit {
       ),
     ]),
   })
+
+  // ---- Ruby / phonetic guide (17.3.3.25) -----------------------------
+
+  // `<w:ruby>` wraps phonetic guide text (`rt`) and the base text
+  // (`rubyBase`) with a required `<w:rubyPr>` descriptor.  The child
+  // order here follows CT_Ruby exactly: rubyPr, rt, rubyBase.
+  let ruby_run = xe(NS_W, "r", [], [
+    Element(
+      xe(NS_W, "ruby", [], [
+        Element(
+          xe(NS_W, "rubyPr", [], [
+            Element(w_val("rubyAlign", "center")),
+            Element(w_val("hps", "16")),
+            Element(w_val("hpsRaise", "24")),
+            Element(w_val("hpsBaseText", "24")),
+            Element(w_val("lid", "ja-JP")),
+            Element(w_val("dirty", "0")),
+          ]),
+        ),
+        Element(xe(NS_W, "rt", [], [Element(w_run(None, "かんじ"))])),
+        Element(xe(NS_W, "rubyBase", [], [Element(w_run(None, "漢字"))])),
+      ]),
+    ),
+  ])
+  cases.push({
+    id: "run-ruby-phonetic-guide",
+    format: "docx",
+    category: "run",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(None, [w_run(None, "Ruby: "), ruby_run, w_run(None, " text")]),
+      ),
+    ]),
+  })
+
+  // ---- Remaining rare run properties --------------------------------
+
+  // These properties are legacy or layout-specific, but they are
+  // still ECMA-376 run-property arms and must be accepted and
+  // preserved in `rPr`: animated text effect, fitText compression,
+  // East Asian combine settings, complex-script italic, and hidden
+  // web / spec-vanish markers.
+  cases.push({
+    id: "run-rare-rpr-gallery",
+    format: "docx",
+    category: "run",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(None, [
+          w_run(
+            Some(
+              w_rpr([
+                w_flag("iCs"),
+                w_flag("webHidden"),
+                w_val("effect", "shimmer"),
+                xe(NS_W, "fitText", [w_attr("val", "720"), w_attr("id", "7")], []),
+                xe(
+                  NS_W,
+                  "eastAsianLayout",
+                  [
+                    w_attr("id", "3"),
+                    w_attr("combine", "1"),
+                    w_attr("combineBrackets", "round"),
+                    w_attr("vert", "0"),
+                    w_attr("vertCompress", "1"),
+                  ],
+                  [],
+                ),
+                w_flag("specVanish"),
+              ]),
+            ),
+            "rare run properties",
+          ),
+        ]),
+      ),
+    ]),
+  })
 }
