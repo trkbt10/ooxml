@@ -63,12 +63,60 @@ fn extras_wml_numbering(xcases : Array[ExtendedCase]) -> Unit {
       Element(xe(NS_W, "lvlJc", [w_attr("val", "left")], [])),
     ])
   }
+  // A schema-ordered `<w:lvl>` for less common controls. CT_Lvl
+  // requires this child order: start, numFmt, lvlRestart, pStyle,
+  // isLgl, suff, lvlText, lvlPicBulletId, lvlJc.
+  let lvl_with_flags = fn(
+    ilvl : String,
+    fmt : String,
+    text : String,
+    start : String,
+    pic_id : String,
+  ) -> @xml.Element {
+    xe(
+      NS_W,
+      "lvl",
+      [
+        w_attr("ilvl", ilvl),
+        w_attr("tplc", "04090001"),
+        w_attr("tentative", "0"),
+      ],
+      [
+        Element(xe(NS_W, "start", [w_attr("val", start)], [])),
+        Element(xe(NS_W, "numFmt", [w_attr("val", fmt)], [])),
+        Element(xe(NS_W, "lvlRestart", [w_attr("val", "0")], [])),
+        Element(xe(NS_W, "pStyle", [w_attr("val", "ListParagraph")], [])),
+        Element(xe(NS_W, "isLgl", [w_attr("val", "1")], [])),
+        Element(xe(NS_W, "suff", [w_attr("val", "space")], [])),
+        Element(xe(NS_W, "lvlText", [w_attr("val", text)], [])),
+        Element(xe(NS_W, "lvlPicBulletId", [w_attr("val", pic_id)], [])),
+        Element(xe(NS_W, "lvlJc", [w_attr("val", "left")], [])),
+      ],
+    )
+  }
   // Wrap a `<w:abstractNum>` around a list of `<w:lvl>` children.
   let abstract_num = fn(
     id : String,
     levels : Array[@xml.Element],
   ) -> @xml.Element {
     let kids : Array[@xml.Node] = []
+    for l in levels {
+      kids.push(Element(l))
+    }
+    xe(NS_W, "abstractNum", [w_attr("abstractNumId", id)], kids)
+  }
+  // CT_AbstractNum's optional header children precede all lvl
+  // definitions: nsid, multiLevelType, tmpl, name, styleLink,
+  // numStyleLink.
+  let abstract_num_with_header = fn(
+    id : String,
+    header : Array[@xml.Element],
+    levels : Array[@xml.Element],
+  ) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
+    for h in header {
+      kids.push(Element(h))
+    }
     for l in levels {
       kids.push(Element(l))
     }
@@ -110,6 +158,30 @@ fn extras_wml_numbering(xcases : Array[ExtendedCase]) -> Unit {
     }
     xe(NS_W, "numbering", [], kids)
   }
+  // Full CT_Numbering root order: numPicBullet*, abstractNum*, num*,
+  // then optional numIdMacAtCleanup.
+  let numbering_part_full = fn(
+    pic_bullets : Array[@xml.Element],
+    abstract_nums : Array[@xml.Element],
+    nums : Array[@xml.Element],
+    cleanup : @xml.Element?,
+  ) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
+    for p in pic_bullets {
+      kids.push(Element(p))
+    }
+    for a in abstract_nums {
+      kids.push(Element(a))
+    }
+    for n in nums {
+      kids.push(Element(n))
+    }
+    match cleanup {
+      Some(c) => kids.push(Element(c))
+      None => ()
+    }
+    xe(NS_W, "numbering", [], kids)
+  }
   // A body paragraph in a list: `<w:p><w:pPr><w:numPr>...</w:numPr>`
   // with the given ilvl + numId, then a single text run.
   let list_p = fn(
@@ -138,6 +210,101 @@ fn extras_wml_numbering(xcases : Array[ExtendedCase]) -> Unit {
       kids.push(Element(p))
     }
     xe(NS_W, "body", [], kids)
+  }
+  let ns_wp = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  let ns_pic = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+  let wp_el = fn(
+    name : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xe(ns_wp, name, attrs, kids)
+  }
+  let pic_el = fn(
+    name : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xe(ns_pic, name, attrs, kids)
+  }
+  let a_el = fn(
+    name : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xe(NS_A, name, attrs, kids)
+  }
+  let pic_graphic = fn(inner : Array[@xml.Node]) -> @xml.Element {
+    a_el("graphic", [], [
+      Element(
+        a_el(
+          "graphicData",
+          [
+            xa(
+              "uri", "http://schemas.openxmlformats.org/drawingml/2006/picture",
+            ),
+          ],
+          [Element(pic_el("pic", [], inner))],
+        ),
+      ),
+    ])
+  }
+  let pic_nv = fn(id_ : String, name : String) -> @xml.Element {
+    pic_el("nvPicPr", [], [
+      Element(pic_el("cNvPr", [xa("id", id_), xa("name", name)], [])),
+      Element(pic_el("cNvPicPr", [], [])),
+    ])
+  }
+  let pic_blipfill_empty = pic_el("blipFill", [], [
+    Element(a_el("blip", [], [])),
+    Element(a_el("stretch", [], [Element(a_el("fillRect", [], []))])),
+  ])
+  let pic_sppr = fn(cx : String, cy : String) -> @xml.Element {
+    pic_el("spPr", [], [
+      Element(
+        a_el("xfrm", [], [
+          Element(a_el("off", [xa("x", "0"), xa("y", "0")], [])),
+          Element(a_el("ext", [xa("cx", cx), xa("cy", cy)], [])),
+        ]),
+      ),
+      Element(
+        a_el("prstGeom", [xa("prst", "rect")], [Element(a_el("avLst", [], []))]),
+      ),
+    ])
+  }
+  let num_pic_bullet = fn(id_ : String) -> @xml.Element {
+    let cx = "457200"
+    let cy = "457200"
+    xe(NS_W, "numPicBullet", [w_attr("numPicBulletId", id_)], [
+      Element(
+        xe(NS_W, "drawing", [], [
+          Element(
+            wp_el(
+              "inline",
+              [
+                xa("distT", "0"),
+                xa("distB", "0"),
+                xa("distL", "0"),
+                xa("distR", "0"),
+              ],
+              [
+                Element(wp_el("extent", [xa("cx", cx), xa("cy", cy)], [])),
+                Element(
+                  wp_el("docPr", [xa("id", "9"), xa("name", "PicBullet")], []),
+                ),
+                Element(
+                  pic_graphic([
+                    Element(pic_nv("10", "PicBullet")),
+                    Element(pic_blipfill_empty),
+                    Element(pic_sppr(cx, cy)),
+                  ]),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    ])
   }
 
   // ---- Shared per-numFmt helper ---------------------------------
@@ -402,6 +569,53 @@ fn extras_wml_numbering(xcases : Array[ExtendedCase]) -> Unit {
             ]),
           ]),
         ],
+      ),
+    ),
+    doc_styles: None,
+  })
+
+  // ---- Numbering metadata, flags, picture bullet placeholder ----
+  // Covers CT_Numbering's uncommon root slots (`numPicBullet`,
+  // `numIdMacAtCleanup`), CT_AbstractNum metadata (`nsid`,
+  // `multiLevelType`, `tmpl`, `styleLink`, `numStyleLink`), CT_Lvl
+  // flags (`isLgl`, `suff`, `lvlPicBulletId`), and the
+  // `<w:startOverride>` branch of `<w:lvlOverride>`. The picture
+  // bullet uses an empty blip, so no numbering.xml.rels relationship
+  // is required; renderers should fall back to the text marker.
+  xcases.push({
+    id: "list-numbering-metadata-flags-picture-placeholder",
+    format: "docx",
+    category: "list",
+    content: body_of([
+      list_p("3", "0", "Metadata-backed item one"),
+      list_p("3", "0", "Metadata-backed item two"),
+    ]),
+    styles: None,
+    numbering: Some(
+      numbering_part_full(
+        [num_pic_bullet("5")],
+        [
+          abstract_num_with_header(
+            "0",
+            [
+              xe(NS_W, "nsid", [w_attr("val", "12345678")], []),
+              xe(NS_W, "multiLevelType", [w_attr("val", "hybridMultilevel")], []),
+              xe(NS_W, "tmpl", [w_attr("val", "87654321")], []),
+              xe(NS_W, "name", [w_attr("val", "MetadataNumbering")], []),
+              xe(NS_W, "styleLink", [w_attr("val", "ListNumber")], []),
+              xe(NS_W, "numStyleLink", [w_attr("val", "ListNumberLinked")], []),
+            ],
+            [lvl_with_flags("0", "decimal", "%1.", "1", "5")],
+          ),
+        ],
+        [
+          num_inst_override("3", "0", [
+            xe(NS_W, "lvlOverride", [w_attr("ilvl", "0")], [
+              Element(xe(NS_W, "startOverride", [w_attr("val", "42")], [])),
+            ]),
+          ]),
+        ],
+        Some(xe(NS_W, "numIdMacAtCleanup", [w_attr("val", "3")], [])),
       ),
     ),
     doc_styles: None,
