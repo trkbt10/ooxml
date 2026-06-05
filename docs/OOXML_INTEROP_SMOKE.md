@@ -59,14 +59,23 @@ Recent interop evidence:
 |---|---|---|
 | 2026-06-05 | LibreOffice default representative fixtures | `ok (3 file(s))` |
 | 2026-06-05 | Microsoft Office default representative fixtures | `ok (3 file(s))` |
+| 2026-06-05 | LibreOffice `docx/table`, `xlsx/{pivot,table,sparkline,external}`, `pptx/{chart,transition,master-layout,media}` selected categories | `ok (99 file(s))` |
+| 2026-06-05 | Microsoft Office `docx/table`, `xlsx/{pivot,external}`, `pptx/{chart/bar,master-layout}` selected categories | `ok (61 file(s))` |
 | 2026-06-04 | LibreOffice `docx/drawing`, `xlsx/cf`, `pptx/diagram` categories | `ok (59 file(s))` |
 
-The category run covers the ECMA Transitional VML drawing fixtures, SpreadsheetML
-conditional-formatting/dataBar fixtures, and PresentationML diagram fixtures
-that were most recently changed for XSD cleanliness. Each file passed internal
-`ooxml_cli verify`, LibreOffice PDF export of the original package, a
-format-appropriate CLI edit, verification of the edited package, and LibreOffice
-PDF export of the edited package.
+The 2026-06-05 selected-category runs cover table layout, pivot caches, table
+parts, sparkline extension payloads, external workbook links, PresentationML
+chart parts, transitions, slide master/layout relationships, and media
+relationships. The 2026-06-04 category run covers the ECMA Transitional VML
+drawing fixtures, SpreadsheetML conditional-formatting/dataBar fixtures, and
+PresentationML diagram fixtures that were changed for XSD cleanliness. Each
+LibreOffice-selected file passed internal `ooxml_cli verify`, LibreOffice PDF
+export of the original package, a format-appropriate CLI edit, verification of
+the edited package, and LibreOffice PDF export of the edited package. Each
+Microsoft Office-selected file passed internal verify, matching Office-app
+open/close of the original package, the format-appropriate CLI edit,
+verification of the edited package, and matching Office-app open/close of the
+edited package.
 
 ## What This Proves
 
