@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `840` |
-| XML parts scanned | `5481` |
-| catalog QNames observed in fixtures | `789/2296 (34.4%)` |
-| catalog declaration entries observed by QName | `1645/4560 (36.1%)` |
-| observed fixture QNames that are catalog ECMA QNames | `789/836 (94.4%)` |
+| package fixtures scanned | `841` |
+| XML parts scanned | `5488` |
+| catalog QNames observed in fixtures | `867/2296 (37.8%)` |
+| catalog declaration entries observed by QName | `1803/4560 (39.5%)` |
+| observed fixture QNames that are catalog ECMA QNames | `867/914 (94.9%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -96,13 +96,14 @@ OPC graph and content-type checks are covered separately by
 by `scripts/ooxml_format_validate.py`. Application-open checks are covered by
 `docs/OOXML_INTEROP_SMOKE.md` and must not be treated as schema validation.
 
-Current package-validation snapshot, after ECMA/VML fixture repairs and
-schema-set wildcard validation:
+Current package-validation snapshot, after ECMA/VML fixture repairs,
+schema-set wildcard validation, and the bibliography Custom XML Data Storage
+fixture:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5469`, `fail: 0` |
+| all generated fixtures | `ok: 5488`, `fail: 0` |
 | previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
 | earlier full-fixture baseline before schema-order repairs | `ok: 5365`, `fail: 120` |
 
@@ -176,7 +177,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 838`, `fail: 0` |
+| all generated fixtures | `ok: 841`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -227,9 +228,9 @@ The validator checks:
   including themes, slide layouts, charts, diagrams, SpreadsheetML tables,
   pivot parts, styles, shared strings, WordprocessingML/SpreadsheetML/
   PresentationML comments, WordprocessingML glossary and web-settings parts,
-  numbering, headers/footers, and media image parts. Unknown internal Office
-  relationship types fail so new generated coverage cannot silently bypass this
-  contract.
+  numbering, headers/footers, Custom XML Data Storage item-properties parts,
+  and media image parts. Unknown internal Office relationship types fail so new
+  generated coverage cannot silently bypass this contract.
 - Relationship types whose local names are shared by multiple MLs are
   disambiguated by the source part content type before validating the target
   part. For example, a WordprocessingML main document `styles` relationship must
@@ -239,7 +240,8 @@ The validator checks:
   SpreadsheetML worksheet/dialogsheet parts, and PresentationML slide parts.
 - Package metadata relationships for core, extended, and custom properties
   resolve to `docProps`-style parts with the matching content type and XML
-  root.
+  root. Custom XML Data Storage `customXmlProps` relationships resolve to
+  `customXmlProperties+xml` parts with a `datastoreItem` root.
 - SpreadsheetML workbook `<sheet r:id="...">` references resolve to worksheet,
   chartsheet, or dialogsheet parts with matching content type and XML root.
 - PresentationML `<sldId r:id="...">` and `<sldMasterId r:id="...">`
@@ -251,14 +253,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 838`, `fail: 0` |
+| all generated fixtures | `ok: 841`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5469` across the regenerated fixture parts.
+reports `ok: 5488` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 

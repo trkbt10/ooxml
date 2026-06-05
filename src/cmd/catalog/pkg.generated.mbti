@@ -11,6 +11,8 @@ type CatalogPartRoot
 
 type ChartedCase
 
+type CustomXmlCase
+
 type DiagrammedCase
 
 type DocPropsNamespaceSet

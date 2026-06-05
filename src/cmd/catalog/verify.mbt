@@ -38,6 +38,14 @@ const RT_EXTENDED_PROPERTIES : String = "http://schemas.openxmlformats.org/offic
 const RT_CUSTOM_PROPERTIES : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties"
 
 ///|
+/// Main-document relationship type for Custom XML Data Storage parts.
+const RT_CUSTOM_XML : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml"
+
+///|
+/// Custom XML Data Storage part relationship type for item properties.
+const RT_CUSTOM_XML_PROPS : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps"
+
+///|
 /// Core-properties content type.
 const CT_CORE_PROPERTIES : String = "application/vnd.openxmlformats-package.core-properties+xml"
 
@@ -48,6 +56,10 @@ const CT_EXTENDED_PROPERTIES : String = "application/vnd.openxmlformats-officedo
 ///|
 /// Custom-properties content type.
 const CT_CUSTOM_PROPERTIES : String = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
+
+///|
+/// Custom XML Data Storage properties content type.
+const CT_CUSTOM_XML_PROPERTIES : String = "application/vnd.openxmlformats-officedocument.customXmlProperties+xml"
 
 ///|
 /// The office-document relationship-reference namespace.
@@ -370,6 +382,74 @@ fn docx_package_with_doc_props(
     ("docProps/core.xml", write_part(core_properties)),
     ("docProps/app.xml", write_part(extended_properties)),
     ("docProps/custom.xml", write_part(custom_properties)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.docx` package carrying a Custom XML Data Storage part plus its
+/// `customXmlProps` metadata part.  The custom XML item keeps the
+/// generic `application/xml` default content type; only
+/// `itemProps1.xml` has a standardized OOXML content-type override.
+fn docx_package_with_custom_xml(
+  body : @xml.Element,
+  custom_xml : @xml.Element,
+  custom_xml_properties : @xml.Element,
+) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let document : @xml.Element = if body.name.local_name == "document" {
+    body
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(body)],
+    }
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa("Type", RT_CUSTOM_XML),
+          xa("Target", "../customXml/item1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let item_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa("Type", RT_CUSTOM_XML_PROPS),
+          xa("Target", "itemProps1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+        ("/customXml/itemProps1.xml", CT_CUSTOM_XML_PROPERTIES),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("customXml/item1.xml", write_part(custom_xml)),
+    ("customXml/_rels/item1.xml.rels", write_part(item_rels)),
+    ("customXml/itemProps1.xml", write_part(custom_xml_properties)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }

@@ -78,6 +78,21 @@ struct MetadataCase {
 }
 
 ///|
+/// A `.docx` fixture that carries a Custom XML Data Storage part
+/// plus its `customXmlProps` metadata part.  Kept separate from
+/// `MetadataCase` because the payload is a main-document
+/// relationship (`word/document.xml.rels`) and the properties part
+/// is owned by the custom XML item relationship.
+struct CustomXmlCase {
+  id : String
+  format : String
+  category : String
+  content : @xml.Element
+  custom_xml : @xml.Element
+  custom_xml_properties : @xml.Element
+}
+
+///|
 /// A `.xlsx` fixture whose `<worksheet>` references one or more
 /// `<table>` parts via `<tableParts>`.  Distinct from `ExtendedCase`
 /// because table parts require extra OPC machinery (per-worksheet
@@ -4841,6 +4856,28 @@ fn generate_visual_fixtures() -> Unit {
       _ => written = written + 1
     }
   }
+  // Custom-XML-case pass: docx fixtures carrying arbitrary XML data
+  // storage parts plus `customXmlProps` metadata.  Built by
+  // `docx_package_with_custom_xml` so the main-document relationship,
+  // item-level properties relationship, and content-type override are
+  // validated as one OPC package graph.
+  for c in custom_xml_cases() {
+    total = total + 1
+    let bytes = docx_package_with_custom_xml(
+      c.content,
+      c.custom_xml,
+      c.custom_xml_properties,
+    )
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
+    }
+  }
   // Tabled-case pass: xlsx fixtures whose worksheet references one
   // or more <table> parts via <tableParts>.  Built by
   // `xlsx_package_with_tables` so the per-worksheet relationships,
@@ -5075,4 +5112,14 @@ fn metadata_cases() -> Array[MetadataCase] {
   let mcases : Array[MetadataCase] = []
   extras_doc_props_metadata(mcases)
   mcases
+}
+
+///|
+/// Collect every Custom XML Data Storage package fixture.  These
+/// cover standard item-properties parts and ECMA bibliography data
+/// stored through the `customXml` relationship type.
+fn custom_xml_cases() -> Array[CustomXmlCase] {
+  let ccases : Array[CustomXmlCase] = []
+  extras_bibliography_custom_xml(ccases)
+  ccases
 }

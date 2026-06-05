@@ -73,6 +73,10 @@ CUSTOM_PROPERTIES_NS_TRANSITIONAL = (
     "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"
 )
 CUSTOM_PROPERTIES_NS_STRICT = "http://purl.oclc.org/ooxml/officeDocument/customProperties"
+CUSTOM_XML_PROPS_NS_TRANSITIONAL = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/customXml"
+)
+CUSTOM_XML_PROPS_NS_STRICT = "http://purl.oclc.org/ooxml/officeDocument/customXml"
 
 DOCX_MAIN_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
 XLSX_MAIN_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"
@@ -128,6 +132,9 @@ WORD_WEB_SETTINGS_CT = (
 CORE_PROPERTIES_CT = "application/vnd.openxmlformats-package.core-properties+xml"
 EXTENDED_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.extended-properties+xml"
 CUSTOM_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
+CUSTOM_XML_PROPERTIES_CT = (
+    "application/vnd.openxmlformats-officedocument.customXmlProperties+xml"
+)
 IMAGE_CONTENT_TYPES = {
     "image/bmp",
     "image/gif",
@@ -477,6 +484,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (CUSTOM_PROPERTIES_NS_TRANSITIONAL, "Properties"),
         (CUSTOM_PROPERTIES_NS_STRICT, "Properties"),
     },
+    CUSTOM_XML_PROPERTIES_CT: {
+        (CUSTOM_XML_PROPS_NS_TRANSITIONAL, "datastoreItem"),
+        (CUSTOM_XML_PROPS_NS_STRICT, "datastoreItem"),
+    },
 }
 
 STANDARD_XML_ROOT_NAMESPACES = {
@@ -535,6 +546,12 @@ for contracts in [
         "custom-properties",
         {CUSTOM_PROPERTIES_CT},
         CONTENT_TYPE_ROOT_TAGS[CUSTOM_PROPERTIES_CT],
+    ),
+    relationship_contract("customXml", {"application/xml"}, set()),
+    relationship_contract(
+        "customXmlProps",
+        {CUSTOM_XML_PROPERTIES_CT},
+        CONTENT_TYPE_ROOT_TAGS[CUSTOM_XML_PROPERTIES_CT],
     ),
     relationship_contract(
         "worksheet",
