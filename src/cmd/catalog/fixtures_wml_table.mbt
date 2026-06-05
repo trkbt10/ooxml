@@ -932,4 +932,93 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
       ]),
     ),
   })
+
+  // ----------------------------------------------------------------
+  // 25. table-advanced-properties — table / row / cell properties
+  //     that are easy to miss because they often only affect layout
+  //     under floating, banded, accessibility, or revision scenarios.
+  //     Children are emitted in CT_TblPrBase / CT_TrPrBase /
+  //     CT_TcPrBase schema order so the fixture remains usable as
+  //     an XSD-valid coverage carrier, not just a QName probe.
+  // ----------------------------------------------------------------
+  let tblp_pr = xe(
+    NS_W,
+    "tblpPr",
+    [
+      wa("leftFromText", "180"),
+      wa("rightFromText", "180"),
+      wa("topFromText", "120"),
+      wa("bottomFromText", "120"),
+      wa("vertAnchor", "page"),
+      wa("horzAnchor", "margin"),
+      wa("tblpX", "720"),
+      wa("tblpY", "1440"),
+    ],
+    [],
+  )
+  let tbl_props = [
+    xe(NS_W, "tblStyle", [wa("val", "TableGrid")], []),
+    tblp_pr,
+    xe(NS_W, "tblOverlap", [wa("val", "never")], []),
+    xe(NS_W, "bidiVisual", [wa("val", "0")], []),
+    xe(NS_W, "tblStyleRowBandSize", [wa("val", "2")], []),
+    xe(NS_W, "tblStyleColBandSize", [wa("val", "1")], []),
+    tbl_w("7200", "dxa"),
+    xe(NS_W, "jc", [wa("val", "center")], []),
+    xe(NS_W, "tblCellSpacing", [wa("w", "80"), wa("type", "dxa")], []),
+    tbl_ind("240", "dxa"),
+    std_borders(),
+    shd("F7F7F7"),
+    tbl_layout("fixed"),
+    tbl_cell_mar("120", "120", "120", "120"),
+    tbl_look("1", "0", "1", "0"),
+    xe(NS_W, "tblCaption", [wa("val", "Catalog advanced table")], []),
+    xe(
+      NS_W,
+      "tblDescription",
+      [wa("val", "Floating table with row offsets and fitted cells")],
+      [],
+    ),
+  ]
+  let row_props = xe(NS_W, "trPr", [], [
+    Element(xe(NS_W, "gridBefore", [wa("val", "1")], [])),
+    Element(xe(NS_W, "gridAfter", [wa("val", "1")], [])),
+    Element(xe(NS_W, "wBefore", [wa("w", "600"), wa("type", "dxa")], [])),
+    Element(xe(NS_W, "wAfter", [wa("w", "600"), wa("type", "dxa")], [])),
+    Element(xe(NS_W, "cantSplit", [], [])),
+    Element(tr_height("720", "atLeast")),
+    Element(xe(NS_W, "tblCellSpacing", [wa("w", "60"), wa("type", "dxa")], [])),
+    Element(xe(NS_W, "jc", [wa("val", "center")], [])),
+  ])
+  let fit_cell_props = [
+    xe(NS_W, "tcW", [wa("w", "2400"), wa("type", "dxa")], []),
+    shd("EAF2F8"),
+    xe(NS_W, "noWrap", [wa("val", "1")], []),
+    tc_mar("120", "180", "120", "180"),
+    xe(NS_W, "textDirection", [wa("val", "tbRl")], []),
+    xe(NS_W, "tcFitText", [wa("val", "1")], []),
+    v_align("center"),
+    xe(NS_W, "hideMark", [wa("val", "1")], []),
+  ]
+  cases.push({
+    id: "table-advanced-properties",
+    format: "docx",
+    category: "table",
+    content: body_of(
+      tbl(tbl_props, tbl_grid(["2400", "2400", "2400"]), [
+        tr_with_pr(row_props, [
+          tc_full(fit_cell_props, [
+            w_p(None, [w_run(None, "fit text vertical")]),
+          ]),
+          tc_w_text("2400", "row offsets"),
+          tc_w_text("2400", "captioned table"),
+        ]),
+        tr([
+          tc_w_text("2400", "band row"),
+          tc_w_text("2400", "spacing"),
+          tc_w_text("2400", "fixed layout"),
+        ]),
+      ]),
+    ),
+  })
 }

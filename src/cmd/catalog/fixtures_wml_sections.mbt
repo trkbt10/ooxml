@@ -85,6 +85,37 @@ fn extras_wml_sections(cases : Array[VisualCase]) -> Unit {
     }
     xe(NS_W, "cols", attrs, kids)
   }
+  // Page border side used by `<w:pgBorders>`.
+  let pg_border_side = fn(name : String, color : String) -> @xml.Element {
+    xe(
+      NS_W,
+      name,
+      [
+        w_attr("val", "single"),
+        w_attr("color", color),
+        w_attr("sz", "12"),
+        w_attr("space", "24"),
+      ],
+      [],
+    )
+  }
+  let pg_borders = fn() -> @xml.Element {
+    xe(
+      NS_W,
+      "pgBorders",
+      [
+        w_attr("zOrder", "front"),
+        w_attr("display", "allPages"),
+        w_attr("offsetFrom", "text"),
+      ],
+      [
+        Element(pg_border_side("top", "4472C4")),
+        Element(pg_border_side("left", "70AD47")),
+        Element(pg_border_side("bottom", "C00000")),
+        Element(pg_border_side("right", "7030A0")),
+      ],
+    )
+  }
   // Wrap a list of section-property elements as `<w:sectPr>`.
   let sect_pr = fn(children : Array[@xml.Element]) -> @xml.Element {
     let kids : Array[@xml.Node] = []
@@ -341,6 +372,79 @@ fn extras_wml_sections(cases : Array[VisualCase]) -> Unit {
         pg_sz("12240", "15840", None),
         pg_mar("720", "720", "720", "720", None),
         cols("3", Some("360"), true, []),
+      ]),
+    ),
+  })
+
+  // Miscellaneous §17.6 section properties whose visual effect is
+  // either host-dependent (paper source / protection) or only visible
+  // in pagination and East Asian layout contexts.  The fixture keeps
+  // them in EG_SectPrContents schema order and includes a lightweight
+  // sectPrChange snapshot so change-tracking carriers are observed.
+  cases.push({
+    id: "section-advanced-properties",
+    format: "docx",
+    category: "section",
+    content: body(
+      5,
+      sect_pr([
+        xe(NS_W, "type", [w_attr("val", "continuous")], []),
+        pg_sz("12240", "15840", None),
+        pg_mar("1440", "1440", "1440", "1440", None),
+        xe(NS_W, "paperSrc", [w_attr("first", "1"), w_attr("other", "2")], []),
+        pg_borders(),
+        xe(
+          NS_W,
+          "lnNumType",
+          [
+            w_attr("countBy", "1"),
+            w_attr("start", "1"),
+            w_attr("distance", "360"),
+            w_attr("restart", "continuous"),
+          ],
+          [],
+        ),
+        xe(
+          NS_W,
+          "pgNumType",
+          [w_attr("fmt", "decimal"), w_attr("start", "3")],
+          [],
+        ),
+        cols("2", Some("720"), true, []),
+        xe(NS_W, "formProt", [w_attr("val", "0")], []),
+        xe(NS_W, "vAlign", [w_attr("val", "top")], []),
+        xe(NS_W, "noEndnote", [w_attr("val", "1")], []),
+        xe(NS_W, "titlePg", [w_attr("val", "1")], []),
+        xe(NS_W, "textDirection", [w_attr("val", "lrTb")], []),
+        xe(NS_W, "bidi", [w_attr("val", "0")], []),
+        xe(NS_W, "rtlGutter", [w_attr("val", "0")], []),
+        xe(
+          NS_W,
+          "docGrid",
+          [
+            w_attr("type", "linesAndChars"),
+            w_attr("linePitch", "360"),
+            w_attr("charSpace", "120"),
+          ],
+          [],
+        ),
+        xe(
+          NS_W,
+          "sectPrChange",
+          [
+            w_attr("id", "41"),
+            w_attr("author", "Catalog"),
+            w_attr("date", "2026-06-06T00:00:00Z"),
+          ],
+          [
+            Element(
+              sect_pr([
+                pg_sz("12240", "15840", None),
+                pg_mar("1440", "1440", "1440", "1440", None),
+              ]),
+            ),
+          ],
+        ),
       ]),
     ),
   })
