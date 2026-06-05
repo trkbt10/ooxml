@@ -164,6 +164,9 @@ The validator checks:
 - Relationships parts are preprocessed through the same Part 3 Markup
   Compatibility model used by the OPC gate before format-specific relationship
   contracts are evaluated.
+- Standard OOXML XML parts are also preprocessed before root, relationship
+  reference, sheet, slide, and slide-master contract checks, so ignorable
+  extension content is not treated as active package markup.
 - That relationship resolves to the format's main part, whose content type and
   root element match WordprocessingML, SpreadsheetML, or PresentationML.
 - Every XML attribute in the Office document relationship-reference namespace

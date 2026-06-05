@@ -29,6 +29,11 @@ from ooxml_xsd_validate import McPreprocessError, mc_preprocess_xml
 
 
 REPO = Path(__file__).resolve().parents[1]
+ECMA_SCHEMA_ROOTS = (
+    REPO / "references" / "raw" / "ecma376-1" / "OfficeOpenXML-XMLSchema-Strict",
+    REPO / "references" / "raw" / "ecma376-4" / "OfficeOpenXML-XMLSchema-Transitional",
+    REPO / "references" / "raw" / "ecma376-2" / "OpenPackagingConventions-XMLSchema",
+)
 CONTENT_TYPES_NS = "http://schemas.openxmlformats.org/package/2006/content-types"
 RELATIONSHIPS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 CONTENT_TYPES_PART = "[Content_Types].xml"
@@ -130,6 +135,22 @@ IMAGE_SIGNATURES = {
     "image/png": (b"\x89PNG\r\n\x1a\n",),
     "image/tiff": (b"II*\x00", b"MM\x00*"),
 }
+
+
+def vendored_ecma_schema_namespaces() -> set[str]:
+    namespaces: set[str] = set()
+    for schema_root in ECMA_SCHEMA_ROOTS:
+        if not schema_root.exists():
+            continue
+        for xsd in schema_root.glob("*.xsd"):
+            try:
+                namespace = ET.parse(xsd).getroot().get("targetNamespace")
+            except ET.ParseError:
+                continue
+            if namespace:
+                namespaces.add(namespace)
+    return namespaces
+
 
 DEFAULT_FIXTURES = [
     REPO / ".snapshots" / "fixtures" / "docx" / "paragraph" / "paragraph-alignment.docx",
@@ -395,6 +416,9 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
 STANDARD_XML_ROOT_NAMESPACES = {
     namespace for root_tags in CONTENT_TYPE_ROOT_TAGS.values() for namespace, _ in root_tags
 }
+FORMAT_MC_SUPPORTED_NAMESPACES = (
+    vendored_ecma_schema_namespaces() | STANDARD_XML_ROOT_NAMESPACES | OD_REL_NAMESPACES
+)
 
 
 def relationship_contract(
@@ -939,9 +963,20 @@ def parse_xml_root(
     part_name: str,
 ) -> tuple[ET.Element | None, list[ValidationResult]]:
     try:
-        root = ET.fromstring(archive.read(item_name_for_part(part_name)))
+        xml_bytes = mc_preprocess_xml(
+            archive.read(item_name_for_part(part_name)),
+            supported_namespaces=FORMAT_MC_SUPPORTED_NAMESPACES,
+        )
     except KeyError:
         return None, [fail(package, part_name, "part", "missing")]
+    except McPreprocessError as error:
+        return None, [
+            fail(package, part_name, "markup-compatibility", f"markup compatibility: {error}")
+        ]
+    except ET.ParseError as error:
+        return None, [fail(package, part_name, "xml-parse", str(error))]
+    try:
+        root = ET.fromstring(xml_bytes)
     except ET.ParseError as error:
         return None, [fail(package, part_name, "xml-parse", str(error))]
     return root, []
