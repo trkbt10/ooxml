@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `837` |
-| XML parts scanned | `5457` |
-| catalog QNames observed in fixtures | `618/2296 (26.9%)` |
-| catalog declaration entries observed by QName | `1375/4560 (30.2%)` |
-| observed fixture QNames that are catalog ECMA QNames | `618/642 (96.3%)` |
+| package fixtures scanned | `838` |
+| XML parts scanned | `5469` |
+| catalog QNames observed in fixtures | `709/2296 (30.9%)` |
+| catalog declaration entries observed by QName | `1556/4560 (34.1%)` |
+| observed fixture QNames that are catalog ECMA QNames | `709/733 (96.7%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -102,7 +102,7 @@ schema-set wildcard validation:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5457`, `fail: 0` |
+| all generated fixtures | `ok: 5469`, `fail: 0` |
 | previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
 | earlier full-fixture baseline before schema-order repairs | `ok: 5365`, `fail: 120` |
 
@@ -176,7 +176,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 837`, `fail: 0` |
+| all generated fixtures | `ok: 838`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -251,14 +251,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 837`, `fail: 0` |
+| all generated fixtures | `ok: 838`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
-`TargetMode="External"` for those packages. The XSD package sweep now reports
-`ok: 5457` because the two added Relationships parts are included.
+`TargetMode="External"` for those packages. The current XSD package sweep
+reports `ok: 5469` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 

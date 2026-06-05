@@ -242,6 +242,89 @@ fn c_axes_num() -> Array[@xml.Element] {
 }
 
 ///|
+/// Chart-line carrier with a visible DrawingML line property.
+fn c_chart_lines(tag : String) -> @xml.Element {
+  c_elem(tag, [], [
+    Element(
+      c_elem("spPr", [], [
+        Element(
+          xe(NS_A, "ln", [xa("w", "9525")], [
+            Element(
+              xe(NS_A, "solidFill", [], [
+                Element(xe(NS_A, "srgbClr", [xa("val", "8090A0")], [])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// §21.2.2.45 display units on a value axis.
+fn c_disp_units() -> @xml.Element {
+  c_elem("dispUnits", [], [
+    Element(c_val("builtInUnit", "thousands")),
+    Element(c_elem("dispUnitsLbl", [], [Element(c_manual_layout())])),
+  ])
+}
+
+///|
+/// Axis pair with optional branches that ordinary baseline chart
+/// fixtures do not carry.  Kept separate from `c_axes()` so the
+/// simple visual fixtures retain their small, canonical chart trees.
+fn c_axes_rich() -> Array[@xml.Element] {
+  let cat_ax = c_elem("catAx", [], [
+    Element(c_val("axId", "111111111")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "b")),
+    Element(c_chart_lines("majorGridlines")),
+    Element(c_chart_lines("minorGridlines")),
+    Element(
+      c_elem("numFmt", [xa("formatCode", "General"), xa("sourceLinked", "1")], []),
+    ),
+    Element(c_val("majorTickMark", "out")),
+    Element(c_val("minorTickMark", "in")),
+    Element(c_val("tickLblPos", "nextTo")),
+    Element(c_val("crossAx", "222222222")),
+    Element(c_val("crosses", "autoZero")),
+    Element(c_val("auto", "1")),
+    Element(c_val("lblAlgn", "ctr")),
+    Element(c_val("lblOffset", "100%")),
+    Element(c_val("noMultiLvlLbl", "0")),
+  ])
+  let val_ax = c_elem("valAx", [], [
+    Element(c_val("axId", "222222222")),
+    Element(
+      c_elem("scaling", [], [
+        Element(c_val("logBase", "10")),
+        Element(c_val("orientation", "minMax")),
+        Element(c_val("max", "50")),
+        Element(c_val("min", "0")),
+      ]),
+    ),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "l")),
+    Element(c_chart_lines("majorGridlines")),
+    Element(c_chart_lines("minorGridlines")),
+    Element(
+      c_elem("numFmt", [xa("formatCode", "#,##0"), xa("sourceLinked", "0")], []),
+    ),
+    Element(c_val("majorTickMark", "out")),
+    Element(c_val("minorTickMark", "in")),
+    Element(c_val("tickLblPos", "nextTo")),
+    Element(c_val("crossAx", "111111111")),
+    Element(c_val("crossBetween", "between")),
+    Element(c_val("majorUnit", "10")),
+    Element(c_val("minorUnit", "5")),
+    Element(c_disp_units()),
+  ])
+  [cat_ax, val_ax]
+}
+
+///|
 /// Wrap a chart-type-specific element (`<c:barChart>` /
 /// `<c:lineChart>` / …) in the surrounding `<c:chartSpace>` /
 /// `<c:chart>` / `<c:plotArea>` boilerplate.
@@ -332,6 +415,264 @@ fn c_chart_title(text : String) -> @xml.Element {
 fn c_chart_legend(pos : String) -> @xml.Element {
   c_elem("legend", [], [
     Element(c_val("legendPos", pos)),
+    Element(c_val("overlay", "0")),
+  ])
+}
+
+///|
+/// §21.2.2.88 / §21.2.2.105 — explicit plot-area positioning.
+/// This exercises the CT_ManualLayout children that ordinary Office-
+/// generated chart fixtures often omit when automatic layout is used.
+fn c_manual_layout() -> @xml.Element {
+  c_elem("layout", [], [
+    Element(
+      c_elem("manualLayout", [], [
+        Element(c_val("layoutTarget", "inner")),
+        Element(c_val("xMode", "factor")),
+        Element(c_val("yMode", "factor")),
+        Element(c_val("wMode", "factor")),
+        Element(c_val("hMode", "factor")),
+        Element(c_val("x", "0.08")),
+        Element(c_val("y", "0.10")),
+        Element(c_val("w", "0.82")),
+        Element(c_val("h", "0.72")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// §21.2.2.37 / §21.2.2.39 / §21.2.2.40 — chart walls and floor.
+/// The `<c:pictureOptions>` branch covers front / side / end
+/// application flags without needing an embedded image relationship.
+fn c_chart_surface(tag : String, hex : String) -> @xml.Element {
+  c_elem(tag, [], [
+    Element(c_val("thickness", "25%")),
+    Element(
+      c_elem("spPr", [], [
+        Element(
+          xe(NS_A, "solidFill", [], [
+            Element(xe(NS_A, "srgbClr", [xa("val", hex)], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      c_elem("pictureOptions", [], [
+        Element(c_val("applyToFront", "1")),
+        Element(c_val("applyToSides", "1")),
+        Element(c_val("applyToEnd", "0")),
+        Element(c_val("pictureFormat", "stretch")),
+        Element(c_val("pictureStackUnit", "1")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// §21.2.2.216 — 3-D view parameters.  Values use Strict-compatible
+/// percent lexical forms where ECMA-376 Strict requires the `%`
+/// suffix and Transitional also accepts it.
+fn c_view3d() -> @xml.Element {
+  c_elem("view3D", [], [
+    Element(c_val("rotX", "20")),
+    Element(c_val("hPercent", "120%")),
+    Element(c_val("rotY", "30")),
+    Element(c_val("depthPercent", "150%")),
+    Element(c_val("rAngAx", "1")),
+    Element(c_val("perspective", "30")),
+  ])
+}
+
+///|
+/// §21.2.2.49 data-table options under `<c:plotArea>`.
+fn c_data_table() -> @xml.Element {
+  c_elem("dTable", [], [
+    Element(c_val("showHorzBorder", "1")),
+    Element(c_val("showVertBorder", "1")),
+    Element(c_val("showOutline", "1")),
+    Element(c_val("showKeys", "1")),
+  ])
+}
+
+///|
+/// §21.2.2.50 / §21.2.2.51 — chart data labels, including both an
+/// item-level `<c:dLbl>` and group-level display switches.
+fn c_data_labels() -> @xml.Element {
+  c_elem("dLbls", [], [
+    Element(
+      c_elem("dLbl", [], [
+        Element(c_val("idx", "0")),
+        Element(c_manual_layout()),
+        Element(
+          c_elem("numFmt", [xa("formatCode", "0"), xa("sourceLinked", "0")], []),
+        ),
+        Element(c_val("dLblPos", "outEnd")),
+        Element(c_val("showLegendKey", "1")),
+        Element(c_val("showVal", "1")),
+        Element(c_val("showCatName", "1")),
+        Element(c_val("showSerName", "1")),
+        Element(c_val("showPercent", "0")),
+        Element(c_val("showBubbleSize", "0")),
+        Element(c_elem("separator", [], [Text(", ")])),
+      ]),
+    ),
+    Element(
+      c_elem("numFmt", [xa("formatCode", "0"), xa("sourceLinked", "0")], []),
+    ),
+    Element(c_val("dLblPos", "outEnd")),
+    Element(c_val("showLegendKey", "1")),
+    Element(c_val("showVal", "1")),
+    Element(c_val("showCatName", "1")),
+    Element(c_val("showSerName", "1")),
+    Element(c_val("showPercent", "0")),
+    Element(c_val("showBubbleSize", "0")),
+    Element(c_elem("separator", [], [Text(", ")])),
+    Element(c_val("showLeaderLines", "1")),
+    Element(c_chart_lines("leaderLines")),
+  ])
+}
+
+///|
+/// §21.2.2.26 CT_ChartSpace optional metadata that does not require
+/// an additional relationship part.
+fn c_chart_space_prefix_options() -> Array[@xml.Node] {
+  [
+    Element(c_val("date1904", "0")),
+    Element(c_val("lang", "en-US")),
+    Element(c_val("roundedCorners", "1")),
+    Element(c_val("style", "10")),
+    Element(
+      c_elem(
+        "clrMapOvr",
+        [
+          xa("bg1", "lt1"),
+          xa("tx1", "dk1"),
+          xa("bg2", "lt2"),
+          xa("tx2", "dk2"),
+          xa("accent1", "accent1"),
+          xa("accent2", "accent2"),
+          xa("accent3", "accent3"),
+          xa("accent4", "accent4"),
+          xa("accent5", "accent5"),
+          xa("accent6", "accent6"),
+          xa("hlink", "hlink"),
+          xa("folHlink", "folHlink"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      c_elem("protection", [], [
+        Element(c_val("chartObject", "0")),
+        Element(c_val("data", "0")),
+        Element(c_val("formatting", "0")),
+        Element(c_val("selection", "0")),
+        Element(c_val("userInterface", "0")),
+      ]),
+    ),
+  ]
+}
+
+///|
+/// §21.2.2.144 print settings for the chart part.
+fn c_print_settings() -> @xml.Element {
+  c_elem("printSettings", [], [
+    Element(
+      c_elem(
+        "headerFooter",
+        [
+          xa("alignWithMargins", "1"),
+          xa("differentOddEven", "1"),
+          xa("differentFirst", "1"),
+        ],
+        [
+          Element(c_elem("oddHeader", [], [Text("&CChart")])),
+          Element(c_elem("oddFooter", [], [Text("&P")])),
+          Element(c_elem("evenHeader", [], [Text("&LEven")])),
+          Element(c_elem("evenFooter", [], [Text("&RFooter")])),
+          Element(c_elem("firstHeader", [], [Text("&FFirst")])),
+          Element(c_elem("firstFooter", [], [Text("&CFirst footer")])),
+        ],
+      ),
+    ),
+    Element(
+      c_elem(
+        "pageMargins",
+        [
+          xa("l", "0.7"),
+          xa("r", "0.7"),
+          xa("t", "0.75"),
+          xa("b", "0.75"),
+          xa("header", "0.3"),
+          xa("footer", "0.3"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      c_elem(
+        "pageSetup",
+        [
+          xa("paperSize", "1"),
+          xa("orientation", "landscape"),
+          xa("horizontalDpi", "600"),
+          xa("verticalDpi", "600"),
+          xa("copies", "1"),
+        ],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+/// ChartSpace wrapper for coverage-driven fixtures that need the
+/// optional chart-level and chartSpace-level branches in canonical
+/// XSD order.
+fn wrap_chart_space_with_rich_options(
+  chart_payload : @xml.Element,
+  axes : Array[@xml.Element],
+) -> @xml.Element {
+  let plot_area_kids : Array[@xml.Node] = [
+    Element(c_manual_layout()),
+    Element(chart_payload),
+  ]
+  for ax in axes {
+    plot_area_kids.push(Element(ax))
+  }
+  plot_area_kids.push(Element(c_data_table()))
+  let chart_kids : Array[@xml.Node] = [
+    Element(c_val("autoTitleDeleted", "0")),
+    Element(c_view3d()),
+    Element(c_chart_surface("floor", "F4F1EA")),
+    Element(c_chart_surface("sideWall", "E8EDF4")),
+    Element(c_chart_surface("backWall", "F2F7EE")),
+    Element(c_elem("plotArea", [], plot_area_kids)),
+    Element(c_chart_legend_with_entry("r")),
+    Element(c_val("plotVisOnly", "1")),
+    Element(c_val("dispBlanksAs", "gap")),
+    Element(c_val("showDLblsOverMax", "1")),
+  ]
+  let chart = c_elem("chart", [], chart_kids)
+  let chart_space_kids = c_chart_space_prefix_options()
+  chart_space_kids.push(Element(chart))
+  chart_space_kids.push(Element(c_print_settings()))
+  c_elem("chartSpace", [], chart_space_kids)
+}
+
+///|
+/// Legend variant covering the repeated `<c:legendEntry>` child.
+fn c_chart_legend_with_entry(pos : String) -> @xml.Element {
+  c_elem("legend", [], [
+    Element(c_val("legendPos", pos)),
+    Element(
+      c_elem("legendEntry", [], [
+        Element(c_val("idx", "0")),
+        Element(c_val("delete", "0")),
+      ]),
+    ),
+    Element(c_manual_layout()),
     Element(c_val("overlay", "0")),
   ])
 }
@@ -591,6 +932,16 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
       c_axes_percent(),
     ),
   })
+  ccases.push({
+    id: "rich-options-3d",
+    format: "pptx",
+    category: "chart/bar",
+    content: sp_tree([chart_graphic_frame("2", "Bar 3D Rich Options")]),
+    chart_space: wrap_chart_space_with_rich_options(
+      bar3d_chart_rich_payload(),
+      c_axes_rich(),
+    ),
+  })
 
   // ---- line charts (§21.2.2.97) ---------------------------------
   ccases.push({
@@ -723,6 +1074,41 @@ fn bar_chart_two_series_payload() -> @xml.Element {
     Element(c_val("varyColors", "0")),
     Element(ser_a),
     Element(ser_b),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.15 CT_Bar3DChart — coverage-oriented fixture that
+/// combines 3-D bar chart structure with optional data labels,
+/// shape, gap depth, and rich chart/axis options from
+/// `wrap_chart_space_with_rich_options`.
+fn bar3d_chart_rich_payload() -> @xml.Element {
+  let ser_a = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Plan")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["10", "30", "20", "40"])),
+  ])
+  let ser_b = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("Actual")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["15", "25", "30", "35"])),
+  ])
+  c_elem("bar3DChart", [], [
+    Element(c_val("barDir", "col")),
+    Element(c_val("grouping", "clustered")),
+    Element(c_val("varyColors", "0")),
+    Element(ser_a),
+    Element(ser_b),
+    Element(c_data_labels()),
+    Element(c_val("gapWidth", "120%")),
+    Element(c_val("gapDepth", "80%")),
+    Element(c_val("shape", "box")),
     Element(c_val("axId", "111111111")),
     Element(c_val("axId", "222222222")),
   ])
