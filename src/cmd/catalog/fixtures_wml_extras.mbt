@@ -262,6 +262,149 @@ fn extras_wml_extras(cases : Array[VisualCase]) -> Unit {
     ]),
   })
 
+  // Rich SDT properties and subtype branches.  CT_SdtPr permits only
+  // one subtype choice per SDT, so this fixture emits a small gallery
+  // of independent inline SDTs to observe every branch in schema order.
+  let sdt_list_item = fn(label : String, value : String) -> @xml.Element {
+    xe(
+      NS_W,
+      "listItem",
+      [w_attr("displayText", label), w_attr("value", value)],
+      [],
+    )
+  }
+  let doc_part_choice = fn(name : String) -> @xml.Element {
+    xe(NS_W, name, [], [
+      Element(w_val("docPartGallery", "docParts")),
+      Element(w_val("docPartCategory", "Catalog Category")),
+      Element(w_val("docPartUnique", "1")),
+    ])
+  }
+  let sdt_pr_rich = fn(id_ : String, choice : @xml.Element) -> @xml.Element {
+    xe(NS_W, "sdtPr", [], [
+      Element(w_rpr([w_val("color", "2F5597")])),
+      Element(w_val("alias", "Catalog SDT " + id_)),
+      Element(w_val("tag", "catalog-sdt-" + id_)),
+      Element(w_val("id", id_)),
+      Element(w_val("lock", "sdtContentLocked")),
+      Element(
+        xe(NS_W, "placeholder", [], [
+          Element(w_val("docPart", "Catalog Placeholder")),
+        ]),
+      ),
+      Element(w_val("temporary", "0")),
+      Element(w_val("showingPlcHdr", "0")),
+      Element(
+        xe(
+          NS_W,
+          "dataBinding",
+          [
+            w_attr("prefixMappings", "xmlns:cat='urn:catalog:sdt'"),
+            w_attr("xpath", "/cat:root/cat:value"),
+            w_attr("storeItemID", "{11111111-2222-3333-4444-555555555555}"),
+          ],
+          [],
+        ),
+      ),
+      Element(w_val("label", id_)),
+      Element(w_val("tabIndex", id_)),
+      Element(choice),
+    ])
+  }
+  let sdt_run = fn(
+    id_ : String,
+    choice : @xml.Element,
+    text : String,
+  ) -> @xml.Element {
+    xe(NS_W, "sdt", [], [
+      Element(sdt_pr_rich(id_, choice)),
+      Element(xe(NS_W, "sdtEndPr", [], [Element(w_rpr([w_flag("i")]))])),
+      Element(xe(NS_W, "sdtContent", [], [Element(w_run(None, text))])),
+    ])
+  }
+  cases.push({
+    id: "extras-wml-sdt-control-gallery",
+    format: "docx",
+    category: "sdt",
+    content: body_with([
+      wrap_in_paragraph([
+        w_run(None, "Equation: "),
+        sdt_run("901", xe(NS_W, "equation", [], []), "x + y"),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Combo: "),
+        sdt_run(
+          "902",
+          xe(NS_W, "comboBox", [w_attr("lastValue", "two")], [
+            Element(sdt_list_item("One", "one")),
+            Element(sdt_list_item("Two", "two")),
+          ]),
+          "Two",
+        ),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Date: "),
+        sdt_run(
+          "903",
+          xe(NS_W, "date", [w_attr("fullDate", "2026-06-06T00:00:00Z")], [
+            Element(w_val("dateFormat", "yyyy-MM-dd")),
+            Element(w_val("lid", "en-US")),
+            Element(w_val("storeMappedDataAs", "dateTime")),
+            Element(w_val("calendar", "gregorian")),
+          ]),
+          "2026-06-06",
+        ),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Doc part object: "),
+        sdt_run("904", doc_part_choice("docPartObj"), "Object part"),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Doc part list: "),
+        sdt_run("905", doc_part_choice("docPartList"), "List part"),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Drop-down: "),
+        sdt_run(
+          "906",
+          xe(NS_W, "dropDownList", [w_attr("lastValue", "beta")], [
+            Element(sdt_list_item("Alpha", "alpha")),
+            Element(sdt_list_item("Beta", "beta")),
+          ]),
+          "Beta",
+        ),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Picture marker: "),
+        sdt_run("907", xe(NS_W, "picture", [], []), "Picture placeholder"),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Rich text: "),
+        sdt_run("908", xe(NS_W, "richText", [], []), "Rich text payload"),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Plain text: "),
+        sdt_run(
+          "909",
+          xe(NS_W, "text", [w_attr("multiLine", "1")], []),
+          "Plain text",
+        ),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Citation marker: "),
+        sdt_run("910", xe(NS_W, "citation", [], []), "Citation payload"),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Group marker: "),
+        sdt_run("911", xe(NS_W, "group", [], []), "Grouped content"),
+      ]),
+      wrap_in_paragraph([
+        w_run(None, "Bibliography marker: "),
+        sdt_run("912", xe(NS_W, "bibliography", [], []), "Bibliography payload"),
+      ]),
+    ]),
+  })
+
   // ==================================================================
   // §17.5.5 customXml — generic CustomXML wrapper
   // ==================================================================
