@@ -547,6 +547,583 @@ fn pivot_def_root(
   xe(NS_S_PVT, "pivotTableDefinition", attrs, kids)
 }
 
+///|
+/// Pivot-area scope reused by calculated items, formats, chart formats,
+/// conditional formats, and auto-sort scopes. It targets one concrete
+/// item in a single field so the schema-visible reference chain
+/// (`pivotArea` → `references` → `reference` → `x`) is exercised.
+fn pivot_area_scope(
+  field : Int,
+  axis : String,
+  item_index : Int,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = [
+    xa("field", field.to_string()),
+    xa("type", "normal"),
+    xa("axis", axis),
+    xa("fieldPosition", "0"),
+  ]
+  xe(NS_S_PVT, "pivotArea", attrs, [
+    Element(
+      xe(NS_S_PVT, "references", [xa("count", "1")], [
+        Element(
+          xe(
+            NS_S_PVT,
+            "reference",
+            [xa("field", field.to_string()), xa("count", "1")],
+            [Element(xe(NS_S_PVT, "x", [xa("v", item_index.to_string())], []))],
+          ),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Region cache field with grouping and member-property map children.
+/// The operational pivot still uses the ordinary sharedItems table;
+/// `fieldGroup`, `discretePr`, `groupItems`, and `mpMap` are present
+/// to drive the schema/domain readers through the deeper cache-field
+/// branches without changing the rendered aggregate.
+fn grouped_region_cache_field() -> @xml.Element {
+  xe(NS_S_PVT, "cacheField", [xa("name", "Region"), xa("numFmtId", "0")], [
+    Element(
+      xe(NS_S_PVT, "sharedItems", [xa("count", "3")], [
+        Element(xe(NS_S_PVT, "s", [xa("v", "North")], [])),
+        Element(xe(NS_S_PVT, "s", [xa("v", "South")], [])),
+        Element(xe(NS_S_PVT, "s", [xa("v", "East")], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_S_PVT, "fieldGroup", [xa("base", "0")], [
+        Element(
+          xe(
+            NS_S_PVT,
+            "rangePr",
+            [
+              xa("autoStart", "0"),
+              xa("autoEnd", "0"),
+              xa("groupBy", "range"),
+              xa("startNum", "0"),
+              xa("endNum", "2"),
+              xa("groupInterval", "1"),
+            ],
+            [],
+          ),
+        ),
+        Element(
+          xe(NS_S_PVT, "discretePr", [xa("count", "2")], [
+            Element(xe(NS_S_PVT, "x", [xa("v", "0")], [])),
+            Element(xe(NS_S_PVT, "x", [xa("v", "1")], [])),
+          ]),
+        ),
+        Element(
+          xe(NS_S_PVT, "groupItems", [xa("count", "6")], [
+            Element(xe(NS_S_PVT, "m", [], [])),
+            Element(xe(NS_S_PVT, "n", [xa("v", "1")], [])),
+            Element(xe(NS_S_PVT, "b", [xa("v", "1")], [])),
+            Element(xe(NS_S_PVT, "e", [xa("v", "#N/A")], [])),
+            Element(xe(NS_S_PVT, "s", [xa("v", "Grouped")], [])),
+            Element(xe(NS_S_PVT, "d", [xa("v", "2026-01-01T00:00:00Z")], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(xe(NS_S_PVT, "mpMap", [xa("v", "0")], [])),
+  ])
+}
+
+///|
+/// Rich pivotCacheDefinition observation payload. The first two
+/// required children remain a normal worksheet-backed cache; subsequent
+/// optional branches cover OLAP metadata containers that are parsed and
+/// schema-validated but intentionally ignored by the non-OLAP renderer.
+fn observation_cache_def() -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pivotCacheDefinition",
+    [
+      xa("recordCount", "6"),
+      xa("createdVersion", "3"),
+      xa("refreshedVersion", "3"),
+      xa("minRefreshableVersion", "3"),
+      xa("tupleCache", "1"),
+      xa("supportSubquery", "1"),
+      xa("supportAdvancedDrill", "1"),
+    ],
+    [
+      Element(cache_source_worksheet("S1", "A1:C7")),
+      Element(
+        cache_fields_wrap([
+          grouped_region_cache_field(),
+          cache_field_strings("Product", ["Apple", "Bread"]),
+          cache_field_numbers_inline("Sales"),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "cacheHierarchies", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "cacheHierarchy",
+              [
+                xa("uniqueName", "[Region]"),
+                xa("caption", "Region"),
+                xa("count", "1"),
+                xa("oneField", "1"),
+              ],
+              [
+                Element(
+                  xe(NS_S_PVT, "fieldsUsage", [xa("count", "1")], [
+                    Element(xe(NS_S_PVT, "fieldUsage", [xa("x", "0")], [])),
+                  ]),
+                ),
+                Element(
+                  xe(NS_S_PVT, "groupLevels", [xa("count", "1")], [
+                    Element(
+                      xe(
+                        NS_S_PVT,
+                        "groupLevel",
+                        [
+                          xa("uniqueName", "[Region].[Grouped]"),
+                          xa("caption", "Grouped"),
+                        ],
+                        [
+                          Element(
+                            xe(NS_S_PVT, "groups", [xa("count", "1")], [
+                              Element(
+                                xe(
+                                  NS_S_PVT,
+                                  "group",
+                                  [
+                                    xa("name", "Core"),
+                                    xa(
+                                      "uniqueName", "[Region].[Grouped].[Core]",
+                                    ),
+                                    xa("caption", "Core"),
+                                    xa("id", "1"),
+                                  ],
+                                  [
+                                    Element(
+                                      xe(
+                                        NS_S_PVT,
+                                        "groupMembers",
+                                        [xa("count", "2")],
+                                        [
+                                          Element(
+                                            xe(
+                                              NS_S_PVT,
+                                              "groupMember",
+                                              [
+                                                xa(
+                                                  "uniqueName", "[Region].[North]",
+                                                ),
+                                              ],
+                                              [],
+                                            ),
+                                          ),
+                                          Element(
+                                            xe(
+                                              NS_S_PVT,
+                                              "groupMember",
+                                              [
+                                                xa(
+                                                  "uniqueName", "[Region].[South]",
+                                                ),
+                                              ],
+                                              [],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "kpis", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "kpi",
+              [
+                xa("uniqueName", "[Measures].[Sales KPI]"),
+                xa("caption", "Sales KPI"),
+                xa("value", "[Measures].[Sales]"),
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "tupleCache", [], [
+          Element(
+            xe(NS_S_PVT, "entries", [xa("count", "1")], [
+              Element(xe(NS_S_PVT, "s", [xa("v", "[Region].[North]")], [])),
+            ]),
+          ),
+          Element(
+            xe(NS_S_PVT, "sets", [xa("count", "1")], [
+              Element(
+                xe(
+                  NS_S_PVT,
+                  "set",
+                  [
+                    xa("count", "1"),
+                    xa("maxRank", "1"),
+                    xa("setDefinition", "{[Region].[North]}"),
+                  ],
+                  [
+                    Element(
+                      xe(NS_S_PVT, "tpls", [xa("c", "1")], [
+                        Element(
+                          xe(
+                            NS_S_PVT,
+                            "tpl",
+                            [xa("fld", "0"), xa("hier", "0"), xa("item", "0")],
+                            [],
+                          ),
+                        ),
+                      ]),
+                    ),
+                    Element(
+                      xe(NS_S_PVT, "sortByTuple", [xa("c", "1")], [
+                        Element(
+                          xe(
+                            NS_S_PVT,
+                            "tpl",
+                            [xa("fld", "0"), xa("hier", "0"), xa("item", "0")],
+                            [],
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+          Element(
+            xe(NS_S_PVT, "queryCache", [xa("count", "1")], [
+              Element(
+                xe(
+                  NS_S_PVT,
+                  "query",
+                  [xa("mdx", "SELECT {[Region].[North]} ON 0")],
+                  [
+                    Element(
+                      xe(NS_S_PVT, "tpls", [xa("c", "1")], [
+                        Element(
+                          xe(
+                            NS_S_PVT,
+                            "tpl",
+                            [xa("fld", "0"), xa("hier", "0"), xa("item", "0")],
+                            [],
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+          Element(
+            xe(NS_S_PVT, "serverFormats", [xa("count", "1")], [
+              Element(
+                xe(
+                  NS_S_PVT,
+                  "serverFormat",
+                  [xa("culture", "en-US"), xa("format", "General")],
+                  [],
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "calculatedItems", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "calculatedItem",
+              [xa("field", "0"), xa("formula", "North+South")],
+              [Element(pivot_area_scope(0, "axisRow", 0))],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "calculatedMembers", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "calculatedMember",
+              [
+                xa("name", "NorthAndSouth"),
+                xa("mdx", "[Region].[North]+[Region].[South]"),
+                xa("hierarchy", "[Region]"),
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "dimensions", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "dimension",
+              [
+                xa("name", "Region"),
+                xa("uniqueName", "[Region]"),
+                xa("caption", "Region"),
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "measureGroups", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "measureGroup",
+              [xa("name", "Sales"), xa("caption", "Sales")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "maps", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "map",
+              [xa("measureGroup", "0"), xa("dimension", "0")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+/// Pivot field variant that places an `autoSortScope` after the normal
+/// item dictionary, matching CT_PivotField child order.
+fn pivot_field_with_autosort(
+  axis : String,
+  data_field : Bool,
+  items_count : Int,
+  sort_field : Int,
+) -> @xml.Element {
+  let base = pivot_field(axis, data_field, items_count)
+  let kids : Array[@xml.Node] = []
+  for child in base.children {
+    kids.push(child)
+  }
+  kids.push(
+    Element(
+      xe(NS_S_PVT, "autoSortScope", [], [
+        Element(pivot_area_scope(sort_field, axis, 0)),
+      ]),
+    ),
+  )
+  { name: base.name, attributes: base.attributes, children: kids }
+}
+
+///|
+/// PivotTableDefinition with schema-rich optional branches after the
+/// operational row/page/data-field core. The renderer uses the core
+/// fields; validators and domain readers traverse the format, chart,
+/// hierarchy-usage, and pivot-area subtrees.
+fn observation_pivot_def() -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pivotTableDefinition",
+    [
+      xa("name", "PivotObservationRich"),
+      xa("cacheId", "0"),
+      xa("dataCaption", "Values"),
+      xa("createdVersion", "3"),
+      xa("updatedVersion", "3"),
+      xa("minRefreshableVersion", "3"),
+      xa("rowGrandTotals", "0"),
+      xa("colGrandTotals", "0"),
+      xa("compact", "0"),
+      xa("compactData", "0"),
+      xa("gridDropZones", "1"),
+    ],
+    [
+      Element(pivot_location("E1:F5", 0, 1, 1)),
+      Element(
+        pivot_fields_wrap([
+          pivot_field_with_autosort("axisRow", false, 3, 0),
+          pivot_field("axisPage", false, 2),
+          pivot_field("", true, 0),
+        ]),
+      ),
+      Element(axis_fields("rowFields", [0])),
+      Element(
+        axis_items_wrap("rowItems", [
+          pivot_axis_item([0], false),
+          pivot_axis_item([1], false),
+          pivot_axis_item([2], false),
+        ]),
+      ),
+      Element(axis_items_wrap("colItems", [pivot_axis_item([], false)])),
+      Element(
+        xe(NS_S_PVT, "pageFields", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "pageField",
+              [
+                xa("fld", "1"),
+                xa("item", "0"),
+                xa("hier", "0"),
+                xa("name", "Product"),
+                xa("cap", "Apple"),
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(data_fields_wrap([data_field_entry("Sum of Sales", 2, "sum")])),
+      Element(
+        xe(NS_S_PVT, "formats", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "format", [xa("action", "formatting")], [
+              Element(pivot_area_scope(0, "axisRow", 0)),
+            ]),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "conditionalFormats", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "conditionalFormat",
+              [xa("priority", "1"), xa("scope", "selection"), xa("type", "all")],
+              [
+                Element(
+                  xe(NS_S_PVT, "pivotAreas", [xa("count", "1")], [
+                    Element(pivot_area_scope(0, "axisRow", 0)),
+                  ]),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "chartFormats", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "chartFormat", [xa("chart", "0"), xa("format", "0")], [
+              Element(pivot_area_scope(0, "axisRow", 0)),
+            ]),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "pivotHierarchies", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "pivotHierarchy",
+              [
+                xa("outline", "1"),
+                xa("subtotalTop", "1"),
+                xa("caption", "Region"),
+              ],
+              [
+                Element(
+                  xe(NS_S_PVT, "mps", [xa("count", "1")], [
+                    Element(
+                      xe(
+                        NS_S_PVT,
+                        "mp",
+                        [
+                          xa("field", "0"),
+                          xa("name", "Region Label"),
+                          xa("showCell", "1"),
+                          xa("showTip", "1"),
+                        ],
+                        [],
+                      ),
+                    ),
+                  ]),
+                ),
+                Element(
+                  xe(
+                    NS_S_PVT,
+                    "members",
+                    [xa("count", "2"), xa("level", "0")],
+                    [
+                      Element(xe(NS_S_PVT, "member", [xa("name", "North")], [])),
+                      Element(xe(NS_S_PVT, "member", [xa("name", "South")], [])),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(
+          NS_S_PVT,
+          "pivotTableStyleInfo",
+          [
+            xa("name", "PivotStyleLight16"),
+            xa("showRowHeaders", "1"),
+            xa("showColHeaders", "1"),
+            xa("showRowStripes", "0"),
+            xa("showColStripes", "0"),
+            xa("showLastColumn", "0"),
+          ],
+          [],
+        ),
+      ),
+      Element(
+        xe(NS_S_PVT, "rowHierarchiesUsage", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "rowHierarchyUsage", [xa("hierarchyUsage", "0")], []),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_S_PVT, "colHierarchiesUsage", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "colHierarchyUsage", [xa("hierarchyUsage", "0")], []),
+          ),
+        ]),
+      ),
+    ],
+  )
+}
+
 // ---- PivotedCase extender ----------------------------------------
 
 ///|
@@ -1023,5 +1600,24 @@ fn extras_sml_pivots(pcases : Array[PivotedCase]) -> Unit {
     cache_def: shared_cache_def(),
     cache_records: shared_cache_records(),
     pivot_def: pivot_def_no_grand,
+  })
+  // ---- 6. Rich schema observation pivot -------------------------
+  // This is intentionally an observation fixture rather than a new
+  // renderer feature. The visible pivot remains a simple row-axis
+  // aggregate, while the package parts carry deeper §18.10 optional
+  // branches so XSD validation and the domain readers exercise:
+  // cacheHierarchy / fieldUsage / groupLevel / tupleCache /
+  // calculatedItems / calculatedMembers / pivotArea references /
+  // conditionalFormats / chartFormats / pivotHierarchies /
+  // hierarchyUsage. These are not claimed as full semantic or
+  // Office-interop support; they are coverage probes.
+  pcases.push({
+    id: "pivot-schema-observation-rich",
+    format: "xlsx",
+    category: "pivot",
+    content: source_sheet(),
+    cache_def: observation_cache_def(),
+    cache_records: shared_cache_records(),
+    pivot_def: observation_pivot_def(),
   })
 }
