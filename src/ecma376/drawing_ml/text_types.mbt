@@ -394,6 +394,7 @@ pub fn CT_TextBodyProperties::new(
     Some(c) => Some(CT_Scene3D::new(c))
     None => None
   }
+  require_at_most_one_text3d_choice(element)
   let text3d : CT_TextBodyProperties_Text3D? = match
     ct_first_child(element, "sp3d") {
     Some(c) => Some(Text3DShape(CT_Shape3D::new(c)))
@@ -520,6 +521,25 @@ pub fn CT_TextBodyProperties::to_element(
   self : CT_TextBodyProperties,
 ) -> @xml.Element {
   self.element
+}
+
+///|
+fn text3d_choice_child_count(element : @xml.Element) -> Int {
+  ct_children(element, "sp3d").length() +
+  ct_children(element, "flatTx").length()
+}
+
+///|
+fn require_at_most_one_text3d_choice(
+  element : @xml.Element,
+) -> Unit raise SchemaViolation {
+  if text3d_choice_child_count(element) > 1 {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path="CT_TextBodyProperties/EG_Text3D",
+      reason="EG_Text3D requires at most one of sp3d, flatTx",
+    )
+  }
 }
 
 ///|

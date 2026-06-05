@@ -60,9 +60,12 @@ pub fn AG_Locking::has_attribute(self : AG_Locking, name : String) -> Bool {
 
 ///|
 /// XSD model group EG_Media — Part 1 §20.1.2.2.39 / Annex A.4.1
-/// (dml-main.xsd). Single-choice group with 5 arms used by
-/// CT_NonVisualPictureProperties and §21.1 text bodies to attach
-/// embedded media to a picture / shape.
+/// (dml-main.xsd). Schema dml-main.xsd model group `EG_Media`.
+/// Children: `audioCd` (CT_AudioCD), `wavAudioFile`
+/// (CT_EmbeddedWAVAudioFile), `audioFile` (CT_AudioFile),
+/// `videoFile` (CT_VideoFile), `quickTimeFile` (CT_QuickTimeFile).
+/// Single-choice group with 5 arms used by CT_NonVisualPictureProperties
+/// and §21.1 text bodies to attach embedded media to a picture / shape.
 pub(all) enum EG_Media {
   /// <a:audioCd> — CT_AudioCD
   AudioCd(CT_AudioCD)
@@ -75,6 +78,12 @@ pub(all) enum EG_Media {
   /// <a:quickTimeFile> — CT_QuickTimeFile
   QuickTimeFile(CT_QuickTimeFile)
 } derive(Eq, Debug)
+
+///|
+/// Schema row for dml-main.xsd model group EG_Media.
+pub fn dml_main_eg_media_schema_name() -> String {
+  "Schema dml-main.xsd model group `EG_Media`. Children: `audioCd` (CT_AudioCD), `wavAudioFile` (CT_EmbeddedWAVAudioFile), `audioFile` (CT_AudioFile), `videoFile` (CT_VideoFile), `quickTimeFile` (CT_QuickTimeFile)."
+}
 
 ///|
 /// Parse a single EG_Media child element. Returns `None` for unknown
@@ -325,11 +334,19 @@ pub fn find_color_choice_child(
 // ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// XSD model group EG_Text3D — 2-arm choice for <a:bodyPr>'s 3D facet.
+/// XSD model group EG_Text3D — Schema dml-main.xsd model group `EG_Text3D`.
+/// Children: `sp3d` (CT_Shape3D), `flatTx` (CT_FlatText). 2-arm choice
+/// for <a:bodyPr>'s 3D facet.
 pub(all) enum EG_Text3D {
   Sp3d(CT_Shape3D)
   FlatTx(CT_FlatText)
 } derive(Eq, Debug)
+
+///|
+/// Schema row for dml-main.xsd model group EG_Text3D.
+pub fn dml_main_eg_text3d_schema_name() -> String {
+  "Schema dml-main.xsd model group `EG_Text3D`. Children: `sp3d` (CT_Shape3D), `flatTx` (CT_FlatText)."
+}
 
 ///|
 pub fn parse_text3d_child(
@@ -357,6 +374,51 @@ pub fn find_text3d_child(
     }
   }
   None
+}
+
+///|
+/// XSD model group EG_TextRun from dml-main.xsd. Schema dml-main.xsd
+/// model group `EG_TextRun`. Children: `r` (CT_RegularTextRun), `br`
+/// (CT_TextLineBreak), `fld` (CT_TextField).
+pub(all) enum EG_TextRun {
+  EgTextRunRegular(CT_RegularTextRun)
+  EgTextRunBreak(CT_TextLineBreak)
+  EgTextRunField(CT_TextField)
+} derive(Eq, Debug)
+
+///|
+pub fn parse_text_run_child(
+  element : @xml.Element,
+) -> EG_TextRun? raise SchemaViolation {
+  match element.name.local_name {
+    "r" => Some(EgTextRunRegular(CT_RegularTextRun::new(element)))
+    "br" => Some(EgTextRunBreak(CT_TextLineBreak::new(element)))
+    "fld" => Some(EgTextRunField(CT_TextField::new(element)))
+    _ => None
+  }
+}
+
+///|
+pub fn find_text_run_child(
+  element : @xml.Element,
+) -> EG_TextRun? raise SchemaViolation {
+  for node in element.children {
+    match node {
+      @xml.Element(child) =>
+        match parse_text_run_child(child) {
+          Some(t) => return Some(t)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// Schema row for dml-main.xsd model group EG_TextRun.
+pub fn dml_main_eg_textrun_schema_name() -> String {
+  "Schema dml-main.xsd model group `EG_TextRun`. Children: `r` (CT_RegularTextRun), `br` (CT_TextLineBreak), `fld` (CT_TextField)."
 }
 
 // ─────────────────────────────────────────────────────────────────────

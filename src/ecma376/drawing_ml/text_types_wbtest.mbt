@@ -49,3 +49,19 @@ test "reject invalid text enum value" {
     _ => fail("expected SchemaViolation")
   }
 }
+
+///|
+test "CT_TextBodyProperties rejects multiple EG_Text3D choice children" {
+  try {
+    read_text_body_properties(
+      bytes(
+        "<a:bodyPr xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\"><a:sp3d/><a:flatTx/></a:bodyPr>",
+      ),
+    )
+    |> ignore
+    fail("expected SchemaViolation")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}

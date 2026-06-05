@@ -145,6 +145,12 @@ pub fn dml_19_5_vml_presentationml_drawing_section_name() -> String
 
 pub fn dml_20_5_drawingml_spreadsheetml_drawing_section_name() -> String
 
+pub fn dml_main_eg_media_schema_name() -> String
+
+pub fn dml_main_eg_text3d_schema_name() -> String
+
+pub fn dml_main_eg_textrun_schema_name() -> String
+
 pub fn dml_schema_vml_main_xsd_name() -> String
 
 pub fn dml_schema_vml_officedrawing_xsd_name() -> String
@@ -211,6 +217,8 @@ pub fn find_text_autofit_child(@xml.Element) -> EG_TextAutofit? raise SchemaViol
 
 pub fn find_text_geometry_child(@xml.Element) -> EG_TextGeometry? raise SchemaViolation
 
+pub fn find_text_run_child(@xml.Element) -> EG_TextRun? raise SchemaViolation
+
 pub fn package_name() -> String
 
 pub fn parse_color_choice_child(@xml.Element) -> EG_ColorChoice? raise SchemaViolation
@@ -250,6 +258,8 @@ pub fn parse_text_bullet_size_child(@xml.Element) -> EG_TextBulletSize? raise Sc
 pub fn parse_text_bullet_typeface_child(@xml.Element) -> EG_TextBulletTypeface? raise SchemaViolation
 
 pub fn parse_text_geometry_child(@xml.Element) -> EG_TextGeometry? raise SchemaViolation
+
+pub fn parse_text_run_child(@xml.Element) -> EG_TextRun? raise SchemaViolation
 
 pub fn parse_text_underline_fill_child(@xml.Element) -> EG_TextUnderlineFill? raise SchemaViolation
 
@@ -2926,6 +2936,12 @@ pub(all) enum EG_TextBulletTypeface {
 pub(all) enum EG_TextGeometry {
   CustGeom(CT_CustomGeometry2D)
   PrstTxWarp(CT_PresetTextShape)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum EG_TextRun {
+  EgTextRunRegular(CT_RegularTextRun)
+  EgTextRunBreak(CT_TextLineBreak)
+  EgTextRunField(CT_TextField)
 } derive(Eq, @debug.Debug)
 
 pub(all) enum EG_TextUnderlineFill {

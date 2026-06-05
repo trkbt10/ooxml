@@ -26,6 +26,18 @@ test "EG_ShadeProperties typed projection of path-shaded gradient" {
 }
 
 ///|
+test "EG_TextRun typed projection of regular text run" {
+  let paragraph = @xml.parse(
+      b"<a:p xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\"><a:r><a:t>Hello</a:t></a:r></a:p>",
+    ).root
+  let found = find_text_run_child(paragraph)
+  match found {
+    Some(EgTextRunRegular(_)) => assert_true(true)
+    _ => fail("expected EgTextRunRegular(...) from EG_TextRun")
+  }
+}
+
+///|
 test "collect DrawingML blob attribute group names" {
   let value = read_blip(
     b"<a:blip xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" xmlns:r=\"http://purl.oclc.org/ooxml/officeDocument/relationships\" r:embed=\"rId1\" cstate=\"print\"/>",
