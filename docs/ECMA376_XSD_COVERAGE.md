@@ -9,6 +9,41 @@ It measures identifier presence for complex types, simple types, and top-level e
 Use this alongside `docs/ECMA376_SDD_COVERAGE.md`, parser/builder tests,
 package validation, format contract validation, and office-suite smoke tests.
 
+## Fixture element occurrence gate
+
+Use `scripts/ooxml_fixture_element_coverage.py` to measure which ECMA-376
+element QNames actually appear in generated `.docx`, `.xlsx`, and `.pptx`
+fixture packages:
+
+```bash
+python3 scripts/ooxml_fixture_element_coverage.py --all-fixtures
+python3 scripts/ooxml_fixture_element_coverage.py --all-fixtures --json
+```
+
+This gate compares `.snapshots/catalog.json` (the XSD-derived catalog of
+4,560 schema element declarations) with XML elements observed inside the
+fixture packages. Strict and Transitional ECMA namespace generations are folded
+together before comparison, so a Transitional fixture can cover the matching
+Strict QName bucket.
+
+Current generated-fixture snapshot:
+
+| Scope | Result |
+|---|---|
+| package fixtures scanned | `837` |
+| XML parts scanned | `5457` |
+| catalog QNames observed in fixtures | `618/2296 (26.9%)` |
+| catalog declaration entries observed by QName | `1375/4560 (30.2%)` |
+| observed fixture QNames that are catalog ECMA QNames | `618/642 (96.3%)` |
+
+This is intentionally a **fixture occurrence** metric, not a schema or
+semantic proof. It does not distinguish two schema declarations that share the
+same QName in different content-model positions, and it does not prove parser,
+builder, editor, renderer, or office-suite behaviour. Its purpose is to turn
+fixture expansion into a measurable backlog: missing QName buckets are the next
+places to add package examples, then run the XSD, OPC, format, and interop
+gates against those examples.
+
 ## Package XSD validation gate
 
 The identifier audit above proves that every vendored ECMA-376 Strict,
