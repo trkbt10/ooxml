@@ -56,6 +56,7 @@ struct MediaSlideCase {
 fn external_ref_cases() -> Array[ExternalRefCase] {
   let cases : Array[ExternalRefCase] = []
   extras_sml_external_refs(cases)
+  extras_sml_external_link_variants(cases)
   extras_r29_sml_external_book_multi(cases)
   cases
 }
@@ -161,6 +162,114 @@ fn extras_sml_external_refs(cases : Array[ExternalRefCase]) -> Unit {
     category: "external",
     content: worksheet,
     external_link,
+  })
+}
+
+///|
+/// §18.14 external-link variants whose part root uses the non-workbook
+/// choices under `<externalLink>`: `<ddeLink>` and `<oleLink>`.
+/// The package host is the same one used for external-book references,
+/// so the workbook-level `<externalReferences>` relationship is real.
+fn extras_sml_external_link_variants(cases : Array[ExternalRefCase]) -> Unit {
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let dde_link = xe(NS_S, "externalLink", [], [
+    Element(
+      xe(
+        NS_S,
+        "ddeLink",
+        [xa("ddeService", "Excel"), xa("ddeTopic", "Catalog")],
+        [
+          Element(
+            xe(NS_S, "ddeItems", [], [
+              Element(
+                xe(NS_S, "ddeItem", [xa("name", "R1C1"), xa("advise", "1")], [
+                  Element(
+                    xe(NS_S, "values", [xa("rows", "1"), xa("cols", "1")], [
+                      Element(
+                        xe(NS_S, "value", [xa("t", "str")], [
+                          Element(xe(NS_S, "val", [], [Text("Catalog")])),
+                        ]),
+                      ),
+                    ]),
+                  ),
+                ]),
+              ),
+            ]),
+          ),
+        ],
+      ),
+    ),
+  ])
+  let dde_sheet = xe(NS_S, "worksheet", [], [
+    Element(
+      xe(NS_S, "sheetData", [], [
+        Element(
+          s_row("1", [
+            s_inline("A1", "DDE link topic"),
+            s_inline("B1", "Catalog"),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  cases.push({
+    id: "external-link-dde-values",
+    format: "xlsx",
+    category: "external",
+    content: dde_sheet,
+    external_link: dde_link,
+  })
+  let ole_link = xe(NS_S, "externalLink", [], [
+    Element(
+      xe(
+        NS_S,
+        "oleLink",
+        [
+          {
+            name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+            value: "rId1",
+          },
+          xa("progId", "Excel.Sheet.12"),
+        ],
+        [
+          Element(
+            xe(NS_S, "oleItems", [], [
+              Element(
+                xe(
+                  NS_S,
+                  "oleItem",
+                  [
+                    xa("name", "Worksheet"),
+                    xa("advise", "1"),
+                    xa("preferPic", "1"),
+                  ],
+                  [],
+                ),
+              ),
+            ]),
+          ),
+        ],
+      ),
+    ),
+  ])
+  let ole_sheet = xe(NS_S, "worksheet", [], [
+    Element(
+      xe(NS_S, "sheetData", [], [
+        Element(
+          s_row("1", [
+            s_inline("A1", "OLE link"),
+            s_inline("B1", "Excel.Sheet.12"),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  cases.push({
+    id: "external-link-ole-items",
+    format: "xlsx",
+    category: "external",
+    content: ole_sheet,
+    external_link: ole_link,
   })
 }
 

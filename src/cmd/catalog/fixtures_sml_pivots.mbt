@@ -60,6 +60,45 @@ fn cache_source_worksheet(sheet : String, ref_ : String) -> @xml.Element {
 }
 
 ///|
+/// `<cacheSource type="consolidation">` with one page selector and
+/// one rangeSet.  This covers the §18.10.1.16 consolidation branch
+/// without adding another relationship from the cache definition part.
+fn cache_source_consolidation() -> @xml.Element {
+  xe(NS_S_PVT, "cacheSource", [xa("type", "consolidation")], [
+    Element(
+      xe(NS_S_PVT, "consolidation", [xa("autoPage", "0")], [
+        Element(
+          xe(NS_S_PVT, "pages", [xa("count", "1")], [
+            Element(
+              xe(NS_S_PVT, "page", [xa("count", "1")], [
+                Element(xe(NS_S_PVT, "pageItem", [xa("name", "Region")], [])),
+              ]),
+            ),
+          ]),
+        ),
+        Element(
+          xe(NS_S_PVT, "rangeSets", [xa("count", "1")], [
+            Element(
+              xe(
+                NS_S_PVT,
+                "rangeSet",
+                [
+                  xa("i1", "0"),
+                  xa("ref", "A1:B3"),
+                  xa("name", "ConsolidatedSales"),
+                  xa("sheet", "S1"),
+                ],
+                [],
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
 /// `<cacheField name="..."><sharedItems>…<s v="…"/>…</sharedItems></cacheField>`
 /// for a string-valued column. §18.10.1.3 + §18.10.1.90.
 fn cache_field_strings(name : String, values : Array[String]) -> @xml.Element {
@@ -1432,6 +1471,55 @@ fn extras_sml_pivots(pcases : Array[PivotedCase]) -> Unit {
     cache_def: calc_cache_def(),
     cache_records: calc_cache_records(),
     pivot_def: pivot_def_filter_calc_value,
+  })
+  // ---- 1e. Consolidation cache source ---------------------------
+  // §18.10.1.16 `consolidation` hosted inside a real
+  // `pivotCacheDefinition`, with `pages/page/pageItem` and
+  // `rangeSets/rangeSet` branches present.  The cached records still
+  // carry a normal row-axis + value field so the viewer can render the
+  // pivot output without implementing consolidation refresh logic.
+  let consolidation_sheet = xe(NS_S_PVT, "sheetData", [], [
+    Element(s_row("1", [s_inline("A1", "Region"), s_inline("B1", "Sales")])),
+    Element(s_row("2", [s_inline("A2", "North"), s_cell("B2", "100")])),
+    Element(s_row("3", [s_inline("A3", "South"), s_cell("B3", "125")])),
+  ])
+  let consolidation_cache_def = cache_def_root(
+    cache_source_consolidation(),
+    cache_fields_wrap([
+      cache_field_strings("Region", ["North", "South"]),
+      cache_field_numbers_inline("Sales"),
+    ]),
+    2,
+  )
+  let consolidation_pivot_def = pivot_def_root(
+    "PivotConsolidation",
+    pivot_location("D1:E4", 0, 1, 1),
+    pivot_fields_wrap([
+      pivot_field("axisRow", false, 2),
+      pivot_field("", true, 0),
+    ]),
+    Some(axis_fields("rowFields", [0])),
+    None,
+    axis_items_wrap("rowItems", [
+      pivot_axis_item([0], false),
+      pivot_axis_item([1], false),
+    ]),
+    axis_items_wrap("colItems", [pivot_axis_item([], false)]),
+    data_fields_wrap([data_field_entry("Sum of Sales", 1, "sum")]),
+    false,
+    false,
+  )
+  pcases.push({
+    id: "pivot-cache-consolidation",
+    format: "xlsx",
+    category: "pivot",
+    content: consolidation_sheet,
+    cache_def: consolidation_cache_def,
+    cache_records: records_root([
+      record_row([rec_x(0), rec_n("100")]),
+      record_row([rec_x(1), rec_n("125")]),
+    ]),
+    pivot_def: consolidation_pivot_def,
   })
   // ---- 2. Grand totals on both axes ------------------------------
   // §18.10.1.73 rowGrandTotals / colGrandTotals default to true; this

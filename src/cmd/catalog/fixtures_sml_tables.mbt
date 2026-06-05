@@ -85,6 +85,45 @@ fn tbl_column_totals_label(
 }
 
 ///|
+/// `<tableColumn>` branch carrying the formula and XML-map metadata
+/// children in CT_TableColumn order:
+/// `<calculatedColumnFormula>`, `<totalsRowFormula>`, `<xmlColumnPr>`.
+fn tbl_column_formula_xml(
+  id : String,
+  name : String,
+  calculated_formula : String,
+  totals_formula : String,
+  map_id : String,
+  xpath : String,
+  xml_data_type : String,
+) -> @xml.Element {
+  xe(
+    NS_S_TBL,
+    "tableColumn",
+    [xa("id", id), xa("name", name), xa("totalsRowFunction", "custom")],
+    [
+      Element(
+        xe(NS_S_TBL, "calculatedColumnFormula", [], [Text(calculated_formula)]),
+      ),
+      Element(xe(NS_S_TBL, "totalsRowFormula", [], [Text(totals_formula)])),
+      Element(
+        xe(
+          NS_S_TBL,
+          "xmlColumnPr",
+          [
+            xa("mapId", map_id),
+            xa("xpath", xpath),
+            xa("xmlDataType", xml_data_type),
+            xa("denormalized", "0"),
+          ],
+          [],
+        ),
+      ),
+    ],
+  )
+}
+
+///|
 /// `<tableColumns count="N">` wrapper.  §18.5.1.4.
 fn tbl_columns(cols : Array[@xml.Element]) -> @xml.Element {
   let kids : Array[@xml.Node] = []
@@ -124,6 +163,41 @@ fn tbl_style_info(
 /// schema).  §18.3.1.2 CT_AutoFilter.
 fn tbl_auto_filter(ref_ : String) -> @xml.Element {
   xe(NS_S_TBL, "autoFilter", [xa("ref", ref_)], [])
+}
+
+///|
+/// Table-scoped AutoFilter branch carrying the date-group and dynamic
+/// filter choices that simple worksheet fixtures cannot combine with
+/// table metadata.
+fn tbl_auto_filter_date_dynamic(ref_ : String) -> @xml.Element {
+  xe(NS_S_TBL, "autoFilter", [xa("ref", ref_)], [
+    Element(
+      xe(NS_S_TBL, "filterColumn", [xa("colId", "0")], [
+        Element(
+          xe(NS_S_TBL, "filters", [], [
+            Element(
+              xe(
+                NS_S_TBL,
+                "dateGroupItem",
+                [
+                  xa("year", "2026"),
+                  xa("month", "6"),
+                  xa("day", "6"),
+                  xa("dateTimeGrouping", "day"),
+                ],
+                [],
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xe(NS_S_TBL, "filterColumn", [xa("colId", "1")], [
+        Element(xe(NS_S_TBL, "dynamicFilter", [xa("type", "thisMonth")], [])),
+      ]),
+    ),
+  ])
 }
 
 ///|
@@ -1136,6 +1210,78 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
         ),
         tbl_columns([tbl_column("1", "Score"), tbl_column("2", "Label")]),
         Some(tbl_style_info("TableStyleMedium2", true, false)),
+      ),
+    ],
+  })
+  // ---- 11. TABLE FORMULAS + XML COLUMN + DATE/DYNAMIC FILTERS ---
+  // §18.5.1.3 CT_TableColumn children plus §18.3.2.1
+  // dateGroupItem and §18.3.2.8 dynamicFilter, hosted in a real
+  // table part so the observed QNames move through OPC packaging.
+  tcases.push({
+    id: "table-formula-xml-column-filter",
+    format: "xlsx",
+    category: "table",
+    styles: None,
+    content: xe(NS_S_TBL, "sheetData", [], [
+      Element(
+        s_row("1", [
+          s_inline("A1", "Date"),
+          s_inline("B1", "Period"),
+          s_inline("C1", "Qty"),
+          s_inline("D1", "LineTotal"),
+        ]),
+      ),
+      Element(
+        s_row("2", [
+          s_inline("A2", "2026-06-06"),
+          s_inline("B2", "2026-06"),
+          s_cell("C2", "2"),
+          s_cell("D2", "20"),
+        ]),
+      ),
+      Element(
+        s_row_hidden("3", [
+          s_inline("A3", "2026-05-20"),
+          s_inline("B3", "2026-05"),
+          s_cell("C3", "1"),
+          s_cell("D3", "8"),
+        ]),
+      ),
+      Element(
+        s_row("4", [
+          s_inline("A4", "2026-06-12"),
+          s_inline("B4", "2026-06"),
+          s_cell("C4", "4"),
+          s_cell("D4", "40"),
+        ]),
+      ),
+      Element(
+        s_row("5", [
+          s_inline("A5", "Total"),
+          s_inline("B5", ""),
+          s_cell("C5", "6"),
+          s_formula("D5", "SUM(D2:D4)", "68"),
+        ]),
+      ),
+    ]),
+    tables: [
+      tbl_table(
+        "1",
+        "Table1",
+        "XmlMappedSales",
+        "A1:D5",
+        1,
+        Some(tbl_auto_filter_date_dynamic("A1:D5")),
+        tbl_columns([
+          tbl_column_totals_label("1", "Date", "Total"),
+          tbl_column("2", "Period"),
+          tbl_column_totals("3", "Qty", "sum"),
+          tbl_column_formula_xml(
+            "4", "LineTotal", "[@Qty]*10", "SUM([LineTotal])", "1", "/sales/item/lineTotal",
+            "integer",
+          ),
+        ]),
+        Some(tbl_style_info("TableStyleMedium9", true, false)),
       ),
     ],
   })
