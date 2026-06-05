@@ -6452,11 +6452,13 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "docx:numbering" => docx_aux_package("numbering", content)
     "docx:header" => docx_header_footer_package("header", content)
     "docx:footer" => docx_header_footer_package("footer", content)
+    "docx:glossary" => docx_aux_package("glossary", content)
     "docx:fonts" => docx_aux_package("fonts", content)
     "docx:webSettings" => docx_aux_package("webSettings", content)
     "docx:comments" => docx_aux_package("comments", content)
     "docx:footnotes" => docx_aux_package("footnotes", content)
     "docx:endnotes" => docx_aux_package("endnotes", content)
+    "docx:annotationRefs" => docx_package_with_annotation_refs(content)
     "docx:contentPart" => docx_package_with_content_part(content)
     "docx:picture-blip" =>
       docx_package_with_embedded_image(
@@ -8989,6 +8991,12 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml",
         "webSettings",
       )
+    "glossary" =>
+      (
+        "glossary/document.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/glossaryDocument",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml",
+        "glossaryDocument",
+      )
     "comments" =>
       (
         "comments.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
@@ -9103,6 +9111,94 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
     parts.push(("word/_rels/" + part_path + ".rels", write_part(aux_rels)))
     parts.push(("word/fonts/font0.fntdata", Bytes::new(0)))
   }
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.docx` package whose main document contains comment / footnote /
+/// endnote reference elements and whose relationship graph carries
+/// the matching annotation parts.
+fn docx_package_with_annotation_refs(body : @xml.Element) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let body_root : @xml.Element = if body.name.local_name == "body" {
+    body
+  } else {
+    xep("w", ns_w, "body", [], [Element(body)])
+  }
+  let document : @xml.Element = {
+    name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+    attributes: [],
+    children: [Element(body_root)],
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rIdComments"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
+          ),
+          xa("Target", "comments.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rIdFootnotes"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes",
+          ),
+          xa("Target", "footnotes.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rIdEndnotes"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes",
+          ),
+          xa("Target", "endnotes.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+        (
+          "/word/comments.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml",
+        ),
+        (
+          "/word/footnotes.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml",
+        ),
+        (
+          "/word/endnotes.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("word/comments.xml", write_part(wml_aux_comments_part())),
+    ("word/footnotes.xml", write_part(wml_aux_footnotes_part())),
+    ("word/endnotes.xml", write_part(wml_aux_endnotes_part())),
+  ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
@@ -12075,6 +12171,8 @@ fn empty_body_package(format : String) -> Bytes {
       docx_header_footer_package("header", xep("w", ns_w, "hdr", [], []))
     "docx:footer" =>
       docx_header_footer_package("footer", xep("w", ns_w, "ftr", [], []))
+    "docx:glossary" =>
+      docx_aux_package("glossary", xep("w", ns_w, "glossaryDocument", [], []))
     "docx:fonts" => docx_aux_package("fonts", xep("w", ns_w, "fonts", [], []))
     "docx:webSettings" =>
       docx_aux_package("webSettings", xep("w", ns_w, "webSettings", [], []))
@@ -12084,6 +12182,8 @@ fn empty_body_package(format : String) -> Bytes {
       docx_aux_package("footnotes", xep("w", ns_w, "footnotes", [], []))
     "docx:endnotes" =>
       docx_aux_package("endnotes", xep("w", ns_w, "endnotes", [], []))
+    "docx:annotationRefs" =>
+      docx_package_with_annotation_refs(xep("w", ns_w, "body", [], []))
     "docx:contentPart" =>
       docx_package_with_content_part(xep("w", ns_w, "body", [], []))
     "pptx:theme" =>

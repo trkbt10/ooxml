@@ -578,6 +578,223 @@ fn wml_font_table_part() -> @xml.Element {
 }
 
 ///|
+fn wml_aux_t(text : String) -> @xml.Element {
+  xe(NS_W, "t", [], [Text(text)])
+}
+
+///|
+fn wml_aux_run(children : Array[@xml.Element]) -> @xml.Element {
+  wml_aux_el("r", [], children)
+}
+
+///|
+fn wml_aux_paragraph(runs : Array[@xml.Element]) -> @xml.Element {
+  wml_aux_el("p", [], runs)
+}
+
+///|
+fn wml_aux_comments_part() -> @xml.Element {
+  wml_aux_el("comments", [], [
+    xe(
+      NS_W,
+      "comment",
+      [
+        wml_aux_attr("id", "0"),
+        wml_aux_attr("author", "Catalog User"),
+        wml_aux_attr("date", "2026-06-06T00:00:00Z"),
+        wml_aux_attr("initials", "CU"),
+      ],
+      [
+        Element(
+          wml_aux_paragraph([
+            wml_aux_run([
+              xe(NS_W, "annotationRef", [], []),
+              wml_aux_t("Catalog comment body"),
+            ]),
+          ]),
+        ),
+      ],
+    ),
+  ])
+}
+
+///|
+fn wml_aux_footnotes_part() -> @xml.Element {
+  wml_aux_el("footnotes", [], [
+    xe(
+      NS_W,
+      "footnote",
+      [wml_aux_attr("id", "-1"), wml_aux_attr("type", "separator")],
+      [
+        Element(
+          wml_aux_paragraph([wml_aux_run([xe(NS_W, "separator", [], [])])]),
+        ),
+      ],
+    ),
+    xe(
+      NS_W,
+      "footnote",
+      [wml_aux_attr("id", "0"), wml_aux_attr("type", "continuationSeparator")],
+      [
+        Element(
+          wml_aux_paragraph([
+            wml_aux_run([xe(NS_W, "continuationSeparator", [], [])]),
+          ]),
+        ),
+      ],
+    ),
+    xe(NS_W, "footnote", [wml_aux_attr("id", "1")], [
+      Element(
+        wml_aux_paragraph([
+          wml_aux_run([xe(NS_W, "footnoteRef", [], []), wml_aux_t("Footnote")]),
+        ]),
+      ),
+    ]),
+  ])
+}
+
+///|
+fn wml_aux_endnotes_part() -> @xml.Element {
+  wml_aux_el("endnotes", [], [
+    xe(
+      NS_W,
+      "endnote",
+      [wml_aux_attr("id", "-1"), wml_aux_attr("type", "separator")],
+      [
+        Element(
+          wml_aux_paragraph([wml_aux_run([xe(NS_W, "separator", [], [])])]),
+        ),
+      ],
+    ),
+    xe(
+      NS_W,
+      "endnote",
+      [wml_aux_attr("id", "0"), wml_aux_attr("type", "continuationSeparator")],
+      [
+        Element(
+          wml_aux_paragraph([
+            wml_aux_run([xe(NS_W, "continuationSeparator", [], [])]),
+          ]),
+        ),
+      ],
+    ),
+    xe(NS_W, "endnote", [wml_aux_attr("id", "1")], [
+      Element(
+        wml_aux_paragraph([
+          wml_aux_run([xe(NS_W, "endnoteRef", [], []), wml_aux_t("Endnote")]),
+        ]),
+      ),
+    ]),
+  ])
+}
+
+///|
+fn wml_aux_header_part() -> @xml.Element {
+  wml_aux_el("hdr", [], [
+    wml_aux_paragraph([
+      wml_aux_run([
+        wml_aux_t("Header "),
+        xe(NS_W, "noBreakHyphen", [], []),
+        xe(NS_W, "softHyphen", [], []),
+        xe(NS_W, "dayShort", [], []),
+        xe(NS_W, "monthShort", [], []),
+        xe(NS_W, "yearShort", [], []),
+        xe(NS_W, "pgNum", [], []),
+        xe(NS_W, "cr", [], []),
+        xe(
+          NS_W,
+          "sym",
+          [wml_aux_attr("font", "Wingdings"), wml_aux_attr("char", "F0FC")],
+          [],
+        ),
+        xe(NS_W, "lastRenderedPageBreak", [], []),
+      ]),
+    ]),
+  ])
+}
+
+///|
+fn wml_aux_footer_part() -> @xml.Element {
+  wml_aux_el("ftr", [], [
+    wml_aux_paragraph([
+      wml_aux_run([
+        wml_aux_t("Footer "),
+        xe(NS_W, "dayLong", [], []),
+        xe(NS_W, "monthLong", [], []),
+        xe(NS_W, "yearLong", [], []),
+      ]),
+    ]),
+  ])
+}
+
+///|
+fn wml_aux_note_doc_props(name : String, pos_value : String) -> @xml.Element {
+  wml_aux_el(name, [], [
+    w_val("pos", pos_value),
+    w_val("numFmt", "decimal"),
+    w_val("numStart", "1"),
+    w_val("numRestart", "continuous"),
+  ])
+}
+
+///|
+fn wml_aux_annotation_refs_body() -> @xml.Element {
+  wml_aux_el("body", [], [
+    wml_aux_el("p", [], [
+      wml_aux_run([wml_aux_t("Annotated ")]),
+      xe(NS_W, "commentRangeStart", [wml_aux_attr("id", "0")], []),
+      wml_aux_run([wml_aux_t("range")]),
+      xe(NS_W, "commentRangeEnd", [wml_aux_attr("id", "0")], []),
+      wml_aux_run([xe(NS_W, "commentReference", [wml_aux_attr("id", "0")], [])]),
+      wml_aux_run([
+        xe(NS_W, "footnoteReference", [wml_aux_attr("id", "1")], []),
+        xe(NS_W, "endnoteReference", [wml_aux_attr("id", "1")], []),
+      ]),
+    ]),
+    wml_aux_el("sectPr", [], [
+      wml_aux_note_doc_props("footnotePr", "pageBottom"),
+      wml_aux_note_doc_props("endnotePr", "docEnd"),
+    ]),
+  ])
+}
+
+///|
+fn wml_aux_glossary_document_part() -> @xml.Element {
+  wml_aux_el("glossaryDocument", [], [
+    xe(NS_W, "background", [wml_aux_attr("color", "FFFFFF")], []),
+    wml_aux_el("docParts", [], [
+      wml_aux_el("docPart", [], [
+        wml_aux_el("docPartPr", [], [
+          xe(
+            NS_W,
+            "name",
+            [
+              wml_aux_attr("val", "Catalog Building Block"),
+              wml_aux_attr("decorated", "1"),
+            ],
+            [],
+          ),
+          w_val("style", "Normal"),
+          wml_aux_el("category", [], [
+            w_val("name", "Catalog Category"),
+            w_val("gallery", "docParts"),
+          ]),
+          xe(NS_W, "types", [wml_aux_attr("all", "0")], [
+            Element(w_val("type", "normal")),
+          ]),
+          wml_aux_el("behaviors", [], [w_val("behavior", "content")]),
+          w_val("description", "Catalog glossary coverage"),
+          w_val("guid", "{11111111-2222-3333-4444-555555555555}"),
+        ]),
+        wml_aux_el("docPartBody", [], [
+          wml_aux_paragraph([wml_aux_run([wml_aux_t("Glossary body")])]),
+        ]),
+      ]),
+    ]),
+  ])
+}
+
+///|
 fn extras_wml_aux_parts(cases : Array[VisualCase]) -> Unit {
   cases.push({
     id: "settings-core",
@@ -608,5 +825,47 @@ fn extras_wml_aux_parts(cases : Array[VisualCase]) -> Unit {
     format: "docx:fonts",
     category: "wml-aux",
     content: wml_font_table_part(),
+  })
+  cases.push({
+    id: "comments-rich",
+    format: "docx:comments",
+    category: "wml-aux",
+    content: wml_aux_comments_part(),
+  })
+  cases.push({
+    id: "footnotes-rich",
+    format: "docx:footnotes",
+    category: "wml-aux",
+    content: wml_aux_footnotes_part(),
+  })
+  cases.push({
+    id: "endnotes-rich",
+    format: "docx:endnotes",
+    category: "wml-aux",
+    content: wml_aux_endnotes_part(),
+  })
+  cases.push({
+    id: "header-rich",
+    format: "docx:header",
+    category: "wml-aux",
+    content: wml_aux_header_part(),
+  })
+  cases.push({
+    id: "footer-rich",
+    format: "docx:footer",
+    category: "wml-aux",
+    content: wml_aux_footer_part(),
+  })
+  cases.push({
+    id: "annotation-refs-rich",
+    format: "docx:annotationRefs",
+    category: "wml-aux",
+    content: wml_aux_annotation_refs_body(),
+  })
+  cases.push({
+    id: "glossary-document-rich",
+    format: "docx:glossary",
+    category: "wml-aux",
+    content: wml_aux_glossary_document_part(),
   })
 }

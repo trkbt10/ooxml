@@ -4885,11 +4885,15 @@ fn generate_visual_fixtures() -> Unit {
       "docx:settings" => docx_aux_package("settings", c.content)
       "docx:styles" => docx_aux_package("styles", c.content)
       "docx:numbering" => docx_aux_package("numbering", c.content)
+      "docx:header" => docx_header_footer_package("header", c.content)
+      "docx:footer" => docx_header_footer_package("footer", c.content)
+      "docx:glossary" => docx_aux_package("glossary", c.content)
       "docx:fonts" => docx_aux_package("fonts", c.content)
       "docx:webSettings" => docx_aux_package("webSettings", c.content)
       "docx:comments" => docx_aux_package("comments", c.content)
       "docx:footnotes" => docx_aux_package("footnotes", c.content)
       "docx:endnotes" => docx_aux_package("endnotes", c.content)
+      "docx:annotationRefs" => docx_package_with_annotation_refs(c.content)
       "docx:contentPart" => docx_package_with_content_part(c.content)
       _ => docx_package(c.content)
     }
@@ -4929,11 +4933,15 @@ fn generate_visual_fixtures() -> Unit {
       "docx:settings" => "docx"
       "docx:styles" => "docx"
       "docx:numbering" => "docx"
+      "docx:header" => "docx"
+      "docx:footer" => "docx"
+      "docx:glossary" => "docx"
       "docx:fonts" => "docx"
       "docx:webSettings" => "docx"
       "docx:comments" => "docx"
       "docx:footnotes" => "docx"
       "docx:endnotes" => "docx"
+      "docx:annotationRefs" => "docx"
       "docx:contentPart" => "docx"
       _ => c.format
     }
