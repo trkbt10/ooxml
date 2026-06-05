@@ -5222,5 +5222,6 @@ fn metadata_cases() -> Array[MetadataCase] {
 fn custom_xml_cases() -> Array[CustomXmlCase] {
   let ccases : Array[CustomXmlCase] = []
   extras_bibliography_custom_xml(ccases)
+  extras_shared_ancillary_custom_xml(ccases)
   ccases
 }

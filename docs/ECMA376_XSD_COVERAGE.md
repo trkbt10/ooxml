@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `874` |
-| XML parts scanned | `5854` |
-| catalog QNames observed in fixtures | `1216/2296 (53.0%)` |
-| catalog declaration entries observed by QName | `2516/4560 (55.2%)` |
-| observed fixture QNames that are catalog ECMA QNames | `1216/1311 (92.8%)` |
+| package fixtures scanned | `876` |
+| XML parts scanned | `5868` |
+| catalog QNames observed in fixtures | `1220/2296 (53.1%)` |
+| catalog declaration entries observed by QName | `2524/4560 (55.4%)` |
+| observed fixture QNames that are catalog ECMA QNames | `1220/1315 (92.8%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -112,6 +112,17 @@ fixture QName occurrence coverage for Wordprocessing Drawing; it does not
 prove embedded content rendering, shape editing semantics, text wrapping
 fidelity, or office-suite interop.
 
+The shared Additional Characteristics and Schema Library namespaces are now
+`2/2` QNames observed each. The `shared-ancillary` DOCX fixtures store
+`ac:additionalCharacteristics` / `ac:characteristic` and
+`sl:schemaLibrary` / `sl:schema` payloads as Custom XML Data Storage items
+with companion `customXmlProps` metadata parts. These fixtures pass OPC,
+format-contract, and XSD validation against
+`shared-additionalCharacteristics.xsd` and
+`shared-customXmlSchemaProperties.xsd`; they are fixture occurrence and schema
+health coverage, not an office-suite interop guarantee for those custom XML
+payloads.
+
 ## Package XSD validation gate
 
 The identifier audit above proves that every vendored ECMA-376 Strict,
@@ -175,12 +186,14 @@ rare/3-D/surface fixture expansion, the chart relationship fixture expansion,
 the DrawingML diagram rich optional-branch and header/list fixture expansions,
 the DrawingML Spreadsheet Drawing rich anchor fixture expansion, the DrawingML
 Locked Canvas GVML-rich fixture expansion, the DrawingML main fixture
-completion, and the Wordprocessing Drawing fixture completion:
+completion, the Wordprocessing Drawing fixture completion, and the shared
+ancillary Custom XML Data Storage fixtures:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5852`, `skip: 2`, `fail: 0` |
+| all generated fixtures | `ok: 5866`, `skip: 2`, `fail: 0` |
+| previous full-fixture baseline before shared ancillary completion | `ok: 5852`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before Wordprocessing Drawing completion | `ok: 5846`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before DrawingML main completion | `ok: 5751`, `skip: 1`, `fail: 0` |
 | previous full-fixture baseline before DrawingML main geometry/text/table/color expansion | `ok: 5674`, `skip: 1`, `fail: 0` |
@@ -259,7 +272,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 874`, `fail: 0` |
+| all generated fixtures | `ok: 876`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -342,14 +355,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 874`, `fail: 0` |
+| all generated fixtures | `ok: 876`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5852`, `skip: 2` across the regenerated fixture parts.
+reports `ok: 5866`, `skip: 2` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 
