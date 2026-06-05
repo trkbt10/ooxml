@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `842` |
-| XML parts scanned | `5502` |
-| catalog QNames observed in fixtures | `885/2296 (38.5%)` |
-| catalog declaration entries observed by QName | `1841/4560 (40.4%)` |
-| observed fixture QNames that are catalog ECMA QNames | `885/942 (93.9%)` |
+| package fixtures scanned | `851` |
+| XML parts scanned | `5610` |
+| catalog QNames observed in fixtures | `952/2296 (41.5%)` |
+| catalog declaration entries observed by QName | `1976/4560 (43.3%)` |
+| observed fixture QNames that are catalog ECMA QNames | `952/1010 (94.3%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -43,6 +43,10 @@ builder, editor, renderer, or office-suite behaviour. Its purpose is to turn
 fixture expansion into a measurable backlog: missing QName buckets are the next
 places to add package examples, then run the XSD, OPC, format, and interop
 gates against those examples.
+
+The DrawingML chart namespace is now `217/220` QNames observed. The remaining
+chart QNames are relationship-bearing branches: `externalData`,
+`autoUpdate`, and `legacyDrawingHF`.
 
 ## Package XSD validation gate
 
@@ -98,12 +102,13 @@ by `scripts/ooxml_format_validate.py`. Application-open checks are covered by
 
 Current package-validation snapshot, after ECMA/VML fixture repairs,
 schema-set wildcard validation, the bibliography Custom XML Data Storage
-fixture, and the Chart Drawing `userShapes` fixture:
+fixture, the Chart Drawing `userShapes` fixture, and the DrawingML chart
+rare/3-D/surface fixture expansion:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5502`, `fail: 0` |
+| all generated fixtures | `ok: 5610`, `fail: 0` |
 | previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
 | earlier full-fixture baseline before schema-order repairs | `ok: 5365`, `fail: 120` |
 
@@ -177,7 +182,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 842`, `fail: 0` |
+| all generated fixtures | `ok: 851`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -254,14 +259,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 842`, `fail: 0` |
+| all generated fixtures | `ok: 851`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5502` across the regenerated fixture parts.
+reports `ok: 5610` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 

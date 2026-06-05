@@ -56,6 +56,10 @@ const NS_C : String = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 const CHART_URI : String = "http://schemas.openxmlformats.org/drawingml/2006/chart"
 
 ///|
+/// Fixture-only extension payload namespace used under chart `<c:ext>`.
+const CHART_FIXTURE_EXT_NS : String = "urn:ooxml:fixture:chart-ext"
+
+///|
 /// Build a prefixed `<c:NAME …>…</c:NAME>` element for the
 /// chartSpace tree.  The `xmlns:c` declaration is emitted
 /// automatically by `@xml.write` at the root.
@@ -77,6 +81,75 @@ fn c_elem(
 /// CT_BarDir / …).
 fn c_val(tag : String, value : String) -> @xml.Element {
   c_elem(tag, [xa("val", value)], [])
+}
+
+///|
+/// `<c:extLst>` with one lax extension payload.  This keeps chart
+/// extension-list coverage schema-valid without creating an Office
+/// relationship or relying on a vendor extension schema.
+fn c_ext_lst() -> @xml.Element {
+  c_elem("extLst", [], [
+    Element(
+      c_elem("ext", [xa("uri", "{B70EFC72-6FA0-4E4B-A9E8-00AA00BB00CC}")], [
+        Element(xep("fx", CHART_FIXTURE_EXT_NS, "covered", [], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// DrawingML text body for chart-side `<c:txPr>` and `<c:rich>`
+/// carriers.  Chart schema owns the wrapper element name; DrawingML
+/// owns the bodyPr/lstStyle/p/r/t payload shape.
+fn c_text_body(text : String) -> Array[@xml.Node] {
+  [
+    Element(xe(NS_A, "bodyPr", [], [])),
+    Element(xe(NS_A, "lstStyle", [], [])),
+    Element(
+      xe(NS_A, "p", [], [
+        Element(
+          xe(NS_A, "r", [], [
+            Element(xe(NS_A, "rPr", [xa("lang", "en-US")], [])),
+            Element(xe(NS_A, "t", [], [Text(text)])),
+          ]),
+        ),
+      ]),
+    ),
+  ]
+}
+
+///|
+/// `<c:rich>` typed as a DrawingML text body.
+fn c_rich_text(text : String) -> @xml.Element {
+  c_elem("rich", [], c_text_body(text))
+}
+
+///|
+/// Chart-side `<c:txPr>` typed as a DrawingML text body.
+fn c_tx_pr(text : String) -> @xml.Element {
+  c_elem("txPr", [], c_text_body(text))
+}
+
+///|
+/// Chart-side shape properties with a solid DrawingML fill.
+fn c_sp_pr_solid(hex : String) -> @xml.Element {
+  c_elem("spPr", [], [
+    Element(
+      xe(NS_A, "solidFill", [], [
+        Element(xe(NS_A, "srgbClr", [xa("val", hex)], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// `<c:marker>` with explicit marker symbol and size.
+fn c_marker(symbol : String, size : String, hex : String) -> @xml.Element {
+  c_elem("marker", [], [
+    Element(c_val("symbol", symbol)),
+    Element(c_val("size", size)),
+    Element(c_sp_pr_solid(hex)),
+  ])
 }
 
 ///|
@@ -116,6 +189,109 @@ fn c_str_cache(values : Array[String]) -> @xml.Element {
     )
   }
   c_elem("strCache", [], kids)
+}
+
+///|
+/// `<c:numLit>` literal numeric cache.  Unlike `<c:numCache>`, this
+/// is an inline data-source branch and has no worksheet formula.
+fn c_num_lit(values : Array[String]) -> @xml.Element {
+  let kids : Array[@xml.Node] = [
+    Element(c_elem("formatCode", [], [Text("General")])),
+    Element(c_val("ptCount", values.length().to_string())),
+  ]
+  for i, v in values {
+    kids.push(
+      Element(
+        c_elem("pt", [xa("idx", i.to_string())], [
+          Element(c_elem("v", [], [Text(v)])),
+        ]),
+      ),
+    )
+  }
+  c_elem("numLit", [], kids)
+}
+
+///|
+/// `<c:strLit>` literal string cache.
+fn c_str_lit(values : Array[String]) -> @xml.Element {
+  let kids : Array[@xml.Node] = [
+    Element(c_val("ptCount", values.length().to_string())),
+  ]
+  for i, v in values {
+    kids.push(
+      Element(
+        c_elem("pt", [xa("idx", i.to_string())], [
+          Element(c_elem("v", [], [Text(v)])),
+        ]),
+      ),
+    )
+  }
+  c_elem("strLit", [], kids)
+}
+
+///|
+/// `<c:cat>` using a multi-level string reference/cache.
+fn c_cat_multi_level() -> @xml.Element {
+  c_elem("cat", [], [
+    Element(
+      c_elem("multiLvlStrRef", [], [
+        Element(c_elem("f", [], [Text("Sheet1!$A$2:$B$5")])),
+        Element(
+          c_elem("multiLvlStrCache", [], [
+            Element(c_val("ptCount", "4")),
+            Element(
+              c_elem("lvl", [], [
+                Element(
+                  c_elem("pt", [xa("idx", "0")], [
+                    Element(c_elem("v", [], [Text("North")])),
+                  ]),
+                ),
+                Element(
+                  c_elem("pt", [xa("idx", "1")], [
+                    Element(c_elem("v", [], [Text("North")])),
+                  ]),
+                ),
+                Element(
+                  c_elem("pt", [xa("idx", "2")], [
+                    Element(c_elem("v", [], [Text("South")])),
+                  ]),
+                ),
+                Element(
+                  c_elem("pt", [xa("idx", "3")], [
+                    Element(c_elem("v", [], [Text("South")])),
+                  ]),
+                ),
+              ]),
+            ),
+            Element(
+              c_elem("lvl", [], [
+                Element(
+                  c_elem("pt", [xa("idx", "0")], [
+                    Element(c_elem("v", [], [Text("Q1")])),
+                  ]),
+                ),
+                Element(
+                  c_elem("pt", [xa("idx", "1")], [
+                    Element(c_elem("v", [], [Text("Q2")])),
+                  ]),
+                ),
+                Element(
+                  c_elem("pt", [xa("idx", "2")], [
+                    Element(c_elem("v", [], [Text("Q1")])),
+                  ]),
+                ),
+                Element(
+                  c_elem("pt", [xa("idx", "3")], [
+                    Element(c_elem("v", [], [Text("Q2")])),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
 }
 
 ///|
@@ -322,6 +498,74 @@ fn c_axes_rich() -> Array[@xml.Element] {
     Element(c_disp_units()),
   ])
   [cat_ax, val_ax]
+}
+
+///|
+/// Axis trio used by 3-D and surface chart fixtures: a date/category
+/// axis, a value axis, and a series/depth axis.  It covers the
+/// date-axis time-unit branches, `crossesAt`, custom display units,
+/// and series-axis tick skipping.
+fn c_axes_date_value_series() -> Array[@xml.Element] {
+  let date_ax = c_elem("dateAx", [], [
+    Element(c_val("axId", "111111111")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "b")),
+    Element(c_chart_lines("majorGridlines")),
+    Element(
+      c_elem("numFmt", [xa("formatCode", "m/d/yy"), xa("sourceLinked", "0")], []),
+    ),
+    Element(c_val("majorTickMark", "out")),
+    Element(c_val("minorTickMark", "in")),
+    Element(c_val("tickLblPos", "nextTo")),
+    Element(c_val("crossAx", "222222222")),
+    Element(c_val("crossesAt", "0")),
+    Element(c_val("auto", "1")),
+    Element(c_val("lblOffset", "100%")),
+    Element(c_val("baseTimeUnit", "months")),
+    Element(c_val("majorUnit", "1")),
+    Element(c_val("majorTimeUnit", "months")),
+    Element(c_val("minorUnit", "1")),
+    Element(c_val("minorTimeUnit", "days")),
+  ])
+  let val_ax = c_elem("valAx", [], [
+    Element(c_val("axId", "222222222")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "l")),
+    Element(c_chart_lines("majorGridlines")),
+    Element(
+      c_elem("numFmt", [xa("formatCode", "#,##0"), xa("sourceLinked", "0")], []),
+    ),
+    Element(c_val("majorTickMark", "out")),
+    Element(c_val("minorTickMark", "in")),
+    Element(c_val("tickLblPos", "nextTo")),
+    Element(c_val("crossAx", "111111111")),
+    Element(c_val("crossesAt", "0")),
+    Element(c_val("crossBetween", "between")),
+    Element(c_val("majorUnit", "10")),
+    Element(c_val("minorUnit", "5")),
+    Element(
+      c_elem("dispUnits", [], [
+        Element(c_val("custUnit", "1000")),
+        Element(c_elem("dispUnitsLbl", [], [Element(c_tx_pr("Thousands"))])),
+      ]),
+    ),
+  ])
+  let ser_ax = c_elem("serAx", [], [
+    Element(c_val("axId", "333333333")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "r")),
+    Element(c_val("majorTickMark", "out")),
+    Element(c_val("minorTickMark", "none")),
+    Element(c_val("tickLblPos", "nextTo")),
+    Element(c_val("crossAx", "222222222")),
+    Element(c_val("crosses", "autoZero")),
+    Element(c_val("tickLblSkip", "1")),
+    Element(c_val("tickMarkSkip", "1")),
+  ])
+  [date_ax, val_ax, ser_ax]
 }
 
 ///|
@@ -534,6 +778,110 @@ fn c_data_labels() -> @xml.Element {
 }
 
 ///|
+/// Data labels with explicit chart-side text properties.
+fn c_data_labels_with_text() -> @xml.Element {
+  c_elem("dLbls", [], [
+    Element(
+      c_elem("dLbl", [], [
+        Element(c_val("idx", "0")),
+        Element(c_manual_layout()),
+        Element(c_elem("tx", [], [Element(c_rich_text("Label 0"))])),
+        Element(
+          c_elem("numFmt", [xa("formatCode", "0.0"), xa("sourceLinked", "0")], []),
+        ),
+        Element(c_sp_pr_solid("FFF2CC")),
+        Element(c_tx_pr("Data label")),
+        Element(c_val("dLblPos", "outEnd")),
+        Element(c_val("showLegendKey", "1")),
+        Element(c_val("showVal", "1")),
+        Element(c_val("showCatName", "1")),
+        Element(c_val("showSerName", "1")),
+        Element(c_val("showPercent", "0")),
+        Element(c_val("showBubbleSize", "0")),
+        Element(c_elem("separator", [], [Text(" / ")])),
+        Element(c_ext_lst()),
+      ]),
+    ),
+    Element(
+      c_elem("numFmt", [xa("formatCode", "0.0"), xa("sourceLinked", "0")], []),
+    ),
+    Element(c_tx_pr("Data labels")),
+    Element(c_val("dLblPos", "outEnd")),
+    Element(c_val("showLegendKey", "1")),
+    Element(c_val("showVal", "1")),
+    Element(c_val("showCatName", "1")),
+    Element(c_val("showSerName", "1")),
+    Element(c_val("showPercent", "0")),
+    Element(c_val("showBubbleSize", "0")),
+    Element(c_elem("separator", [], [Text(" / ")])),
+    Element(c_val("showLeaderLines", "1")),
+    Element(c_chart_lines("leaderLines")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// Full trendline branch used by rare-series fixtures.
+fn c_trendline_rich() -> @xml.Element {
+  c_elem("trendline", [], [
+    Element(c_elem("name", [], [Text("Linear forecast")])),
+    Element(c_sp_pr_solid("DDEBF7")),
+    Element(c_val("trendlineType", "linear")),
+    Element(c_val("order", "2")),
+    Element(c_val("period", "2")),
+    Element(c_val("forward", "1.5")),
+    Element(c_val("backward", "0.5")),
+    Element(c_val("intercept", "0")),
+    Element(c_val("dispRSqr", "1")),
+    Element(c_val("dispEq", "1")),
+    Element(
+      c_elem("trendlineLbl", [], [
+        Element(c_manual_layout()),
+        Element(c_elem("tx", [], [Element(c_rich_text("y = ax + b"))])),
+        Element(
+          c_elem(
+            "numFmt",
+            [xa("formatCode", "0.00"), xa("sourceLinked", "0")],
+            [],
+          ),
+        ),
+        Element(c_sp_pr_solid("E2F0D9")),
+        Element(c_tx_pr("Trendline label")),
+        Element(c_ext_lst()),
+      ]),
+    ),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// Custom positive/negative error bars with literal data sources.
+fn c_err_bars_custom(dir : String) -> @xml.Element {
+  c_elem("errBars", [], [
+    Element(c_val("errDir", dir)),
+    Element(c_val("errBarType", "both")),
+    Element(c_val("errValType", "cust")),
+    Element(c_val("noEndCap", "0")),
+    Element(c_elem("plus", [], [Element(c_num_lit(["1", "2", "1", "3"]))])),
+    Element(c_elem("minus", [], [Element(c_num_lit(["1", "1", "2", "1"]))])),
+    Element(c_val("val", "1.5")),
+    Element(c_sp_pr_solid("F8CBAD")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// Up/down bars with explicit up/down shape properties.
+fn c_up_down_bars() -> @xml.Element {
+  c_elem("upDownBars", [], [
+    Element(c_val("gapWidth", "150%")),
+    Element(c_elem("upBars", [], [Element(c_sp_pr_solid("FFFFFF"))])),
+    Element(c_elem("downBars", [], [Element(c_sp_pr_solid("404040"))])),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
 /// §21.2.2.26 CT_ChartSpace optional metadata that does not require
 /// an additional relationship part.
 fn c_chart_space_prefix_options() -> Array[@xml.Node] {
@@ -657,6 +1005,67 @@ fn wrap_chart_space_with_rich_options(
   let chart = c_elem("chart", [], chart_kids)
   let chart_space_kids = c_chart_space_prefix_options()
   chart_space_kids.push(Element(chart))
+  chart_space_kids.push(Element(c_print_settings()))
+  c_elem("chartSpace", [], chart_space_kids)
+}
+
+///|
+/// Rich wrapper that also carries pivot-chart metadata in canonical
+/// chartSpace/chart order.  The metadata is self-contained: no
+/// external pivot-cache relationship is required by the chart schema.
+fn wrap_chart_space_with_pivot_options(
+  chart_payload : @xml.Element,
+  axes : Array[@xml.Element],
+) -> @xml.Element {
+  let plot_area_kids : Array[@xml.Node] = [
+    Element(c_manual_layout()),
+    Element(chart_payload),
+  ]
+  for ax in axes {
+    plot_area_kids.push(Element(ax))
+  }
+  plot_area_kids.push(Element(c_data_table()))
+  plot_area_kids.push(Element(c_sp_pr_solid("F9FAFB")))
+  let pivot_fmt = c_elem("pivotFmt", [], [
+    Element(c_val("idx", "0")),
+    Element(c_sp_pr_solid("EEF4FF")),
+    Element(c_tx_pr("Pivot point")),
+    Element(c_marker("diamond", "7", "2F80ED")),
+    Element(
+      c_elem("dLbl", [], [
+        Element(c_val("idx", "0")),
+        Element(c_val("delete", "0")),
+      ]),
+    ),
+  ])
+  let chart_kids : Array[@xml.Node] = [
+    Element(c_val("autoTitleDeleted", "0")),
+    Element(c_elem("pivotFmts", [], [Element(pivot_fmt)])),
+    Element(c_view3d()),
+    Element(c_chart_surface("floor", "F4F1EA")),
+    Element(c_chart_surface("sideWall", "E8EDF4")),
+    Element(c_chart_surface("backWall", "F2F7EE")),
+    Element(c_elem("plotArea", [], plot_area_kids)),
+    Element(c_chart_legend_with_entry("r")),
+    Element(c_val("plotVisOnly", "1")),
+    Element(c_val("dispBlanksAs", "gap")),
+    Element(c_val("showDLblsOverMax", "1")),
+    Element(c_ext_lst()),
+  ]
+  let chart = c_elem("chart", [], chart_kids)
+  let chart_space_kids = c_chart_space_prefix_options()
+  chart_space_kids.insert(
+    5,
+    Element(
+      c_elem("pivotSource", [], [
+        Element(c_elem("name", [], [Text("PivotTable1")])),
+        Element(c_val("fmtId", "0")),
+      ]),
+    ),
+  )
+  chart_space_kids.push(Element(chart))
+  chart_space_kids.push(Element(c_sp_pr_solid("FFFFFF")))
+  chart_space_kids.push(Element(c_tx_pr("Chart space text")))
   chart_space_kids.push(Element(c_print_settings()))
   c_elem("chartSpace", [], chart_space_kids)
 }
@@ -942,6 +1351,13 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
       c_axes_rich(),
     ),
   })
+  ccases.push({
+    id: "rare-series-options",
+    format: "pptx",
+    category: "chart/bar",
+    content: sp_tree([chart_graphic_frame("2", "Bar Rare Series Options")]),
+    chart_space: wrap_chart_space(bar_chart_rare_payload(), c_axes()),
+  })
 
   // ---- line charts (§21.2.2.97) ---------------------------------
   ccases.push({
@@ -963,6 +1379,26 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
       Some(c_chart_legend("b")),
     ),
   })
+  ccases.push({
+    id: "rare-options",
+    format: "pptx",
+    category: "chart/line",
+    content: sp_tree([chart_graphic_frame("2", "Line Rare Options")]),
+    chart_space: wrap_chart_space_with_pivot_options(
+      line_chart_rare_payload(),
+      c_axes_date_value_series(),
+    ),
+  })
+  ccases.push({
+    id: "3d",
+    format: "pptx",
+    category: "chart/line",
+    content: sp_tree([chart_graphic_frame("2", "Line 3D")]),
+    chart_space: wrap_chart_space(
+      line3d_chart_payload(),
+      c_axes_date_value_series(),
+    ),
+  })
 
   // ---- pie chart (§21.2.2.137) ----------------------------------
   ccases.push({
@@ -971,6 +1407,20 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
     category: "chart/pie",
     content: sp_tree([chart_graphic_frame("2", "Pie Chart 1")]),
     chart_space: wrap_chart_space(pie_chart_payload(), []),
+  })
+  ccases.push({
+    id: "3d",
+    format: "pptx",
+    category: "chart/pie",
+    content: sp_tree([chart_graphic_frame("2", "Pie 3D")]),
+    chart_space: wrap_chart_space(pie3d_chart_payload(), []),
+  })
+  ccases.push({
+    id: "of-pie-rare",
+    format: "pptx",
+    category: "chart/pie",
+    content: sp_tree([chart_graphic_frame("2", "Of Pie Rare")]),
+    chart_space: wrap_chart_space(of_pie_chart_rare_payload(), []),
   })
 
   // ---- doughnut chart (§21.2.2.50) ------------------------------
@@ -1009,6 +1459,16 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
     content: sp_tree([chart_graphic_frame("2", "Area Chart 1")]),
     chart_space: wrap_chart_space(area_chart_payload(), c_axes()),
   })
+  ccases.push({
+    id: "3d",
+    format: "pptx",
+    category: "chart/area",
+    content: sp_tree([chart_graphic_frame("2", "Area 3D")]),
+    chart_space: wrap_chart_space(
+      area3d_chart_payload(),
+      c_axes_date_value_series(),
+    ),
+  })
 
   // ---- bubble chart (§21.2.2.21) --------------------------------
   ccases.push({
@@ -1028,6 +1488,13 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
       c_axes_num(),
     ),
   })
+  ccases.push({
+    id: "rich-options",
+    format: "pptx",
+    category: "chart/bubble",
+    content: sp_tree([chart_graphic_frame("2", "Bubble Rich Options")]),
+    chart_space: wrap_chart_space(bubble_chart_rich_payload(), c_axes_num()),
+  })
 
   // ---- radar chart (§21.2.2.150) --------------------------------
   ccases.push({
@@ -1045,6 +1512,28 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
     category: "chart/stock",
     content: sp_tree([chart_graphic_frame("2", "Stock Chart 1")]),
     chart_space: wrap_chart_space(stock_chart_payload(), c_axes()),
+  })
+
+  // ---- surface charts (§21.2.2.205 / §21.2.2.206) --------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/surface",
+    content: sp_tree([chart_graphic_frame("2", "Surface Chart")]),
+    chart_space: wrap_chart_space(
+      surface_chart_payload("surfaceChart"),
+      c_axes_date_value_series(),
+    ),
+  })
+  ccases.push({
+    id: "3d",
+    format: "pptx",
+    category: "chart/surface",
+    content: sp_tree([chart_graphic_frame("2", "Surface 3D Chart")]),
+    chart_space: wrap_chart_space(
+      surface_chart_payload("surface3DChart"),
+      c_axes_date_value_series(),
+    ),
   })
 }
 
@@ -1271,6 +1760,280 @@ fn stock_chart_payload() -> @xml.Element {
     Element(ser_close),
     Element(c_val("axId", "111111111")),
     Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.97 — line chart variant carrying rare series-side
+/// branches plus high-low and up/down bars.
+fn line_chart_rare_payload() -> @xml.Element {
+  let ser_plan = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Plan")),
+    Element(c_sp_pr_solid("D9EAF7")),
+    Element(c_marker("circle", "6", "4472C4")),
+    Element(c_dpt_solid_fill(1, "A9D18E")),
+    Element(c_data_labels_with_text()),
+    Element(c_trendline_rich()),
+    Element(c_err_bars_custom("y")),
+    Element(c_cat_multi_level()),
+    Element(c_elem("val", [], [Element(c_num_lit(["10", "16", "14", "22"]))])),
+    Element(c_val("smooth", "1")),
+    Element(c_ext_lst()),
+  ])
+  let ser_actual = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("Actual")),
+    Element(c_marker("square", "6", "ED7D31")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["12", "18", "15", "25"])),
+    Element(c_val("smooth", "0")),
+  ])
+  c_elem("lineChart", [], [
+    Element(c_val("grouping", "standard")),
+    Element(c_val("varyColors", "0")),
+    Element(ser_plan),
+    Element(ser_actual),
+    Element(c_data_labels_with_text()),
+    Element(c_chart_lines("dropLines")),
+    Element(c_chart_lines("hiLowLines")),
+    Element(c_up_down_bars()),
+    Element(c_val("marker", "1")),
+    Element(c_val("smooth", "0")),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// §21.2.2.98 CT_Line3DChart — 3-D line with depth axis.
+fn line3d_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("3D Trend")),
+    Element(c_sp_pr_solid("D9EAF7")),
+    Element(c_marker("triangle", "6", "70AD47")),
+    Element(c_data_labels_with_text()),
+    Element(c_trendline_rich()),
+    Element(c_err_bars_custom("y")),
+    Element(c_cat_multi_level()),
+    Element(c_elem("val", [], [Element(c_num_lit(["10", "16", "14", "22"]))])),
+    Element(c_val("smooth", "0")),
+  ])
+  c_elem("line3DChart", [], [
+    Element(c_val("grouping", "standard")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_data_labels_with_text()),
+    Element(c_chart_lines("dropLines")),
+    Element(c_val("gapDepth", "80%")),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_val("axId", "333333333")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// §21.2.2.5 CT_Area3DChart — 3-D area with a depth axis.
+fn area3d_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Revenue")),
+    Element(c_sp_pr_solid("BDD7EE")),
+    Element(c_data_labels_with_text()),
+    Element(c_trendline_rich()),
+    Element(c_err_bars_custom("y")),
+    Element(c_cat_multi_level()),
+    Element(c_elem("val", [], [Element(c_num_lit(["12", "18", "15", "22"]))])),
+  ])
+  c_elem("area3DChart", [], [
+    Element(c_val("grouping", "standard")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_data_labels_with_text()),
+    Element(c_chart_lines("dropLines")),
+    Element(c_val("gapDepth", "90%")),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_val("axId", "333333333")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// §21.2.2.126 CT_OfPieChart — pie-of-pie/bar-of-pie branches.
+fn of_pie_chart_rare_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Mix")),
+    Element(c_sp_pr_solid("FCE4D6")),
+    Element(c_val("explosion", "8")),
+    Element(c_dpt_solid_fill(2, "FFD966")),
+    Element(c_data_labels_with_text()),
+    Element(c_elem("cat", [], [Element(c_str_lit(["A", "B", "C", "D"]))])),
+    Element(c_elem("val", [], [Element(c_num_lit(["35", "25", "20", "20"]))])),
+    Element(c_ext_lst()),
+  ])
+  c_elem("ofPieChart", [], [
+    Element(c_val("ofPieType", "bar")),
+    Element(c_val("varyColors", "1")),
+    Element(ser),
+    Element(c_data_labels_with_text()),
+    Element(c_val("gapWidth", "120%")),
+    Element(c_val("splitType", "cust")),
+    Element(c_val("splitPos", "2")),
+    Element(
+      c_elem("custSplit", [], [
+        Element(c_val("secondPiePt", "2")),
+        Element(c_val("secondPiePt", "3")),
+      ]),
+    ),
+    Element(c_val("secondPieSize", "80%")),
+    Element(c_chart_lines("serLines")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// §21.2.2.138 CT_Pie3DChart — 3-D pie sibling of ordinary pie.
+fn pie3d_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Mix 3D")),
+    Element(c_val("explosion", "6")),
+    Element(c_elem("cat", [], [Element(c_str_lit(["A", "B", "C", "D"]))])),
+    Element(c_elem("val", [], [Element(c_num_lit(["30", "30", "25", "15"]))])),
+  ])
+  c_elem("pie3DChart", [], [
+    Element(c_val("varyColors", "1")),
+    Element(ser),
+    Element(c_data_labels_with_text()),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// §21.2.2.205 / §21.2.2.206 surface chart payload. The caller
+/// chooses `surfaceChart` or `surface3DChart`; both share wireframe,
+/// surface series, and band-format branches.
+fn surface_chart_payload(tag : String) -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Surface")),
+    Element(c_sp_pr_solid("E2F0D9")),
+    Element(c_cat_multi_level()),
+    Element(c_elem("val", [], [Element(c_num_lit(["5", "9", "7", "12"]))])),
+    Element(c_ext_lst()),
+  ])
+  c_elem(tag, [], [
+    Element(c_val("wireframe", "0")),
+    Element(ser),
+    Element(
+      c_elem("bandFmts", [], [
+        Element(
+          c_elem("bandFmt", [], [
+            Element(c_val("idx", "0")),
+            Element(c_sp_pr_solid("DDEBF7")),
+          ]),
+        ),
+        Element(
+          c_elem("bandFmt", [], [
+            Element(c_val("idx", "1")),
+            Element(c_sp_pr_solid("FCE4D6")),
+          ]),
+        ),
+      ]),
+    ),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_val("axId", "333333333")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// §21.2.2.20 CT_BubbleChart — rich option branches omitted from the
+/// canonical bubble fixtures.
+fn bubble_chart_rich_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Population")),
+    Element(c_val("invertIfNegative", "0")),
+    Element(c_dpt_solid_fill(0, "9DC3E6")),
+    Element(c_data_labels_with_text()),
+    Element(c_trendline_rich()),
+    Element(c_err_bars_custom("x")),
+    Element(c_elem("xVal", [], [Element(c_num_lit(["1", "3", "5", "7"]))])),
+    Element(c_elem("yVal", [], [Element(c_num_lit(["4", "8", "3", "6"]))])),
+    Element(
+      c_elem("bubbleSize", [], [Element(c_num_lit(["10", "25", "15", "30"]))]),
+    ),
+    Element(c_val("bubble3D", "1")),
+    Element(c_ext_lst()),
+  ])
+  c_elem("bubbleChart", [], [
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_data_labels_with_text()),
+    Element(c_val("bubble3D", "1")),
+    Element(c_val("bubbleScale", "120")),
+    Element(c_val("showNegBubbles", "1")),
+    Element(c_val("sizeRepresents", "w")),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// §21.2.2.16 CT_BarChart — series-side and chart-side rare branches
+/// not present in the simple bar fixtures.
+fn bar_chart_rare_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Variance")),
+    Element(c_sp_pr_solid("DDEBF7")),
+    Element(c_val("invertIfNegative", "1")),
+    Element(
+      c_elem("pictureOptions", [], [
+        Element(c_val("applyToFront", "1")),
+        Element(c_val("applyToSides", "0")),
+        Element(c_val("applyToEnd", "0")),
+        Element(c_val("pictureFormat", "stretch")),
+      ]),
+    ),
+    Element(c_dpt_solid_fill(2, "FF0000")),
+    Element(c_data_labels_with_text()),
+    Element(c_trendline_rich()),
+    Element(c_err_bars_custom("y")),
+    Element(c_elem("cat", [], [Element(c_str_lit(["Q1", "Q2", "Q3", "Q4"]))])),
+    Element(c_elem("val", [], [Element(c_num_lit(["10", "-5", "15", "-3"]))])),
+    Element(c_val("shape", "cylinder")),
+    Element(c_ext_lst()),
+  ])
+  c_elem("barChart", [], [
+    Element(c_val("barDir", "col")),
+    Element(c_val("grouping", "clustered")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_data_labels_with_text()),
+    Element(c_val("gapWidth", "80%")),
+    Element(c_val("overlap", "-20")),
+    Element(c_chart_lines("serLines")),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_ext_lst()),
   ])
 }
 
