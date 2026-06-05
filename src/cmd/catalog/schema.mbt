@@ -45,8 +45,9 @@ struct Schema {
   type_ns : Map[String, String]
   /// Top-level element name -> (node, target namespace).
   top_elements : Map[String, (@xml.Element, String)]
-  /// Every (element name, resolved-type) declaration, keyed
-  /// "name\u{0000}type" so distinct (name, type) pairs are separate.
+  /// Every (element namespace, element name, resolved-type)
+  /// declaration, keyed so distinct chapter-local elements that
+  /// share a local name and shared type remain separate.
   all_elements : Map[String, ElemDecl]
 }
 
@@ -168,6 +169,11 @@ fn resolve_qname(qname : String, prefixes : Map[String, String]) -> String {
 }
 
 ///|
+fn elem_decl_key(ns : String, name : String, type_name : String) -> String {
+  strip_ns(ns) + "\u{0000}" + name + "\u{0000}" + type_name
+}
+
+///|
 /// Merge one parsed XSD root into the symbol table, tagging every
 /// declaration it introduces with `lineage`.
 fn Schema::load(
@@ -267,7 +273,7 @@ fn Schema::load(
               None => "__empty__"
             }
         }
-        let key = name + "\u{0000}" + etype
+        let key = elem_decl_key(tns, name, etype)
         match self.all_elements.get(key) {
           Some(decl) =>
             if !decl.lineages.contains(lineage) {

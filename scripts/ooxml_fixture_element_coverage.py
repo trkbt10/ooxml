@@ -101,6 +101,12 @@ def parse_args() -> argparse.Namespace:
         default=80,
         help="maximum missing QNames to print in text output",
     )
+    parser.add_argument(
+        "--non-catalog-limit",
+        type=int,
+        default=40,
+        help="maximum observed non-catalog QNames to print in text output",
+    )
     return parser.parse_args()
 
 
@@ -195,8 +201,11 @@ def is_xml_part(part_name: str) -> bool:
     return part_name == "[Content_Types].xml" or part_name.endswith(XML_PART_SUFFIXES)
 
 
-def scan_package(path: Path) -> tuple[Counter[ElementKey], list[tuple[str, str]]]:
+def scan_package(
+    path: Path,
+) -> tuple[Counter[ElementKey], list[tuple[str, str]], dict[ElementKey, set[str]]]:
     counts: Counter[ElementKey] = Counter()
+    parts_by_key: dict[ElementKey, set[str]] = defaultdict(set)
     parse_errors: list[tuple[str, str]] = []
     try:
         with zipfile.ZipFile(path) as archive:
@@ -209,10 +218,12 @@ def scan_package(path: Path) -> tuple[Counter[ElementKey], list[tuple[str, str]]
                     parse_errors.append((info.filename, str(error)))
                     continue
                 for element in root.iter():
-                    counts[split_tag(element.tag)] += 1
+                    key = split_tag(element.tag)
+                    counts[key] += 1
+                    parts_by_key[key].add(info.filename)
     except zipfile.BadZipFile as error:
         parse_errors.append(("(package)", str(error)))
-    return counts, parse_errors
+    return counts, parse_errors, parts_by_key
 
 
 def audit(catalog_path: Path, package_paths: list[Path]) -> dict:
@@ -226,7 +237,7 @@ def audit(catalog_path: Path, package_paths: list[Path]) -> dict:
     xml_part_count = 0
 
     for package_path in package_paths:
-        counts, parse_errors = scan_package(package_path)
+        counts, parse_errors, parts_by_key = scan_package(package_path)
         if parse_errors:
             package_parse_errors[str(package_path)] = parse_errors
         if not counts:
@@ -249,9 +260,13 @@ def audit(catalog_path: Path, package_paths: list[Path]) -> dict:
                 seen[key] = item
             item.count += count
             item.packages.add(package_label)
-            item.parts.add(package_label)
+            for part in parts_by_key.get(key, set()):
+                item.parts.add(f"{package_label}::{part}")
             if len(item.examples) < 3:
-                item.examples.append((package_label, key.local_name))
+                for part in sorted(parts_by_key.get(key, set())):
+                    if len(item.examples) >= 3:
+                        break
+                    item.examples.append((package_label, part))
 
     declared_keys = set(declared_by_key)
     seen_keys = set(seen)
@@ -277,6 +292,7 @@ def audit(catalog_path: Path, package_paths: list[Path]) -> dict:
     declaration_entries_missing = [
         entry for entry in catalog if entry.key in missing_keys
     ]
+    non_catalog_keys = seen_keys - declared_keys
 
     return {
         "catalog": str(catalog_path),
@@ -290,7 +306,24 @@ def audit(catalog_path: Path, package_paths: list[Path]) -> dict:
         "declaration_entries_missing_by_qname": len(declaration_entries_missing),
         "observed_qnames": len(seen_keys),
         "observed_ooxml_qnames": len(seen_keys & declared_keys),
-        "observed_non_catalog_qnames": len(seen_keys - declared_keys),
+        "observed_non_catalog_qnames": len(non_catalog_keys),
+        "observed_non_catalog": [
+            {
+                "namespace": key.namespace,
+                "element": key.local_name,
+                "occurrences": seen[key].count,
+                "package_count": len(seen[key].packages),
+                "part_count": len(seen[key].parts),
+                "examples": [
+                    {
+                        "package": package,
+                        "part": part,
+                    }
+                    for package, part in seen[key].examples
+                ],
+            }
+            for key in sorted(non_catalog_keys)
+        ],
         "by_namespace": by_namespace,
         "missing": [
             {
@@ -319,7 +352,7 @@ def percent(covered: int, total: int) -> str:
     return f"{100 * covered / total:.1f}%"
 
 
-def print_text(result: dict, missing_limit: int) -> None:
+def print_text(result: dict, missing_limit: int, non_catalog_limit: int) -> None:
     print("ECMA-376 fixture element occurrence coverage")
     print("")
     print(f"catalog: {result['catalog']}")
@@ -377,6 +410,27 @@ def print_text(result: dict, missing_limit: int) -> None:
                 + ")"
             )
 
+    if non_catalog_limit != 0 and result["observed_non_catalog"]:
+        print("")
+        print(f"Observed non-catalog QNames (first {non_catalog_limit}):")
+        for item in result["observed_non_catalog"][:non_catalog_limit]:
+            examples = ", ".join(
+                f"{example['package']}::{example['part']}"
+                for example in item["examples"]
+            )
+            print(
+                "- "
+                + (item["namespace"] or "(none)")
+                + " "
+                + item["element"]
+                + f" ({item['occurrences']} occurrence"
+                + ("s" if item["occurrences"] != 1 else "")
+                + f", {item['package_count']} package"
+                + ("s" if item["package_count"] != 1 else "")
+                + ")"
+                + (f" e.g. {examples}" if examples else "")
+            )
+
 
 def main() -> int:
     args = parse_args()
@@ -385,7 +439,7 @@ def main() -> int:
         json.dump(result, sys.stdout, indent=2, sort_keys=True)
         print()
     else:
-        print_text(result, args.missing_limit)
+        print_text(result, args.missing_limit, args.non_catalog_limit)
 
     if args.fail_on_missing and result["missing_qnames"]:
         return 1

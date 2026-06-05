@@ -85,6 +85,11 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   let docpr = fn(id_ : String, name : String) -> @xml.Element {
     wp_el("docPr", [xa("id", id_), xa("name", name)], [])
   }
+  let c_nv_graphic_frame_pr = fn() -> @xml.Element {
+    wp_el("cNvGraphicFramePr", [], [
+      Element(a_el("graphicFrameLocks", [xa("noGrp", "1")], [])),
+    ])
+  }
   // `<a:graphic><a:graphicData uri="…/picture"><pic:pic>…</pic:pic>`
   // — the picture graphic-data branch (§20.1.2.2.16).  Even with an
   // empty `<pic:pic>` body, the renderer recognises the URI and
@@ -132,7 +137,12 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
     wp_el(
       "inline",
       [xa("distT", "0"), xa("distB", "0"), xa("distL", "0"), xa("distR", "0")],
-      [Element(extent(cx, cy)), Element(docpr(id_, name)), Element(graphic)],
+      [
+        Element(extent(cx, cy)),
+        Element(docpr(id_, name)),
+        Element(c_nv_graphic_frame_pr()),
+        Element(graphic),
+      ],
     )
   }
   // `<wp:anchor …>simplePos positionH positionV extent wrap docPr
@@ -195,6 +205,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
         Element(extent(cx, cy)),
         Element(wrap_el),
         Element(docpr(id_, name)),
+        Element(c_nv_graphic_frame_pr()),
         Element(graphic),
       ],
     )
@@ -284,6 +295,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
         Element(effect_extent()),
         Element(wrap_el),
         Element(docpr(id_, name)),
+        Element(c_nv_graphic_frame_pr()),
         Element(graphic),
       ],
     )
@@ -402,6 +414,50 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       ),
     ])
   }
+  let wp_shape_style = fn() -> @xml.Element {
+    let ref_color = fn(val : String) -> @xml.Element {
+      a_el("schemeClr", [xa("val", val)], [])
+    }
+    wp_el("style", [], [
+      Element(a_el("lnRef", [xa("idx", "1")], [Element(ref_color("accent1"))])),
+      Element(
+        a_el("fillRef", [xa("idx", "1")], [Element(ref_color("accent2"))]),
+      ),
+      Element(
+        a_el("effectRef", [xa("idx", "1")], [Element(ref_color("accent3"))]),
+      ),
+      Element(
+        a_el("fontRef", [xa("idx", "minor")], [Element(ref_color("tx1"))]),
+      ),
+    ])
+  }
+  let wp_canvas_bg = fn() -> @xml.Element {
+    wp_el("bg", [], [
+      Element(
+        a_el("solidFill", [], [
+          Element(a_el("srgbClr", [xa("val", "F2F2F2")], [])),
+        ]),
+      ),
+    ])
+  }
+  let wp_canvas_whole = fn() -> @xml.Element {
+    wp_el("whole", [], [
+      Element(
+        a_el("ln", [xa("w", "12700")], [
+          Element(
+            a_el("solidFill", [], [
+              Element(a_el("srgbClr", [xa("val", "808080")], [])),
+            ]),
+          ),
+        ]),
+      ),
+    ])
+  }
+  let wp_canvas_ext_lst = fn() -> @xml.Element {
+    wp_el("extLst", [], [
+      Element(a_el("ext", [xa("uri", "urn:ooxml:fixture:wp")], [])),
+    ])
+  }
   let wp_body_pr = fn() -> @xml.Element {
     wp_el("bodyPr", [xa("wrap", "square")], [])
   }
@@ -421,6 +477,7 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       Element(wp_el("cNvPr", [xa("id", id_), xa("name", name)], [])),
       Element(wp_el("cNvSpPr", [xa("txBox", "1")], [])),
       Element(wp_shape_pr("1371600", "685800", "D9EAD3")),
+      Element(wp_shape_style()),
       Element(wp_textbox(text)),
       Element(wp_body_pr()),
     ])
@@ -440,11 +497,9 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
       Element(wp_body_pr()),
     ])
   }
-  let wp_graphic_frame = fn() -> @xml.Element {
+  let wp_graphic_frame = fn(id_ : String, name : String) -> @xml.Element {
     wp_el("graphicFrame", [], [
-      Element(
-        wp_el("cNvPr", [xa("id", "40"), xa("name", "WP Graphic Frame")], []),
-      ),
+      Element(wp_el("cNvPr", [xa("id", id_), xa("name", name)], [])),
       Element(
         wp_el("cNvFrPr", [], [
           Element(a_el("graphicFrameLocks", [xa("noGrp", "1")], [])),
@@ -1087,10 +1142,13 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   })
 
   let wpc_rich = wp_el("wpc", [], [
+    Element(wp_canvas_bg()),
+    Element(wp_canvas_whole()),
     Element(wp_text_shape("30", "WP Text Shape", "Text inside wp:wsp.")),
     Element(wp_linked_connector_shape()),
     Element(wp_group("Top WP Group", Some(wp_nested_group()))),
-    Element(wp_graphic_frame()),
+    Element(wp_graphic_frame("40", "WP Graphic Frame")),
+    Element(wp_canvas_ext_lst()),
   ])
   cases.push({
     id: "drawing-wpc-shape-group-frame",

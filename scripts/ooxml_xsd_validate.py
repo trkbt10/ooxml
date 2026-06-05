@@ -1008,12 +1008,21 @@ def print_summary(results: list[ValidationResult]) -> None:
     by_status: dict[str, int] = {}
     failures_by_schema: dict[str, int] = {}
     failures_by_package: dict[str, int] = {}
+    skips_by_schema: dict[str, int] = {}
+    skips_by_reason: dict[str, int] = {}
+    skips_by_package: dict[str, int] = {}
     for result in results:
         by_status[result.status] = by_status.get(result.status, 0) + 1
         if result.status == "fail":
             schema = result.schema or "(none)"
             failures_by_schema[schema] = failures_by_schema.get(schema, 0) + 1
             failures_by_package[result.package] = failures_by_package.get(result.package, 0) + 1
+        if result.status == "skip":
+            schema = result.schema or "(none)"
+            reason = result.message or "(none)"
+            skips_by_schema[schema] = skips_by_schema.get(schema, 0) + 1
+            skips_by_reason[reason] = skips_by_reason.get(reason, 0) + 1
+            skips_by_package[result.package] = skips_by_package.get(result.package, 0) + 1
 
     print("")
     print("summary")
@@ -1026,6 +1035,18 @@ def print_summary(results: list[ValidationResult]) -> None:
     if failures_by_package:
         print("top failing packages")
         for package, count in sorted(failures_by_package.items(), key=lambda item: (-item[1], item[0]))[:20]:
+            print(f"  {package}: {count}")
+    if skips_by_schema:
+        print("skips by schema")
+        for schema, count in sorted(skips_by_schema.items(), key=lambda item: (-item[1], item[0])):
+            print(f"  {schema}: {count}")
+    if skips_by_reason:
+        print("skip reasons")
+        for reason, count in sorted(skips_by_reason.items(), key=lambda item: (-item[1], item[0]))[:20]:
+            print(f"  {reason}: {count}")
+    if skips_by_package:
+        print("top skipped packages")
+        for package, count in sorted(skips_by_package.items(), key=lambda item: (-item[1], item[0]))[:20]:
             print(f"  {package}: {count}")
 
 

@@ -49,6 +49,45 @@ fn cdr_shape_props(prst : String, fill : String) -> @xml.Element {
 }
 
 ///|
+fn cdr_shape_style() -> @xml.Element {
+  let ref_color = fn(val : String) -> @xml.Element {
+    xe(NS_A, "schemeClr", [xa("val", val)], [])
+  }
+  cdr_elem("style", [], [
+    Element(
+      xe(NS_A, "lnRef", [xa("idx", "1")], [Element(ref_color("accent1"))]),
+    ),
+    Element(
+      xe(NS_A, "fillRef", [xa("idx", "1")], [Element(ref_color("accent2"))]),
+    ),
+    Element(
+      xe(NS_A, "effectRef", [xa("idx", "1")], [Element(ref_color("accent3"))]),
+    ),
+    Element(
+      xe(NS_A, "fontRef", [xa("idx", "minor")], [Element(ref_color("tx1"))]),
+    ),
+  ])
+}
+
+///|
+fn cdr_text_body(text : String) -> @xml.Element {
+  cdr_elem("txBody", [], [
+    Element(xe(NS_A, "bodyPr", [], [])),
+    Element(xe(NS_A, "lstStyle", [], [])),
+    Element(
+      xe(NS_A, "p", [], [
+        Element(
+          xe(NS_A, "r", [], [
+            Element(xe(NS_A, "rPr", [xa("lang", "en-US")], [])),
+            Element(xe(NS_A, "t", [], [Text(text)])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
 fn cdr_xfrm2d() -> @xml.Element {
   cdr_elem("xfrm", [], [
     Element(xe(NS_A, "off", [xa("x", "0"), xa("y", "0")], [])),
@@ -66,6 +105,8 @@ fn cdr_shape(id_ : String, name : String, fill : String) -> @xml.Element {
       ]),
     ),
     Element(cdr_shape_props("rect", fill)),
+    Element(cdr_shape_style()),
+    Element(cdr_text_body(name)),
   ])
 }
 

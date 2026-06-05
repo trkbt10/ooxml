@@ -9650,7 +9650,7 @@ fn pptx_with_aux_root_package(
       } else {
         xep("p", ns_p, "presentation", [], [Element(content)])
       }
-      pptx_package_with_replaced_presentation(pres_root)
+      pptx_package_with_presentation_refs(pres_root)
     }
     "presentationPr" => pptx_package_with_presentation_props(content)
     "viewPr" =>
@@ -9895,9 +9895,154 @@ fn pptx_package_with_slide_refs(c_sld : @xml.Element) -> Bytes {
 }
 
 ///|
+fn presentation_reference_rid(local_name : String) -> String? {
+  match local_name {
+    "sldMasterId" => Some("rId2")
+    "notesMasterId" => Some("rId4")
+    "handoutMasterId" => Some("rId5")
+    "sldId" | "sld" => Some("rId1")
+    "smartTags" => Some("rId6")
+    "custData" => Some("rId7")
+    "tags" => Some("rId8")
+    "regular" => Some("rId9")
+    "bold" => Some("rId10")
+    "italic" => Some("rId11")
+    "boldItalic" => Some("rId12")
+    _ => None
+  }
+}
+
+///|
+fn presentation_plain_id_value(local_name : String) -> String? {
+  match local_name {
+    "sldMasterId" => Some("2147483648")
+    "sldId" => Some("256")
+    _ => None
+  }
+}
+
+///|
+fn presentation_rel_id_attr(value : String) -> @xml.Attribute {
+  {
+    name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+    value,
+  }
+}
+
+///|
+fn is_rel_id_attr(attr : @xml.Attribute) -> Bool {
+  attr.name.local_name == "id" &&
+  (attr.name.ns == Some(NS_OFFICE_REL) || attr.name.prefix == Some("r"))
+}
+
+///|
+/// `pptx_package_with_presentation_refs` owns a presentation-level
+/// relationship table.  The schema synthesiser can emit
+/// facet-valid-but-unresolved `r:id="0"` values for presentation
+/// reference elements and can omit / namespace the plain `id` on slide
+/// id references; retarget them to the concrete parts shipped by that
+/// package before the tree is spliced into `ppt/presentation.xml`.
+fn retarget_presentation_reference_rids(element : @xml.Element) -> @xml.Element {
+  let target_rid = if strip_ns(element.name.ns.unwrap_or("")) ==
+    "presentationml/main" {
+    presentation_reference_rid(element.name.local_name)
+  } else {
+    None
+  }
+  let plain_id = if strip_ns(element.name.ns.unwrap_or("")) ==
+    "presentationml/main" {
+    presentation_plain_id_value(element.name.local_name)
+  } else {
+    None
+  }
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_rid = false
+  let mut saw_plain_id = false
+  for attr in element.attributes {
+    match target_rid {
+      Some(rid) =>
+        if is_rel_id_attr(attr) {
+          match plain_id {
+            Some(idv) =>
+              if !saw_plain_id {
+                attrs.push(xa("id", idv))
+                saw_plain_id = true
+              }
+            None => ()
+          }
+          attrs.push(presentation_rel_id_attr(rid))
+          saw_rid = true
+        } else {
+          match plain_id {
+            Some(idv) =>
+              if attr.name.local_name == "id" {
+                if !saw_plain_id {
+                  attrs.push(xa("id", idv))
+                  saw_plain_id = true
+                }
+              } else {
+                attrs.push(attr)
+              }
+            None => attrs.push(attr)
+          }
+        }
+      None =>
+        match plain_id {
+          Some(idv) =>
+            if attr.name.local_name == "id" && !is_rel_id_attr(attr) {
+              if !saw_plain_id {
+                attrs.push(xa("id", idv))
+                saw_plain_id = true
+              }
+            } else {
+              attrs.push(attr)
+            }
+          None => attrs.push(attr)
+        }
+    }
+  }
+  match plain_id {
+    Some(idv) => if !saw_plain_id { attrs.push(xa("id", idv)) }
+    None => ()
+  }
+  match target_rid {
+    Some(rid) => if !saw_rid { attrs.push(presentation_rel_id_attr(rid)) }
+    None => ()
+  }
+  let children : Array[@xml.Node] = []
+  for child in element.children {
+    match child {
+      Element(ce) =>
+        children.push(Element(retarget_presentation_reference_rids(ce)))
+      _ => children.push(child)
+    }
+  }
+  { name: element.name, attributes: attrs, children }
+}
+
+///|
+fn presentation_child_for_splice(child : @xml.Element) -> @xml.Element {
+  if strip_ns(child.name.ns.unwrap_or("")) != "presentationml/main" {
+    return child
+  }
+  let ns_p = child.name.ns.unwrap_or(
+    "http://schemas.openxmlformats.org/presentationml/2006/main",
+  )
+  match child.name.local_name {
+    "sldMasterId" => xep("p", ns_p, "sldMasterIdLst", [], [Element(child)])
+    "notesMasterId" => xep("p", ns_p, "notesMasterIdLst", [], [Element(child)])
+    "handoutMasterId" =>
+      xep("p", ns_p, "handoutMasterIdLst", [], [Element(child)])
+    "sldId" => xep("p", ns_p, "sldIdLst", [], [Element(child)])
+    _ => child
+  }
+}
+
+///|
 /// Presentation-owned relationship host for master ids, smart tags,
 /// custom data tags and embedded font-data ids.
 fn pptx_package_with_presentation_refs(presentation : @xml.Element) -> Bytes {
+  let presentation = retarget_presentation_reference_rids(presentation)
   let base = pptx_package_with_replaced_presentation(presentation)
   let archive = @zip.read(base) catch { _ => return Bytes::new(0) }
   let parts : Array[(String, Bytes)] = []
@@ -11362,13 +11507,21 @@ fn pptx_package_with_replaced_presentation(
     for child in presentation.children {
       match child {
         Element(ce) =>
-          cur = splice_child_in_sequence(cur, ce, presentation_child_order())
+          cur = splice_child_in_sequence(
+            cur,
+            presentation_child_for_splice(ce),
+            presentation_child_order(),
+          )
         _ => ()
       }
     }
     cur
   } else {
-    splice_child_in_sequence(skeleton, presentation, presentation_child_order())
+    splice_child_in_sequence(
+      skeleton,
+      presentation_child_for_splice(presentation),
+      presentation_child_order(),
+    )
   }
   // From this point on the original packaging applies — the rels /
   // slide-master / slide-layout / theme parts stay canonical.

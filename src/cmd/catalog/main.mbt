@@ -553,6 +553,17 @@ fn main {
   for _key, decl in schema.all_elements {
     name_variants[decl.name] = name_variants.get(decl.name).unwrap_or(0) + 1
   }
+  let id_variants : Map[String, Int] = Map([], capacity=0)
+  for _key, decl in schema.all_elements {
+    let type_local = catalog_type_local(decl.type_name)
+    let base = if name_variants.get(decl.name).unwrap_or(1) <= 1 ||
+      decl.type_name.has_prefix("__") {
+      decl.name
+    } else {
+      decl.name + "__" + type_local
+    }
+    id_variants[base] = id_variants.get(base).unwrap_or(0) + 1
+  }
 
   // Synthesise one catalog entry per element declaration.
   let entries : Array[String] = []
@@ -670,15 +681,17 @@ fn main {
       }
     }
     // The type display (local) name and a stable id.
-    let type_local = match decl.type_name.rev_find("#") {
-      Some(i) => decl.type_name[i + 1:].to_owned()
-      None => decl.type_name
-    }
-    let ident = if name_variants.get(decl.name).unwrap_or(1) <= 1 ||
+    let type_local = catalog_type_local(decl.type_name)
+    let ident_base = if name_variants.get(decl.name).unwrap_or(1) <= 1 ||
       decl.type_name.has_prefix("__") {
       decl.name
     } else {
       decl.name + "__" + type_local
+    }
+    let ident = if id_variants.get(ident_base).unwrap_or(1) <= 1 {
+      ident_base
+    } else {
+      ident_base + "__" + ns_prefix(decl.ns)
     }
     let lineage_json = StringBuilder::new()
     lineage_json.write_char('[')

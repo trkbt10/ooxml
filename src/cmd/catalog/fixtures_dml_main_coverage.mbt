@@ -1118,6 +1118,23 @@ fn dml_main_view_props_root() -> @xml.Element {
 }
 
 ///|
+fn dml_main_sound_ref(rid : String) -> @xml.Element {
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xe(
+    NS_A,
+    "snd",
+    [
+      {
+        name: { prefix: Some("r"), local_name: "embed", ns: Some(ns_r) },
+        value: rid,
+      },
+      xa("name", "coverage.wav"),
+    ],
+    [],
+  )
+}
+
+///|
 fn dml_main_media_shape(
   id : String,
   name : String,
@@ -1129,7 +1146,18 @@ fn dml_main_media_shape(
   xe(NS_PML, "sp", [], [
     Element(
       xe(NS_PML, "nvSpPr", [], [
-        Element(xe(NS_PML, "cNvPr", [xa("id", id), xa("name", name)], [])),
+        Element(
+          xe(NS_PML, "cNvPr", [xa("id", id), xa("name", name)], [
+            Element(
+              xe(
+                NS_A,
+                "hlinkClick",
+                [xa("action", "ppaction://hlinksldjump")],
+                [Element(dml_main_sound_ref("rId2"))],
+              ),
+            ),
+          ]),
+        ),
         Element(xe(NS_PML, "cNvSpPr", [], [])),
         Element(xe(NS_PML, "nvPr", [], [Element(media)])),
       ]),

@@ -74,6 +74,20 @@ def write_docx(path: Path) -> None:
         archive.writestr("word/document.xml", document)
 
 
+def write_docx_with_extension(path: Path) -> None:
+    document = f"""<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="{WML_TRANSITIONAL}" xmlns:x="urn:fixture-extension">
+  <w:body>
+    <w:p>
+      <x:extension/>
+    </w:p>
+  </w:body>
+</w:document>
+"""
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("word/document.xml", document)
+
+
 class FixtureElementCoverageTest(unittest.TestCase):
     def test_fixture_qname_coverage_normalises_strict_and_transitional_namespaces(
         self,
@@ -94,6 +108,29 @@ class FixtureElementCoverageTest(unittest.TestCase):
         self.assertEqual(
             {("ooxml:spreadsheetml/main", "worksheet")},
             missing,
+        )
+
+    def test_fixture_qname_coverage_reports_observed_non_catalog_qnames(self) -> None:
+        with tempfile.TemporaryDirectory() as tempdir:
+            root = Path(tempdir)
+            catalog = root / "catalog.json"
+            package = root / "sample.docx"
+            write_catalog(catalog)
+            write_docx_with_extension(package)
+
+            result = fixture_coverage.audit(catalog, [package])
+
+        extension_items = [
+            item
+            for item in result["observed_non_catalog"]
+            if item["namespace"] == "urn:fixture-extension"
+            and item["element"] == "extension"
+        ]
+        self.assertEqual(1, len(extension_items))
+        self.assertEqual(1, extension_items[0]["occurrences"])
+        self.assertEqual(
+            [{"package": str(package), "part": "word/document.xml"}],
+            extension_items[0]["examples"],
         )
 
 

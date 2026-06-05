@@ -80,6 +80,27 @@ fn xdr_shape_props(prst : String, color : String) -> @xml.Element {
 }
 
 ///|
+fn xdr_shape_style() -> @xml.Element {
+  let ref_color = fn(val : String) -> @xml.Element {
+    xe(NS_A, "schemeClr", [xa("val", val)], [])
+  }
+  xdr_elem("style", [], [
+    Element(
+      xe(NS_A, "lnRef", [xa("idx", "1")], [Element(ref_color("accent1"))]),
+    ),
+    Element(
+      xe(NS_A, "fillRef", [xa("idx", "1")], [Element(ref_color("accent2"))]),
+    ),
+    Element(
+      xe(NS_A, "effectRef", [xa("idx", "1")], [Element(ref_color("accent3"))]),
+    ),
+    Element(
+      xe(NS_A, "fontRef", [xa("idx", "minor")], [Element(ref_color("tx1"))]),
+    ),
+  ])
+}
+
+///|
 fn xdr_text_body(text : String) -> @xml.Element {
   xdr_elem("txBody", [], [
     Element(xe(NS_A, "bodyPr", [], [])),
@@ -107,6 +128,7 @@ fn xdr_shape(id : String, name : String, color : String) -> @xml.Element {
       ]),
     ),
     Element(xdr_shape_props("rect", color)),
+    Element(xdr_shape_style()),
     Element(xdr_text_body(name)),
   ])
 }

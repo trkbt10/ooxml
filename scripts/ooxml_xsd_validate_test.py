@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import unittest
 import zipfile
@@ -157,6 +158,31 @@ class ContentPartRelationshipTest(unittest.TestCase):
                 xsd_validate.custom_xml_content_part_targets(archive),
                 {"xl/drawings/svg1.xml"},
             )
+
+
+class SummaryTest(unittest.TestCase):
+    def test_print_summary_includes_skip_breakdowns(self) -> None:
+        results = [
+            xsd_validate.ValidationResult("pkg.docx", "word/document.xml", "ok", "wml.xsd", ""),
+            xsd_validate.ValidationResult(
+                "pkg.docx",
+                "customXml/item1.xml",
+                "skip",
+                "(content-part)",
+                "ECMA-376 contentPart target has no ECMA-376 XSD for root namespace: urn:custom",
+            ),
+        ]
+        out = io.StringIO()
+
+        with contextlib.redirect_stdout(out):
+            xsd_validate.print_summary(results)
+
+        text = out.getvalue()
+        self.assertIn("skip: 1", text)
+        self.assertIn("skips by schema", text)
+        self.assertIn("(content-part): 1", text)
+        self.assertIn("skip reasons", text)
+        self.assertIn("top skipped packages", text)
 
 
 if __name__ == "__main__":
