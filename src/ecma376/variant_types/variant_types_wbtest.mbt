@@ -35,3 +35,21 @@ test "vector validates baseType and round trips" {
   let reparsed = read_vector(write_vector(value))
   assert_eq(reparsed.element.children.length(), 2)
 }
+
+///|
+test "vector baseType rejects array-only enumeration members" {
+  let xml = bytes(
+    "<vt:vector xmlns:vt=\"http://purl.oclc.org/ooxml/officeDocument/docPropsVTypes\" baseType=\"int\" size=\"1\"><vt:int>7</vt:int></vt:vector>",
+  )
+  let parsed = try? read_vector(xml)
+  assert_true(parsed is Err(_))
+}
+
+///|
+test "array baseType accepts array-only int enumeration member" {
+  let xml = bytes(
+    "<vt:array xmlns:vt=\"http://purl.oclc.org/ooxml/officeDocument/docPropsVTypes\" lBounds=\"0\" uBounds=\"0\" baseType=\"int\"><vt:int>7</vt:int></vt:array>",
+  )
+  let value = read_array(xml)
+  assert_eq(value.base_type.to_string(), "int")
+}

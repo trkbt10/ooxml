@@ -165,11 +165,18 @@ pub(all) struct EG_LegendEntryData {
 } derive(Eq, Debug)
 
 // ─────────────────────────────────────────────────────────────────────
-// EG_ObjectChoices — §21.3 dml-chartDrawing.xsd. Required choice of
+// EG_ObjectChoices — §21.3 dml-chartDrawing.xsd. ResourceMissing boundary. Required choice of
 // sp / grpSp / graphicFrame / cxnSp / pic.
+// ResourceMissing is owned by the surrounding OPC/package resolver, not
+// this closed model group.
 // ─────────────────────────────────────────────────────────────────────
 
 ///|
+/// XSD model group EG_ObjectChoices from dml-chartDrawing.xsd. Required choice
+/// of exactly one child: sp (CT_Shape), grpSp (CT_GroupShape), graphicFrame
+/// (CT_GraphicFrame), cxnSp (CT_Connector), or pic (CT_Picture).
+/// ResourceMissing belongs to the surrounding package resolver contract, not
+/// to this closed chartDrawing object-choice group.
 pub(all) enum EG_ObjectChoices {
   Sp(CT_Shape)
   GrpSp(CT_GroupShape)
@@ -177,6 +184,12 @@ pub(all) enum EG_ObjectChoices {
   CxnSp(CT_Connector)
   Pic(CT_Picture)
 } derive(Eq, Debug)
+
+///|
+/// Schema row for dml-chartDrawing.xsd model group EG_ObjectChoices.
+pub fn chart_drawing_eg_objectchoices_schema_name() -> String {
+  "Schema dml-chartDrawing.xsd model group `EG_ObjectChoices`. Children: sp (CT_Shape), grpSp (CT_GroupShape), graphicFrame (CT_GraphicFrame), cxnSp (CT_Connector), pic (CT_Picture). ResourceMissing belongs to the surrounding package resolver contract, not to this closed object-choice group."
+}
 
 ///|
 pub fn parse_object_choice_element(
@@ -214,10 +227,18 @@ pub fn find_object_choice_child(
 // ─────────────────────────────────────────────────────────────────────
 
 ///|
+/// XSD model group EG_Anchor from dml-chartDrawing.xsd. Choice of
+/// relSizeAnchor (CT_RelSizeAnchor) or absSizeAnchor (CT_AbsSizeAnchor).
 pub(all) enum EG_Anchor {
   RelSizeAnchor(CT_RelSizeAnchor)
   AbsSizeAnchor(CT_AbsSizeAnchor)
 } derive(Eq, Debug)
+
+///|
+/// Schema row for dml-chartDrawing.xsd model group EG_Anchor.
+pub fn chart_drawing_eg_anchor_schema_name() -> String {
+  "Schema dml-chartDrawing.xsd model group `EG_Anchor`. Children: relSizeAnchor (CT_RelSizeAnchor), absSizeAnchor (CT_AbsSizeAnchor)."
+}
 
 ///|
 pub fn parse_anchor_element(

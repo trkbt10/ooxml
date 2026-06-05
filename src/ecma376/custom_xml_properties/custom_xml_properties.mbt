@@ -37,7 +37,9 @@ pub fn custom_xml_properties_part1_23_2_elements_section_name() -> String {
 /// shared-documentPropertiesExtended.xsd schema sequence, and V3
 /// materialises CT_VectorVariant defaults at read time.  Errors
 /// SchemaViolation surface when CT_VectorVariant lacks a `vt:vector`
-/// child.  Drift hook: `coverage.json` tracks the
+/// child.  ResourceMissing belongs to the surrounding package resolver
+/// contract, not to this closed CT_VectorVariant schema row.  Drift hook:
+/// `coverage.json` tracks the
 /// shared-documentPropertiesExtended.xsd CT_VectorVariant complex
 /// type row that backs this schema row.
 pub fn custom_xml_properties_xsd_ct_vectorvariant_schema_name() -> String {

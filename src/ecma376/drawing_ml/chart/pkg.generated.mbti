@@ -8,6 +8,10 @@ import {
 }
 
 // Values
+pub fn chart_drawing_eg_anchor_schema_name() -> String
+
+pub fn chart_drawing_eg_objectchoices_schema_name() -> String
+
 pub fn chart_migration_section_name() -> String
 
 pub fn chart_namespace() -> String

@@ -7176,6 +7176,7 @@ pub fn CT_RelSizeAnchor::new(
         reason="required child missing",
       )
   }
+  require_exactly_one_object_choice(element, "CT_RelSizeAnchor")
   let sp = first_child_named(element, "sp")
   let grp_sp = match first_child_named(element, "grpSp") {
     Some(child) => Some(CT_GroupShape::new(child))
@@ -7239,6 +7240,7 @@ pub fn CT_AbsSizeAnchor::new(
         reason="required child missing",
       )
   }
+  require_exactly_one_object_choice(element, "CT_AbsSizeAnchor")
   let sp = first_child_named(element, "sp")
   let grp_sp = match first_child_named(element, "grpSp") {
     Some(child) => Some(CT_GroupShape::new(child))
@@ -7257,6 +7259,30 @@ pub fn CT_AbsSizeAnchor::new(
     None => None
   }
   { from_, ext, sp, grp_sp, graphic_frame, cxn_sp, pic }
+}
+
+///|
+fn object_choice_child_count(element : @xml.Element) -> Int {
+  children_named(element, "sp").length() +
+  children_named(element, "grpSp").length() +
+  children_named(element, "graphicFrame").length() +
+  children_named(element, "cxnSp").length() +
+  children_named(element, "pic").length()
+}
+
+///|
+fn require_exactly_one_object_choice(
+  element : @xml.Element,
+  path : String,
+) -> Unit raise SchemaViolation {
+  let count = object_choice_child_count(element)
+  if count != 1 {
+    raise SchemaViolation(
+      schema="dml-chartDrawing.xsd",
+      path=path + "/EG_ObjectChoices",
+      reason="EG_ObjectChoices requires exactly one of sp, grpSp, graphicFrame, cxnSp, pic",
+    )
+  }
 }
 
 ///|

@@ -92,6 +92,23 @@ test "§18.3.1.32 CT_DataValidation rejects invalid ST attributes" {
 }
 
 ///|
+test "§18.3.1.26 CT_CustomSheetView rejects invalid ST_SheetState" {
+  assert_true(
+    (try? CT_CustomSheetView::new(
+      sheet_elem_test(
+        "customSheetView",
+        [
+          sheet_attr_test("guid", "{00112233-4455-6677-8899-AABBCCDDEEFF}"),
+          sheet_attr_test("state", "collapsed"),
+        ],
+        [],
+      ),
+    ))
+    is Err(@opc_errors.SchemaViolation(_)),
+  )
+}
+
+///|
 test "§18.3.1.33 CT_DataValidations propagates child schema violations" {
   let container = sheet_elem_test("dataValidations", [], [
     @xml.Node::Element(

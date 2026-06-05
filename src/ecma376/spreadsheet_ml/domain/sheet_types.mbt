@@ -3183,10 +3183,9 @@ pub fn CT_CustomSheetView::new(
   )
   let hidden_rows = custom_sheet_view_bool(element, "hiddenRows", false)
   let hidden_columns = custom_sheet_view_bool(element, "hiddenColumns", false)
-  let state = match attr(element, "state") {
-    Some(value) => value
-    None => "visible"
-  }
+  let state = decode_sheet_state_attr(
+    element, "state", "visible", "customSheetView",
+  )
   let filter_unique = custom_sheet_view_bool(element, "filterUnique", false)
   let view = match attr(element, "view") {
     Some(value) => value
@@ -5154,10 +5153,11 @@ pub fn CT_Sheets::new(
 }
 
 ///|
-/// XSD complex type CT_Sheet — Part 1 §18.2.19 (`<sheet>`).  One entry
-/// in the workbook's `<sheets>` list: the sheet's display `@name`, its
-/// `@sheetId`, visibility `@state`, and the `r:id` relationship to the
-/// sheet part.
+/// XSD complex type CT_Sheet — Part 1 §18.2.19 (`<sheet>`). Schema sml.xsd
+/// complex type `CT_Sheet`. Attributes: `name`, `sheetId`, `state`.
+/// Attribute groups referenced: `r:id`. One entry in the workbook's
+/// `<sheets>` list: the sheet's display `@name`, its `@sheetId`,
+/// visibility `@state`, and the `r:id` relationship to the sheet part.
 pub(all) struct CT_Sheet {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -5180,8 +5180,28 @@ pub fn CT_Sheet::new(
     element,
     name: attr(element, "name").unwrap_or(""),
     sheet_id: attr_uint_schema(element, "sheetId", 0),
-    state: attr(element, "state").unwrap_or("visible"),
+    state: decode_sheet_state_attr(element, "state", "visible", "sheet"),
     r_id: attr(element, "id").unwrap_or(""),
+  }
+}
+
+///|
+fn decode_sheet_state_attr(
+  element : @xml.Element,
+  local_name : String,
+  default : String,
+  element_path : String,
+) -> String raise @opc_errors.SchemaViolation {
+  let value = attr(element, local_name).unwrap_or(default)
+  try @sml_types.ST_SheetState::parse(value) catch {
+    @sml_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.18.68",
+        path=element_path + "/@" + local_name,
+        reason="value is outside ST_SheetState enumeration",
+      )
+  } noraise {
+    parsed => parsed.to_string()
   }
 }
 

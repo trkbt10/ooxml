@@ -227,6 +227,20 @@ test "CT_Sheet defaults state to visible" {
 }
 
 ///|
+test "CT_Sheet rejects invalid ST_SheetState" {
+  assert_true(
+    (try? CT_Sheet::new(
+      tbl_elem(
+        "sheet",
+        [tbl_attr("name", "S"), tbl_attr("state", "collapsed")],
+        [],
+      ),
+    ))
+    is Err(@opc_errors.SchemaViolation(_)),
+  )
+}
+
+///|
 test "CT_Sheets projects its sheet entries as typed children" {
   let s1 = @xml.Node::Element(
     tbl_elem("sheet", [tbl_attr("name", "One"), tbl_attr("sheetId", "1")], []),

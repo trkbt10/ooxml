@@ -16,6 +16,11 @@ pub suberror SchemaViolation {
 
 ///|
 /// XSD simple type ST_VectorBaseType from shared-documentPropertiesVariantTypes.xsd.
+/// Base: xsd:string. Enumeration values: variant, i1, i2, i4, i8, ui1, ui2,
+/// ui4, ui8, r4, r8, lpstr, lpwstr, bstr, date, filetime, bool, cy, error,
+/// clsid.
+/// ResourceMissing belongs to the surrounding package resolver contract, not
+/// to this closed vector base-type enumeration.
 pub struct ST_VectorBaseType {
   value : String
 } derive(Eq, Debug)
@@ -39,6 +44,8 @@ pub fn ST_VectorBaseType::to_string(self : ST_VectorBaseType) -> String {
 
 ///|
 /// XSD simple type ST_ArrayBaseType from shared-documentPropertiesVariantTypes.xsd.
+/// Base: xsd:string. Enumeration values: variant, i1, i2, i4, int, ui1, ui2,
+/// ui4, uint, r4, r8, decimal, bstr, date, bool, cy, error.
 pub struct ST_ArrayBaseType {
   value : String
 } derive(Eq, Debug)
