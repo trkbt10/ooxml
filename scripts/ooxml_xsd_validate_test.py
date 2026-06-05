@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import io
 import unittest
+import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -95,6 +97,66 @@ class MarkupCompatibilityRegressionTest(unittest.TestCase):
         self.assertIn("outerChoice", names)
         self.assertNotIn("innerChoice", names)
         self.assertNotIn("fallback", names)
+
+
+class ContentPartRelationshipTest(unittest.TestCase):
+    def test_relationships_source_part_handles_package_nested_and_root_parts(self) -> None:
+        self.assertIsNone(xsd_validate.relationships_source_part("_rels/.rels"))
+        self.assertEqual(
+            xsd_validate.relationships_source_part("xl/drawings/_rels/drawing1.xml.rels"),
+            "xl/drawings/drawing1.xml",
+        )
+        self.assertEqual(
+            xsd_validate.relationships_source_part("_rels/root.xml.rels"),
+            "root.xml",
+        )
+
+    def test_resolve_internal_relationship_target_uses_source_directory(self) -> None:
+        self.assertEqual(
+            xsd_validate.resolve_internal_relationship_target(
+                "xl/drawings/drawing1.xml",
+                "svg1.xml",
+            ),
+            "xl/drawings/svg1.xml",
+        )
+        self.assertEqual(
+            xsd_validate.resolve_internal_relationship_target(None, "/docProps/core.xml"),
+            "docProps/core.xml",
+        )
+        self.assertIsNone(
+            xsd_validate.resolve_internal_relationship_target(
+                "xl/drawings/drawing1.xml",
+                "../../../outside.xml",
+            )
+        )
+
+    def test_custom_xml_content_part_targets_collects_internal_targets(self) -> None:
+        package_bytes = io.BytesIO()
+        with zipfile.ZipFile(package_bytes, "w") as archive:
+            archive.writestr(
+                "xl/drawings/_rels/drawing1.xml.rels",
+                f"""<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="{xsd_validate.RELATIONSHIPS_NS}">
+  <Relationship Id="svg1"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml"
+    Target="svg1.xml"/>
+  <Relationship Id="external"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml"
+    Target="https://example.invalid/content.xml" TargetMode="External"/>
+  <Relationship Id="image1"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+    Target="image1.png"/>
+</Relationships>
+""",
+            )
+            archive.writestr("xl/drawings/svg1.xml", "<svg/>")
+
+        package_bytes.seek(0)
+        with zipfile.ZipFile(package_bytes) as archive:
+            self.assertEqual(
+                xsd_validate.custom_xml_content_part_targets(archive),
+                {"xl/drawings/svg1.xml"},
+            )
 
 
 if __name__ == "__main__":

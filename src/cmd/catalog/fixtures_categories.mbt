@@ -99,3 +99,14 @@ fn _chart_fixtures_anchor() -> Unit {
 fn _diagram_fixtures_anchor() -> Unit {
   ()
 }
+
+///|
+/// Spreadsheet Drawing fixtures (§20.5 DrawingML SpreadsheetML
+/// Drawing) are emitted via `spreadsheet_drawing_cases()` (in
+/// fixtures.mbt) using the `xlsx_with_drawing_root_package` builder,
+/// which owns the worksheet `<drawing r:id>` relationship and the
+/// `xl/drawings/drawing1.xml` content-type override. The concrete
+/// fixture pushes live in `extras_dml_spreadsheet_drawing`.
+fn _spreadsheet_drawing_fixtures_anchor() -> Unit {
+  ()
+}

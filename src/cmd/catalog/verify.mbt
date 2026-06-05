@@ -2745,6 +2745,49 @@ fn xlsx_with_drawing_root_package(drawing_root : @xml.Element) -> Bytes {
       ),
     ),
   ])
+  let drawing_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "svg1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml",
+          ),
+          xa("Target", "svg1.xml"),
+          xa("TargetMode", "Internal"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let svg_content = xe(
+    "http://www.w3.org/2000/svg",
+    "svg",
+    [xa("viewBox", "0 0 10 10")],
+    [
+      Element(
+        xe("http://www.w3.org/2000/svg", "title", [], [
+          Text("OOXML contentPart"),
+        ]),
+      ),
+      Element(
+        xe(
+          "http://www.w3.org/2000/svg",
+          "rect",
+          [
+            xa("x", "1"),
+            xa("y", "1"),
+            xa("width", "8"),
+            xa("height", "8"),
+            xa("fill", "#4472C4"),
+          ],
+          [],
+        ),
+      ),
+    ],
+  )
   let parts : Array[(String, Bytes)] = [
     (
       "[Content_Types].xml",
@@ -2766,6 +2809,8 @@ fn xlsx_with_drawing_root_package(drawing_root : @xml.Element) -> Bytes {
     ("xl/worksheets/sheet1.xml", write_part(worksheet)),
     ("xl/worksheets/_rels/sheet1.xml.rels", write_part(worksheet_rels)),
     ("xl/drawings/drawing1.xml", write_part(drawing_root)),
+    ("xl/drawings/_rels/drawing1.xml.rels", write_part(drawing_rels)),
+    ("xl/drawings/svg1.xml", write_part(svg_content)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }

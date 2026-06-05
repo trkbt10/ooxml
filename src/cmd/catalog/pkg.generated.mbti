@@ -41,6 +41,8 @@ type SchemaSet
 
 type SparklineCase
 
+type SpreadsheetDrawingCase
+
 type TabledCase
 
 type VisualCase

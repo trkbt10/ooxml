@@ -115,6 +115,18 @@ struct TabledCase {
 }
 
 ///|
+/// A `.xlsx` fixture whose worksheet references one
+/// `xl/drawings/drawing1.xml` Spreadsheet Drawing part.  Distinct
+/// from `VisualCase` because the `<xdr:wsDr>` payload is a separate
+/// OPC part reached from `<worksheet>/<drawing r:id="...">`.
+struct SpreadsheetDrawingCase {
+  id : String
+  format : String
+  category : String
+  drawing : @xml.Element
+}
+
+///|
 /// A `.xlsx` fixture exercising §18.10 PivotTable plumbing — three
 /// extra parts on top of the worksheet (the pivot table definition,
 /// the pivot cache definition, and the pivot cache records) wired
@@ -4910,6 +4922,24 @@ fn generate_visual_fixtures() -> Unit {
       _ => written = written + 1
     }
   }
+  // Spreadsheet-drawing-case pass: xlsx fixtures whose worksheet
+  // references a §20.5 DrawingML Spreadsheet Drawing part. Built by
+  // `xlsx_with_drawing_root_package` so the worksheet relationship,
+  // drawing content type, and drawing-side contentPart customXml
+  // relationship are validated together.
+  for c in spreadsheet_drawing_cases() {
+    total = total + 1
+    let bytes = xlsx_with_drawing_root_package(c.drawing)
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
+    }
+  }
   // Pivot-case pass: xlsx fixtures whose worksheet references a
   // §18.10 `<pivotTable>` part.  Built by `xlsx_package_with_pivot`
   // which wires the workbook `<pivotCaches>` entry, the workbook /
@@ -5108,6 +5138,16 @@ fn tabled_cases() -> Array[TabledCase] {
   let tcases : Array[TabledCase] = []
   extras_sml_tables(tcases)
   tcases
+}
+
+///|
+/// Collect every §20.5 DrawingML Spreadsheet Drawing package
+/// fixture. These cover `dml-spreadsheetDrawing.xsd` part roots and
+/// anchor/object-choice branches.
+fn spreadsheet_drawing_cases() -> Array[SpreadsheetDrawingCase] {
+  let xdcases : Array[SpreadsheetDrawingCase] = []
+  extras_dml_spreadsheet_drawing(xdcases)
+  xdcases
 }
 
 ///|

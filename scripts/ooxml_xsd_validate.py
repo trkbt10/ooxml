@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import posixpath
 import re
 import shutil
 import subprocess
@@ -28,6 +29,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree as ET
+from urllib.parse import urlsplit
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -36,6 +38,12 @@ XML_NS = "http://www.w3.org/XML/1998/namespace"
 MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 DC_NS = "http://purl.org/dc/elements/1.1/"
 DCTERMS_NS = "http://purl.org/dc/terms/"
+RELATIONSHIPS_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
+PACKAGE_RELATIONSHIPS_ITEM = "_rels/.rels"
+CUSTOM_XML_RELATIONSHIP_TYPES = {
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml",
+    "http://purl.oclc.org/ooxml/officeDocument/relationships/customXml",
+}
 
 STRICT_XSD = (
     REPO
@@ -692,6 +700,78 @@ def mc_preprocess_xml(
     return ET.tostring(processed_roots[0], encoding="utf-8", xml_declaration=True)
 
 
+def relationships_source_part(item_name: str) -> str | None:
+    if item_name == PACKAGE_RELATIONSHIPS_ITEM:
+        return None
+    if not item_name.endswith(".rels"):
+        return ""
+    if "/_rels/" in item_name:
+        prefix, rels_name = item_name.rsplit("/_rels/", 1)
+        source_name = rels_name[: -len(".rels")]
+        return f"{prefix}/{source_name}" if prefix else source_name
+    if item_name.startswith("_rels/"):
+        source_name = item_name[len("_rels/") : -len(".rels")]
+        return source_name
+    return ""
+
+
+def resolve_internal_relationship_target(source_part: str | None, target: str) -> str | None:
+    if not target or "\\" in target:
+        return None
+
+    parsed = urlsplit(target)
+    if parsed.scheme or parsed.netloc:
+        return None
+
+    target_path = parsed.path
+    if not target_path:
+        return None
+    if target_path.startswith("/"):
+        raw_path = target_path[1:]
+    else:
+        base_dir = "" if source_part is None else posixpath.dirname(source_part)
+        raw_path = posixpath.join(base_dir, target_path)
+
+    normalized = posixpath.normpath(raw_path)
+    if normalized in ("", ".") or normalized == ".." or normalized.startswith("../"):
+        return None
+    return normalized
+
+
+def custom_xml_content_part_targets(archive: zipfile.ZipFile) -> set[str]:
+    targets: set[str] = set()
+    for item_name in archive.namelist():
+        if not item_name.endswith(".rels"):
+            continue
+        source_part = relationships_source_part(item_name)
+        if source_part == "":
+            continue
+        try:
+            relationships_xml = mc_preprocess_xml(
+                archive.read(item_name),
+                supported_namespaces={RELATIONSHIPS_NS},
+            )
+            root = ET.fromstring(relationships_xml)
+        except (KeyError, ET.ParseError, McPreprocessError):
+            continue
+        if root.tag != f"{{{RELATIONSHIPS_NS}}}Relationships":
+            continue
+        for relationship in root:
+            if relationship.tag != f"{{{RELATIONSHIPS_NS}}}Relationship":
+                continue
+            if relationship.get("Type", "") not in CUSTOM_XML_RELATIONSHIP_TYPES:
+                continue
+            if relationship.get("TargetMode", "Internal") != "Internal":
+                continue
+            resolved = resolve_internal_relationship_target(
+                source_part,
+                relationship.get("Target", ""),
+            )
+            if resolved:
+                targets.add(resolved)
+    return targets
+
+
 def part_output_path(parts_root: Path, package: Path, part: str) -> Path:
     package_stem = package.name.replace("/", "_")
     safe_part = part.replace("/", "__").replace("[", "_").replace("]", "_")
@@ -750,6 +830,7 @@ def validate_package(
     package_label = str(package.relative_to(REPO) if package.is_relative_to(REPO) else package)
     try:
         with zipfile.ZipFile(package) as archive:
+            content_part_targets = custom_xml_content_part_targets(archive)
             parts = sorted(
                 name
                 for name in archive.namelist()
@@ -773,6 +854,20 @@ def validate_package(
 
                 binding = namespace_to_schema.get(namespace or "")
                 if not binding:
+                    if part in content_part_targets:
+                        results.append(
+                            ValidationResult(
+                                package_label,
+                                part,
+                                "skip",
+                                "(content-part)",
+                                (
+                                    "ECMA-376 contentPart target has no ECMA-376 XSD "
+                                    f"for root namespace: {namespace or '(none)'}"
+                                ),
+                            )
+                        )
+                        continue
                     status = "skip" if allow_unknown else "fail"
                     results.append(
                         ValidationResult(
