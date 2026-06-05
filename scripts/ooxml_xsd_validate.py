@@ -58,6 +58,11 @@ OPC_XSD = (
     / "ecma376-2"
     / "OpenPackagingConventions-XMLSchema"
 )
+STRICT_DIRECT_VALIDATION_NAMESPACES = (
+    "http://purl.oclc.org/ooxml/officeDocument/extendedProperties",
+    "http://purl.oclc.org/ooxml/officeDocument/customProperties",
+    "http://purl.oclc.org/ooxml/officeDocument/docPropsVTypes",
+)
 
 DEFAULT_FIXTURES = [
     REPO / ".snapshots" / "fixtures" / "docx" / "paragraph" / "paragraph-alignment.docx",
@@ -358,9 +363,30 @@ def copy_schema_set(
     }
 
 
+def prefer_direct_validation(
+    bindings: dict[str, SchemaBinding],
+    namespaces: tuple[str, ...],
+) -> None:
+    """Validate selected namespaces with their own schema instead of the set wrapper.
+
+    The Strict document-property schemas have complete local imports.  Using the
+    full Strict wrapper drags in unrelated WML schemas, so an unrelated schema
+    compile error can mask otherwise valid docProps parts.
+    """
+    for namespace in namespaces:
+        binding = bindings.get(namespace)
+        if binding is not None:
+            bindings[namespace] = SchemaBinding(
+                report_schema=binding.report_schema,
+                validation_schema=binding.report_schema,
+            )
+
+
 def prepare_schemas(tmp_root: Path) -> dict[str, SchemaBinding]:
     namespace_to_schema: dict[str, SchemaBinding] = {}
-    namespace_to_schema.update(copy_schema_set(STRICT_XSD, tmp_root / "strict", use_wrapper=True))
+    strict_bindings = copy_schema_set(STRICT_XSD, tmp_root / "strict", use_wrapper=True)
+    prefer_direct_validation(strict_bindings, STRICT_DIRECT_VALIDATION_NAMESPACES)
+    namespace_to_schema.update(strict_bindings)
     namespace_to_schema.update(
         copy_schema_set(TRANSITIONAL_XSD, tmp_root / "transitional", use_wrapper=True)
     )

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import ooxml_xsd_validate as xsd_validate
@@ -27,6 +28,21 @@ def local_names(xml_bytes: bytes) -> list[str]:
 
 
 class MarkupCompatibilityRegressionTest(unittest.TestCase):
+    def test_strict_docprops_prefer_direct_schema_validation(self) -> None:
+        namespace = "http://purl.oclc.org/ooxml/officeDocument/customProperties"
+        report_schema = Path("shared-documentPropertiesCustom.xsd")
+        wrapper_schema = Path("strict-wrapper.xsd")
+        bindings = {
+            namespace: xsd_validate.SchemaBinding(report_schema, wrapper_schema),
+        }
+
+        xsd_validate.prefer_direct_validation(
+            bindings,
+            xsd_validate.STRICT_DIRECT_VALIDATION_NAMESPACES,
+        )
+
+        self.assertEqual(bindings[namespace].validation_schema, report_schema)
+
     def test_must_understand_uses_element_scoped_prefix_binding(self) -> None:
         xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <h:root xmlns:h="{HOST_NS}" xmlns:mc="{MC_NS}" xmlns:n="{OUTER_NS}"

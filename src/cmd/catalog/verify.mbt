@@ -26,6 +26,30 @@ const NS_CT : String = "http://schemas.openxmlformats.org/package/2006/content-t
 const RT_OFFICE_DOC : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
 
 ///|
+/// Package-level core-properties relationship type.
+const RT_CORE_PROPERTIES : String = "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties"
+
+///|
+/// Package-level extended-properties relationship type.
+const RT_EXTENDED_PROPERTIES : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties"
+
+///|
+/// Package-level custom-properties relationship type.
+const RT_CUSTOM_PROPERTIES : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties"
+
+///|
+/// Core-properties content type.
+const CT_CORE_PROPERTIES : String = "application/vnd.openxmlformats-package.core-properties+xml"
+
+///|
+/// Extended-properties content type.
+const CT_EXTENDED_PROPERTIES : String = "application/vnd.openxmlformats-officedocument.extended-properties+xml"
+
+///|
+/// Custom-properties content type.
+const CT_CUSTOM_PROPERTIES : String = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
+
+///|
 /// The office-document relationship-reference namespace.
 const NS_OFFICE_REL : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
@@ -213,6 +237,61 @@ fn root_rels_part(target : String) -> Bytes {
 }
 
 ///|
+/// Package root `.rels` with the main document plus the three
+/// standard document-property parts.  These relationships live at
+/// package scope, not under `word/_rels/document.xml.rels`.
+fn root_rels_part_with_doc_props(target : String) -> Bytes {
+  write_part(
+    xe(NS_PKG_REL, "Relationships", [], [
+      Element(
+        xe(
+          NS_PKG_REL,
+          "Relationship",
+          [xa("Id", "rId1"), xa("Type", RT_OFFICE_DOC), xa("Target", target)],
+          [],
+        ),
+      ),
+      Element(
+        xe(
+          NS_PKG_REL,
+          "Relationship",
+          [
+            xa("Id", "rId2"),
+            xa("Type", RT_CORE_PROPERTIES),
+            xa("Target", "docProps/core.xml"),
+          ],
+          [],
+        ),
+      ),
+      Element(
+        xe(
+          NS_PKG_REL,
+          "Relationship",
+          [
+            xa("Id", "rId3"),
+            xa("Type", RT_EXTENDED_PROPERTIES),
+            xa("Target", "docProps/app.xml"),
+          ],
+          [],
+        ),
+      ),
+      Element(
+        xe(
+          NS_PKG_REL,
+          "Relationship",
+          [
+            xa("Id", "rId4"),
+            xa("Type", RT_CUSTOM_PROPERTIES),
+            xa("Target", "docProps/custom.xml"),
+          ],
+          [],
+        ),
+      ),
+    ]),
+  )
+}
+
+///|
 /// Assemble a `.docx` package whose `<w:document>` directly contains
 /// `body` — the element under test wrapped in its ancestry from
 /// `<w:body>` down.
@@ -249,6 +328,48 @@ fn docx_package(body : @xml.Element) -> Bytes {
     ),
     ("_rels/.rels", root_rels_part("word/document.xml")),
     ("word/document.xml", write_part(document)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.docx` package carrying the three standard `docProps/` metadata
+/// parts.  The caller supplies schema-valid XML roots for core,
+/// extended, and custom properties; this builder owns only the OPC
+/// content-type overrides and package-root relationships.
+fn docx_package_with_doc_props(
+  body : @xml.Element,
+  core_properties : @xml.Element,
+  extended_properties : @xml.Element,
+  custom_properties : @xml.Element,
+) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let document : @xml.Element = if body.name.local_name == "document" {
+    body
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(body)],
+    }
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+        ("/docProps/core.xml", CT_CORE_PROPERTIES),
+        ("/docProps/app.xml", CT_EXTENDED_PROPERTIES),
+        ("/docProps/custom.xml", CT_CUSTOM_PROPERTIES),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part_with_doc_props("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("docProps/core.xml", write_part(core_properties)),
+    ("docProps/app.xml", write_part(extended_properties)),
+    ("docProps/custom.xml", write_part(custom_properties)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }

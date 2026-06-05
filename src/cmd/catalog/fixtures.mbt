@@ -62,6 +62,22 @@ struct ExtendedCase {
 }
 
 ///|
+/// A `.docx` fixture that carries the standard package-level
+/// `docProps/core.xml`, `docProps/app.xml`, and
+/// `docProps/custom.xml` metadata parts.  Kept separate from
+/// `ExtendedCase` because these parts are package-root relationships,
+/// not `word/document.xml` auxiliary relationships.
+struct MetadataCase {
+  id : String
+  format : String
+  category : String
+  content : @xml.Element
+  core_properties : @xml.Element
+  extended_properties : @xml.Element
+  custom_properties : @xml.Element
+}
+
+///|
 /// A `.xlsx` fixture whose `<worksheet>` references one or more
 /// `<table>` parts via `<tableParts>`.  Distinct from `ExtendedCase`
 /// because table parts require extra OPC machinery (per-worksheet
@@ -4803,6 +4819,28 @@ fn generate_visual_fixtures() -> Unit {
       _ => written = written + 1
     }
   }
+  // Metadata-case pass: docx fixtures carrying package-root core,
+  // extended, and custom properties under `docProps/`.  Built by
+  // `docx_package_with_doc_props` so the package `.rels`, content
+  // types, and metadata XML roots are all validated together.
+  for c in metadata_cases() {
+    total = total + 1
+    let bytes = docx_package_with_doc_props(
+      c.content,
+      c.core_properties,
+      c.extended_properties,
+      c.custom_properties,
+    )
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
+    }
+  }
   // Tabled-case pass: xlsx fixtures whose worksheet references one
   // or more <table> parts via <tableParts>.  Built by
   // `xlsx_package_with_tables` so the per-worksheet relationships,
@@ -5028,4 +5066,13 @@ fn diagrammed_cases() -> Array[DiagrammedCase] {
   let dcases : Array[DiagrammedCase] = []
   extras_dml_diagrams(dcases)
   dcases
+}
+
+///|
+/// Collect every metadata-bearing package fixture.  These cover OPC
+/// document-property parts rather than visible body content.
+fn metadata_cases() -> Array[MetadataCase] {
+  let mcases : Array[MetadataCase] = []
+  extras_doc_props_metadata(mcases)
+  mcases
 }

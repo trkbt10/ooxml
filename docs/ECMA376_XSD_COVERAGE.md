@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `838` |
-| XML parts scanned | `5469` |
-| catalog QNames observed in fixtures | `709/2296 (30.9%)` |
-| catalog declaration entries observed by QName | `1556/4560 (34.1%)` |
-| observed fixture QNames that are catalog ECMA QNames | `709/733 (96.7%)` |
+| package fixtures scanned | `840` |
+| XML parts scanned | `5481` |
+| catalog QNames observed in fixtures | `789/2296 (34.4%)` |
+| catalog declaration entries observed by QName | `1645/4560 (36.1%)` |
+| observed fixture QNames that are catalog ECMA QNames | `789/836 (94.4%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
