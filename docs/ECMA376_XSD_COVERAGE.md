@@ -190,14 +190,18 @@ The validator checks:
   expected content type and, for XML targets, the expected root element. The
   gate covers the generated fixture set's ECMA relationship contracts,
   including themes, slide layouts, charts, diagrams, SpreadsheetML tables,
-  pivot parts, styles, shared strings, comments, numbering, headers/footers,
-  and media image parts. Unknown internal Office relationship types fail so new
-  generated coverage cannot silently bypass this contract.
+  pivot parts, styles, shared strings, WordprocessingML/SpreadsheetML/
+  PresentationML comments, WordprocessingML glossary and web-settings parts,
+  numbering, headers/footers, and media image parts. Unknown internal Office
+  relationship types fail so new generated coverage cannot silently bypass this
+  contract.
 - Relationship types whose local names are shared by multiple MLs are
   disambiguated by the source part content type before validating the target
   part. For example, a WordprocessingML main document `styles` relationship must
   target a WordprocessingML styles part, while a SpreadsheetML workbook
-  `styles` relationship must target a SpreadsheetML styleSheet part.
+  `styles` relationship must target a SpreadsheetML styleSheet part; likewise
+  `comments` is scoped separately for WordprocessingML main/glossary documents,
+  SpreadsheetML worksheet/dialogsheet parts, and PresentationML slide parts.
 - Package metadata relationships for core, extended, and custom properties
   resolve to `docProps`-style parts with the matching content type and XML
   root.

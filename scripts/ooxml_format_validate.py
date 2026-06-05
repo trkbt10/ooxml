@@ -100,6 +100,9 @@ SPREADSHEET_DRAWING_CT = "application/vnd.openxmlformats-officedocument.drawing+
 SLIDE_CT = "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"
 SLIDE_MASTER_CT = "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"
 SLIDE_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"
+PRESENTATION_COMMENTS_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.comments+xml"
+)
 THEME_CT = "application/vnd.openxmlformats-officedocument.theme+xml"
 CHART_CT = "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"
 CHART_USER_SHAPES_CT = "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml"
@@ -107,6 +110,9 @@ DIAGRAM_DATA_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagr
 DIAGRAM_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml"
 DIAGRAM_STYLE_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml"
 DIAGRAM_COLORS_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramColors+xml"
+WORD_GLOSSARY_DOCUMENT_CT = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml"
+)
 WORD_STYLES_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"
 WORD_NUMBERING_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"
 WORD_SETTINGS_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"
@@ -116,6 +122,9 @@ WORD_FOOTNOTES_CT = "application/vnd.openxmlformats-officedocument.wordprocessin
 WORD_ENDNOTES_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml"
 WORD_HEADER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"
 WORD_FOOTER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"
+WORD_WEB_SETTINGS_CT = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml"
+)
 CORE_PROPERTIES_CT = "application/vnd.openxmlformats-package.core-properties+xml"
 EXTENDED_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.extended-properties+xml"
 CUSTOM_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
@@ -298,11 +307,24 @@ SPREADSHEET_COMMENTS_CONTRACT = PartContract(
     },
 )
 
+PRESENTATION_COMMENTS_CONTRACT = PartContract(
+    rel_types("comments"),
+    {PRESENTATION_COMMENTS_CT},
+    {
+        (PML_NS_TRANSITIONAL, "cmLst"),
+        (PML_NS_STRICT, "cmLst"),
+    },
+)
+
 
 CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
     DOCX_MAIN_CT: {
         (WML_NS_TRANSITIONAL, "document"),
         (WML_NS_STRICT, "document"),
+    },
+    WORD_GLOSSARY_DOCUMENT_CT: {
+        (WML_NS_TRANSITIONAL, "glossaryDocument"),
+        (WML_NS_STRICT, "glossaryDocument"),
     },
     WORD_STYLES_CT: {
         (WML_NS_TRANSITIONAL, "styles"),
@@ -339,6 +361,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
     WORD_FOOTER_CT: {
         (WML_NS_TRANSITIONAL, "ftr"),
         (WML_NS_STRICT, "ftr"),
+    },
+    WORD_WEB_SETTINGS_CT: {
+        (WML_NS_TRANSITIONAL, "webSettings"),
+        (WML_NS_STRICT, "webSettings"),
     },
     XLSX_MAIN_CT: {
         (SML_NS_TRANSITIONAL, "workbook"),
@@ -407,6 +433,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
     SLIDE_MASTER_CT: {
         (PML_NS_TRANSITIONAL, "sldMaster"),
         (PML_NS_STRICT, "sldMaster"),
+    },
+    PRESENTATION_COMMENTS_CT: {
+        (PML_NS_TRANSITIONAL, "cmLst"),
+        (PML_NS_STRICT, "cmLst"),
     },
     THEME_CT: {
         (DML_NS_TRANSITIONAL, "theme"),
@@ -481,6 +511,14 @@ for contracts in [
             (PML_NS_STRICT, "presentation"),
         },
     ),
+    relationship_contract(
+        "glossaryDocument",
+        {WORD_GLOSSARY_DOCUMENT_CT},
+        {
+            (WML_NS_TRANSITIONAL, "glossaryDocument"),
+            (WML_NS_STRICT, "glossaryDocument"),
+        },
+    ),
     {
         PACKAGE_CORE_PROPERTIES_REL_TYPE: PartContract(
             {PACKAGE_CORE_PROPERTIES_REL_TYPE},
@@ -552,6 +590,14 @@ for contracts in [
         {
             (WML_NS_TRANSITIONAL, "fonts"),
             (WML_NS_STRICT, "fonts"),
+        },
+    ),
+    relationship_contract(
+        "webSettings",
+        {WORD_WEB_SETTINGS_CT},
+        {
+            (WML_NS_TRANSITIONAL, "webSettings"),
+            (WML_NS_STRICT, "webSettings"),
         },
     ),
     relationship_contract(
@@ -819,7 +865,7 @@ def register_source_scoped_relationship_contract(
 
 register_source_scoped_relationship_contract(
     WORD_STYLES_CONTRACT,
-    {DOCX_MAIN_CT},
+    {DOCX_MAIN_CT, WORD_GLOSSARY_DOCUMENT_CT},
 )
 register_source_scoped_relationship_contract(
     SPREADSHEET_STYLES_CONTRACT,
@@ -827,11 +873,15 @@ register_source_scoped_relationship_contract(
 )
 register_source_scoped_relationship_contract(
     WORD_COMMENTS_CONTRACT,
-    {DOCX_MAIN_CT},
+    {DOCX_MAIN_CT, WORD_GLOSSARY_DOCUMENT_CT},
 )
 register_source_scoped_relationship_contract(
     SPREADSHEET_COMMENTS_CONTRACT,
-    {WORKSHEET_CT},
+    {WORKSHEET_CT, DIALOGSHEET_CT},
+)
+register_source_scoped_relationship_contract(
+    PRESENTATION_COMMENTS_CONTRACT,
+    {SLIDE_CT},
 )
 
 
