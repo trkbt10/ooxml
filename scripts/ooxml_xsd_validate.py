@@ -391,12 +391,59 @@ def parse_token_list(value: str) -> list[str]:
     return [token for token in re.split(r"[\t\r\n ]+", value.strip()) if token]
 
 
-def collect_prefix_map(xml_bytes: bytes) -> dict[str, str]:
-    prefixes: dict[str, str] = {}
-    for _event, value in ET.iterparse(io.BytesIO(xml_bytes), events=("start-ns",)):
-        prefix, namespace = value
-        prefixes[prefix or ""] = namespace
-    return prefixes
+def parse_xml_with_prefix_scopes(
+    xml_bytes: bytes,
+) -> tuple[ET.Element, dict[int, dict[str, str]]]:
+    """Parse XML and record each element's in-scope namespace prefixes.
+
+    ElementTree stores expanded names but drops lexical namespace declarations.
+    Markup Compatibility attributes contain prefix tokens, so evaluating them
+    against one document-global prefix map is wrong when a prefix is rebound in
+    a nested scope.
+    """
+
+    active: dict[str, list[str]] = {}
+    pending: list[tuple[str, str]] = []
+    declared_stack: list[list[str]] = []
+    prefix_scopes: dict[int, dict[str, str]] = {}
+    root: ET.Element | None = None
+
+    events = ("start-ns", "start", "end")
+    for event, value in ET.iterparse(io.BytesIO(xml_bytes), events=events):
+        if event == "start-ns":
+            prefix, namespace = value
+            pending.append((prefix or "", namespace))
+            continue
+
+        if event == "start":
+            element = value
+            declared_prefixes: list[str] = []
+            for prefix, namespace in pending:
+                active.setdefault(prefix, []).append(namespace)
+                declared_prefixes.append(prefix)
+            pending = []
+            declared_stack.append(declared_prefixes)
+            prefix_scopes[id(element)] = {
+                prefix: namespaces[-1]
+                for prefix, namespaces in active.items()
+                if namespaces
+            }
+            if root is None:
+                root = element
+            continue
+
+        if event == "end":
+            declared_prefixes = declared_stack.pop() if declared_stack else []
+            for prefix in reversed(declared_prefixes):
+                namespaces = active.get(prefix)
+                if namespaces:
+                    namespaces.pop()
+                if not namespaces:
+                    active.pop(prefix, None)
+
+    if root is None:
+        raise ET.ParseError("missing document element")
+    return root, prefix_scopes
 
 
 def namespaces_for_prefixes(tokens: list[str], prefix_map: dict[str, str]) -> set[str]:
@@ -508,13 +555,14 @@ def copy_output_attributes(
 
 def alternate_content_selected_children(
     element: ET.Element,
-    prefix_map: dict[str, str],
+    prefix_scopes: dict[int, dict[str, str]],
     supported_namespaces: set[str],
 ) -> list[ET.Element]:
     for child in list(element):
         namespace, local_name = split_tag(child.tag)
         if namespace != MC_NS or local_name != "Choice":
             continue
+        prefix_map = prefix_scopes.get(id(child), {})
         required_namespaces = namespaces_for_prefixes(
             parse_token_list(child.attrib.get("Requires", "")),
             prefix_map,
@@ -530,12 +578,13 @@ def alternate_content_selected_children(
 
 def process_mc_element(
     element: ET.Element,
-    prefix_map: dict[str, str],
+    prefix_scopes: dict[int, dict[str, str]],
     supported_namespaces: set[str],
     inherited_ignorable: set[str],
     inherited_process_content: set[tuple[str, str]],
 ) -> list[ET.Element]:
     namespace, local_name = split_tag(element.tag)
+    prefix_map = prefix_scopes.get(id(element), {})
     ignorable, process_content = apply_mc_attributes(
         element,
         prefix_map,
@@ -548,13 +597,13 @@ def process_mc_element(
         output: list[ET.Element] = []
         for selected in alternate_content_selected_children(
             element,
-            prefix_map,
+            prefix_scopes,
             supported_namespaces,
         ):
             output.extend(
                 process_mc_element(
                     selected,
-                    prefix_map,
+                    prefix_scopes,
                     supported_namespaces,
                     ignorable,
                     process_content,
@@ -572,7 +621,7 @@ def process_mc_element(
                 output.extend(
                     process_mc_element(
                         child,
-                        prefix_map,
+                        prefix_scopes,
                         supported_namespaces,
                         ignorable,
                         process_content,
@@ -587,7 +636,7 @@ def process_mc_element(
     for child in list(element):
         for processed in process_mc_element(
             child,
-            prefix_map,
+            prefix_scopes,
             supported_namespaces,
             ignorable,
             process_content,
@@ -602,11 +651,10 @@ def mc_preprocess_xml(
 ) -> bytes:
     if MC_NS.encode("utf-8") not in xml_bytes and b"AlternateContent" not in xml_bytes:
         return xml_bytes
-    prefix_map = collect_prefix_map(xml_bytes)
-    root = ET.fromstring(xml_bytes)
+    root, prefix_scopes = parse_xml_with_prefix_scopes(xml_bytes)
     processed_roots = process_mc_element(
         root,
-        prefix_map,
+        prefix_scopes,
         supported_namespaces,
         inherited_ignorable=set(),
         inherited_process_content=set(),

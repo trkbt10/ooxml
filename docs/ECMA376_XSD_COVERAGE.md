@@ -35,10 +35,12 @@ namespace child sequences, cardinality, attributes, and simple type values.
 Before schema validation, the validator applies an ECMA-376 Part 3 Markup
 Compatibility preprocessing pass for `mc:Ignorable`, `mc:ProcessContent`, and
 `mc:AlternateContent`/`mc:Choice`/`mc:Fallback`, and rejects unsupported
-`mc:MustUnderstand` namespaces. The application configuration uses the vendored
-ECMA schema namespaces as understood namespaces, so unsupported extension choices
-fall back before the schema sees the output document. Use `--no-mc-preprocess`
-when diagnosing raw package XML.
+`mc:MustUnderstand` namespaces. Namespace-prefix tokens are evaluated with the
+XML in-scope namespace bindings for the element that carries the MC attribute,
+so nested prefix rebinding cannot change an ancestor's compatibility rules. The
+application configuration uses the vendored ECMA schema namespaces as understood
+namespaces, so unsupported extension choices fall back before the schema sees
+the output document. Use `--no-mc-preprocess` when diagnosing raw package XML.
 For Strict and Transitional ML schemas the validator uses a generated
 schema-set wrapper that imports every local schema in that set. This is needed
 for strict wildcards such as DrawingML `graphicData`, where a WML part can
