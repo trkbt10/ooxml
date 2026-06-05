@@ -90,6 +90,9 @@ SHARED_STRINGS_CT = (
 )
 SPREADSHEET_COMMENTS_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"
 SPREADSHEET_TABLE_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"
+SPREADSHEET_TABLE_SINGLE_CELLS_CT = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.tableSingleCells+xml"
+)
 CALC_CHAIN_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"
 SPREADSHEET_CONNECTIONS_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml"
 SPREADSHEET_SHEET_METADATA_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml"
@@ -118,6 +121,7 @@ SPREADSHEET_EXTERNAL_LINK_CT = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml"
 )
 SPREADSHEET_DRAWING_CT = "application/vnd.openxmlformats-officedocument.drawing+xml"
+CONTROL_ACTIVE_X_CT = "application/vnd.ms-office.activeX+xml"
 SLIDE_CT = "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"
 SLIDE_MASTER_CT = "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"
 SLIDE_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"
@@ -454,6 +458,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (SML_NS_TRANSITIONAL, "table"),
         (SML_NS_STRICT, "table"),
     },
+    SPREADSHEET_TABLE_SINGLE_CELLS_CT: {
+        (SML_NS_TRANSITIONAL, "singleXmlCells"),
+        (SML_NS_STRICT, "singleXmlCells"),
+    },
     CALC_CHAIN_CT: {
         (SML_NS_TRANSITIONAL, "calcChain"),
         (SML_NS_STRICT, "calcChain"),
@@ -689,6 +697,14 @@ for contracts in [
     ),
     relationship_contract("customXml", {"application/xml"}, set()),
     relationship_contract(
+        "customProperty",
+        {
+            "application/xml",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.customProperty",
+        },
+        set(),
+    ),
+    relationship_contract(
         "customXmlProps",
         {CUSTOM_XML_PROPERTIES_CT},
         CONTENT_TYPE_ROOT_TAGS[CUSTOM_XML_PROPERTIES_CT],
@@ -804,6 +820,16 @@ for contracts in [
             (SML_NS_TRANSITIONAL, "table"),
             (SML_NS_STRICT, "table"),
         },
+    ),
+    relationship_contract(
+        "tableSingleCells",
+        {SPREADSHEET_TABLE_SINGLE_CELLS_CT},
+        CONTENT_TYPE_ROOT_TAGS[SPREADSHEET_TABLE_SINGLE_CELLS_CT],
+    ),
+    relationship_contract(
+        "control",
+        {"application/xml", CONTROL_ACTIVE_X_CT},
+        set(),
     ),
     relationship_contract(
         "calcChain",

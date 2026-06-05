@@ -1029,6 +1029,161 @@ fn sml_aux_volatile_dependencies_part() -> @xml.Element {
 }
 
 ///|
+fn sml_aux_object_anchor() -> @xml.Element {
+  sml_aux_el("anchor", [xa("moveWithCells", "1"), xa("sizeWithCells", "1")], [
+    xdr_marker("from", "0", "0"),
+    xdr_marker("to", "3", "5"),
+  ])
+}
+
+///|
+fn sml_aux_custom_properties() -> @xml.Element {
+  sml_aux_el("customProperties", [], [
+    xe(
+      NS_S,
+      "customPr",
+      [xa("name", "CatalogProperty"), sml_aux_rel_attr("id", "rIdCustom")],
+      [],
+    ),
+  ])
+}
+
+///|
+fn sml_aux_legacy_drawing_hf() -> @xml.Element {
+  xe(NS_S, "legacyDrawingHF", [sml_aux_rel_attr("id", "rIdLegacyHF")], [])
+}
+
+///|
+fn sml_aux_drawing_hf() -> @xml.Element {
+  xe(
+    NS_S,
+    "drawingHF",
+    [
+      sml_aux_rel_attr("id", "rIdDrawingHF"),
+      xa("lho", "1"),
+      xa("lhe", "2"),
+      xa("lhf", "3"),
+      xa("cho", "4"),
+      xa("che", "5"),
+      xa("chf", "6"),
+    ],
+    [],
+  )
+}
+
+///|
+fn sml_aux_picture() -> @xml.Element {
+  xe(NS_S, "picture", [sml_aux_rel_attr("id", "rIdPicture")], [])
+}
+
+///|
+fn sml_aux_ole_objects() -> @xml.Element {
+  sml_aux_el("oleObjects", [], [
+    sml_aux_el(
+      "oleObject",
+      [xa("shapeId", "1"), xa("progId", "Forms.TextBox.1"), xa("autoLoad", "1")],
+      [
+        sml_aux_el(
+          "objectPr",
+          [
+            xa("locked", "0"),
+            xa("defaultSize", "0"),
+            xa("print", "1"),
+            xa("disabled", "0"),
+            xa("autoFill", "0"),
+            xa("autoLine", "0"),
+            xa("altText", "Catalog OLE object"),
+          ],
+          [sml_aux_object_anchor()],
+        ),
+      ],
+    ),
+  ])
+}
+
+///|
+fn sml_aux_controls() -> @xml.Element {
+  sml_aux_el("controls", [], [
+    sml_aux_el(
+      "control",
+      [
+        xa("shapeId", "2"),
+        xa("name", "CatalogControl"),
+        sml_aux_rel_attr("id", "rIdControl"),
+      ],
+      [
+        sml_aux_el(
+          "controlPr",
+          [
+            xa("locked", "0"),
+            xa("defaultSize", "0"),
+            xa("print", "0"),
+            xa("disabled", "1"),
+            xa("recalcAlways", "1"),
+            xa("autoFill", "0"),
+            xa("autoLine", "0"),
+            xa("autoPict", "0"),
+            xa("linkedCell", "$A$1"),
+            xa("listFillRange", "$A$1:$A$3"),
+            xa("cf", "pict"),
+            xa("altText", "Catalog embedded control"),
+          ],
+          [sml_aux_object_anchor()],
+        ),
+      ],
+    ),
+  ])
+}
+
+///|
+fn sml_aux_worksheet_refs_part() -> @xml.Element {
+  sml_aux_el("worksheet", [], [
+    xe(NS_S, "dimension", [xa("ref", "A1:C3")], []),
+    sml_aux_el("sheetData", [], [
+      sml_aux_el("row", [xa("r", "1")], [
+        xe(NS_S, "c", [xa("r", "A1"), xa("t", "str")], [
+          Element(xe(NS_S, "v", [], [Text("control")])),
+        ]),
+      ]),
+    ]),
+    sml_aux_custom_properties(),
+    sml_aux_legacy_drawing_hf(),
+    sml_aux_drawing_hf(),
+    sml_aux_picture(),
+    sml_aux_ole_objects(),
+    sml_aux_controls(),
+  ])
+}
+
+///|
+fn sml_aux_chartsheet_part() -> @xml.Element {
+  sml_aux_el("chartsheet", [], [
+    sml_aux_el("sheetViews", [], [
+      xe(NS_S, "sheetView", [xa("workbookViewId", "0"), xa("zoomToFit", "1")], []),
+    ]),
+    xe(NS_S, "drawing", [sml_aux_rel_attr("id", "rIdDrawing")], []),
+    sml_aux_legacy_drawing_hf(),
+    sml_aux_drawing_hf(),
+    sml_aux_picture(),
+  ])
+}
+
+///|
+fn sml_aux_dialogsheet_part() -> @xml.Element {
+  sml_aux_el("dialogsheet", [], [
+    sml_aux_legacy_drawing_hf(),
+    sml_aux_drawing_hf(),
+    sml_aux_ole_objects(),
+    sml_aux_controls(),
+  ])
+}
+
+///|
+fn sml_aux_single_xml_cells_part() -> @xml.Element {
+  catalog_sml_single_xml_cells_minimal()
+}
+
+///|
 fn extras_sml_aux_parts(cases : Array[VisualCase]) -> Unit {
   cases.push({
     id: "workbook-aux-rich",
@@ -1107,6 +1262,30 @@ fn extras_sml_aux_parts(cases : Array[VisualCase]) -> Unit {
     format: "xlsx:volatileDependencies",
     category: "sml-aux",
     content: sml_aux_volatile_dependencies_part(),
+  })
+  cases.push({
+    id: "worksheet-refs-rich",
+    format: "xlsx:worksheetRefs",
+    category: "sml-aux",
+    content: sml_aux_worksheet_refs_part(),
+  })
+  cases.push({
+    id: "chartsheet-rich",
+    format: "xlsx:chartsheet",
+    category: "sml-aux",
+    content: sml_aux_chartsheet_part(),
+  })
+  cases.push({
+    id: "dialogsheet-rich",
+    format: "xlsx:dialogsheet",
+    category: "sml-aux",
+    content: sml_aux_dialogsheet_part(),
+  })
+  cases.push({
+    id: "single-xml-cells-rich",
+    format: "xlsx:tableSingleCells",
+    category: "sml-aux",
+    content: sml_aux_single_xml_cells_part(),
   })
 }
 

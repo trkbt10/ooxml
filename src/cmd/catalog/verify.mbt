@@ -50,6 +50,38 @@ const RT_CUSTOM_XML_PROPS : String = "http://schemas.openxmlformats.org/officeDo
 const RT_VML_DRAWING : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing"
 
 ///|
+/// Workbook relationship type for Worksheet parts.
+const RT_WORKSHEET : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
+
+///|
+/// Workbook relationship type for Chartsheet parts.
+const RT_CHARTSHEET : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet"
+
+///|
+/// Workbook relationship type for Dialogsheet parts.
+const RT_DIALOGSHEET : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/dialogsheet"
+
+///|
+/// Sheet relationship type for Spreadsheet Drawing parts.
+const RT_DRAWING : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"
+
+///|
+/// Sheet relationship type for background image parts.
+const RT_IMAGE : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+
+///|
+/// Sheet relationship type for SpreadsheetML Custom Property parts.
+const RT_SPREADSHEET_CUSTOM_PROPERTY : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customProperty"
+
+///|
+/// Sheet relationship type for Single Cell Table Definitions parts.
+const RT_TABLE_SINGLE_CELLS : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableSingleCells"
+
+///|
+/// Sheet relationship type for Embedded Control Persistence parts.
+const RT_CONTROL : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/control"
+
+///|
 /// Core-properties content type.
 const CT_CORE_PROPERTIES : String = "application/vnd.openxmlformats-package.core-properties+xml"
 
@@ -68,6 +100,22 @@ const CT_CUSTOM_XML_PROPERTIES : String = "application/vnd.openxmlformats-office
 ///|
 /// Legacy VML Drawing part content type.
 const CT_VML_DRAWING : String = "application/vnd.openxmlformats-officedocument.vmlDrawing"
+
+///|
+/// Spreadsheet Drawing part content type.
+const CT_SPREADSHEET_DRAWING : String = "application/vnd.openxmlformats-officedocument.drawing+xml"
+
+///|
+/// Single Cell Table Definitions part content type.
+const CT_TABLE_SINGLE_CELLS : String = "application/vnd.openxmlformats-officedocument.spreadsheetml.tableSingleCells+xml"
+
+///|
+/// Embedded ActiveX control persistence content type.
+const CT_ACTIVE_X_CONTROL : String = "application/vnd.ms-office.activeX+xml"
+
+///|
+/// Catalog bitmap fixture content type.
+const CT_IMAGE_PNG : String = "image/png"
 
 ///|
 /// The office-document relationship-reference namespace.
@@ -6454,6 +6502,10 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:volatileDependencies" =>
       xlsx_with_aux_root_package("volatileDependencies", content)
     "xlsx:drawing" => xlsx_with_drawing_root_package(content)
+    "xlsx:worksheetRefs" => xlsx_package_with_worksheet_refs(content)
+    "xlsx:chartsheet" => xlsx_package_with_chartsheet(content)
+    "xlsx:dialogsheet" => xlsx_package_with_dialogsheet(content)
+    "xlsx:tableSingleCells" => xlsx_package_with_table_single_cells(content)
     "xlsx:pivot" => {
       let (sheet, cache_def, cache_records, pivot_def) = catalog_sml_pivot_parts(
         content,
@@ -9884,6 +9936,463 @@ fn xlsx_with_aux_root_package(
 }
 
 ///|
+fn catalog_opc_relationship(
+  id : String,
+  relationship_type : String,
+  target : String,
+) -> @xml.Element {
+  xe(
+    NS_PKG_REL,
+    "Relationship",
+    [xa("Id", id), xa("Type", relationship_type), xa("Target", target)],
+    [],
+  )
+}
+
+///|
+fn catalog_sml_single_sheet_workbook(sheet_name : String) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", sheet_name),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_workbook_rels(
+  sheet_rel_type : String,
+  sheet_target : String,
+  extra_relationships : Array[@xml.Element],
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = [
+    Element(catalog_opc_relationship("rId1", sheet_rel_type, sheet_target)),
+  ]
+  for rel in extra_relationships {
+    kids.push(Element(rel))
+  }
+  xe(NS_PKG_REL, "Relationships", [], kids)
+}
+
+///|
+fn catalog_empty_spreadsheet_drawing_part() -> @xml.Element {
+  xep(
+    "xdr",
+    "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+    "wsDr",
+    [],
+    [],
+  )
+}
+
+///|
+fn catalog_spreadsheet_custom_property_part() -> @xml.Element {
+  let ns_custom = "urn:ooxml:fixture:custom-property"
+  xe(ns_custom, "CustomApplicationData", [], [
+    Element(
+      xe(
+        ns_custom,
+        "CustomProperty",
+        [xa("name", "CatalogProperty"), xa("value", "observed")],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn catalog_active_x_control_part() -> @xml.Element {
+  let ns_ax = "http://schemas.microsoft.com/office/2006/activeX"
+  xep(
+    "ax",
+    ns_ax,
+    "ocx",
+    [
+      xa("classid", "{D7053240-CE69-11CD-A777-00DD01143C57}"),
+      xa("persistence", "persistPropertyBag"),
+    ],
+    [
+      Element(
+        xep(
+          "ax",
+          ns_ax,
+          "ocxPr",
+          [xa("name", "Caption"), xa("value", "CatalogControl")],
+          [],
+        ),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_sml_single_xml_cells_minimal() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "singleXmlCells", [], [
+    Element(
+      xe(
+        ns_s,
+        "singleXmlCell",
+        [xa("id", "1"), xa("r", "A1"), xa("connectionId", "1")],
+        [
+          Element(
+            xe(ns_s, "xmlCellPr", [xa("id", "1"), xa("uniqueName", "A1")], [
+              Element(
+                xe(
+                  ns_s,
+                  "xmlPr",
+                  [
+                    xa("mapId", "1"),
+                    xa("xpath", "/root/value"),
+                    xa("xmlDataType", "string"),
+                  ],
+                  [],
+                ),
+              ),
+            ]),
+          ),
+        ],
+      ),
+    ),
+  ])
+}
+
+///|
+/// `.xlsx` package whose worksheet carries the late-sequence SML
+/// relationship-bearing children: customProperties, legacyDrawingHF,
+/// drawingHF, picture, oleObjects, and controls.
+fn xlsx_package_with_worksheet_refs(content : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet : @xml.Element = if content.name.local_name == "worksheet" {
+    content
+  } else {
+    xe(ns_s, "worksheet", [], [Element(content)])
+  }
+  let workbook = catalog_sml_single_sheet_workbook("S1")
+  let workbook_rels = catalog_sml_workbook_rels(
+    RT_WORKSHEET,
+    "worksheets/sheet1.xml",
+    [],
+  )
+  let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      catalog_opc_relationship(
+        "rIdCustom",
+        RT_SPREADSHEET_CUSTOM_PROPERTY,
+        "../customProperties/customProperty1.xml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdLegacyHF",
+        RT_VML_DRAWING,
+        "../drawings/vmlDrawingHF1.vml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdDrawingHF",
+        RT_DRAWING,
+        "../drawings/drawingHF1.xml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship("rIdPicture", RT_IMAGE, "../media/image1.png"),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdControl",
+        RT_CONTROL,
+        "../activeX/activeX1.xml",
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        ("/xl/customProperties/customProperty1.xml", "application/xml"),
+        ("/xl/drawings/vmlDrawingHF1.vml", CT_VML_DRAWING),
+        ("/xl/drawings/drawingHF1.xml", CT_SPREADSHEET_DRAWING),
+        ("/xl/media/image1.png", CT_IMAGE_PNG),
+        ("/xl/activeX/activeX1.xml", CT_ACTIVE_X_CONTROL),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(workbook_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/worksheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    (
+      "xl/customProperties/customProperty1.xml",
+      write_part(catalog_spreadsheet_custom_property_part()),
+    ),
+    (
+      "xl/drawings/vmlDrawingHF1.vml",
+      write_part(chart_legacy_vml_drawing_part()),
+    ),
+    (
+      "xl/drawings/drawingHF1.xml",
+      write_part(catalog_empty_spreadsheet_drawing_part()),
+    ),
+    ("xl/media/image1.png", test_image_8x8_quad()),
+    ("xl/activeX/activeX1.xml", write_part(catalog_active_x_control_part())),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+fn xlsx_package_with_chartsheet(content : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let chartsheet : @xml.Element = if content.name.local_name == "chartsheet" {
+    content
+  } else {
+    xe(ns_s, "chartsheet", [], [Element(content)])
+  }
+  let workbook = catalog_sml_single_sheet_workbook("C1")
+  let workbook_rels = catalog_sml_workbook_rels(
+    RT_CHARTSHEET,
+    "chartsheets/sheet1.xml",
+    [],
+  )
+  let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      catalog_opc_relationship(
+        "rIdDrawing",
+        RT_DRAWING,
+        "../drawings/drawing1.xml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdLegacyHF",
+        RT_VML_DRAWING,
+        "../drawings/vmlDrawingHF1.vml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdDrawingHF",
+        RT_DRAWING,
+        "../drawings/drawingHF1.xml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship("rIdPicture", RT_IMAGE, "../media/image1.png"),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/chartsheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml",
+        ),
+        ("/xl/drawings/drawing1.xml", CT_SPREADSHEET_DRAWING),
+        ("/xl/drawings/vmlDrawingHF1.vml", CT_VML_DRAWING),
+        ("/xl/drawings/drawingHF1.xml", CT_SPREADSHEET_DRAWING),
+        ("/xl/media/image1.png", CT_IMAGE_PNG),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(workbook_rels)),
+    ("xl/chartsheets/sheet1.xml", write_part(chartsheet)),
+    ("xl/chartsheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    (
+      "xl/drawings/drawing1.xml",
+      write_part(catalog_empty_spreadsheet_drawing_part()),
+    ),
+    (
+      "xl/drawings/vmlDrawingHF1.vml",
+      write_part(chart_legacy_vml_drawing_part()),
+    ),
+    (
+      "xl/drawings/drawingHF1.xml",
+      write_part(catalog_empty_spreadsheet_drawing_part()),
+    ),
+    ("xl/media/image1.png", test_image_8x8_quad()),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+fn xlsx_package_with_dialogsheet(content : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let dialogsheet : @xml.Element = if content.name.local_name == "dialogsheet" {
+    content
+  } else {
+    xe(ns_s, "dialogsheet", [], [Element(content)])
+  }
+  let workbook = catalog_sml_single_sheet_workbook("D1")
+  let workbook_rels = catalog_sml_workbook_rels(
+    RT_DIALOGSHEET,
+    "dialogsheets/sheet1.xml",
+    [],
+  )
+  let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      catalog_opc_relationship(
+        "rIdLegacyHF",
+        RT_VML_DRAWING,
+        "../drawings/vmlDrawingHF1.vml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdDrawingHF",
+        RT_DRAWING,
+        "../drawings/drawingHF1.xml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdControl",
+        RT_CONTROL,
+        "../activeX/activeX1.xml",
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/dialogsheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.dialogsheet+xml",
+        ),
+        ("/xl/drawings/vmlDrawingHF1.vml", CT_VML_DRAWING),
+        ("/xl/drawings/drawingHF1.xml", CT_SPREADSHEET_DRAWING),
+        ("/xl/activeX/activeX1.xml", CT_ACTIVE_X_CONTROL),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(workbook_rels)),
+    ("xl/dialogsheets/sheet1.xml", write_part(dialogsheet)),
+    ("xl/dialogsheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    (
+      "xl/drawings/vmlDrawingHF1.vml",
+      write_part(chart_legacy_vml_drawing_part()),
+    ),
+    (
+      "xl/drawings/drawingHF1.xml",
+      write_part(catalog_empty_spreadsheet_drawing_part()),
+    ),
+    ("xl/activeX/activeX1.xml", write_part(catalog_active_x_control_part())),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+fn xlsx_package_with_table_single_cells(content : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let single_xml_cells : @xml.Element = if content.name.local_name ==
+    "singleXmlCells" {
+    content
+  } else {
+    xe(ns_s, "singleXmlCells", [], [Element(content)])
+  }
+  let workbook = catalog_sml_single_sheet_workbook("S1")
+  let workbook_rels = catalog_sml_workbook_rels(
+    RT_WORKSHEET,
+    "worksheets/sheet1.xml",
+    [
+      catalog_opc_relationship(
+        "rId2", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/connections",
+        "connections.xml",
+      ),
+      catalog_opc_relationship(
+        "rId3", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/xmlMaps",
+        "xmlMaps.xml",
+      ),
+    ],
+  )
+  let worksheet = xe(ns_s, "worksheet", [], [
+    Element(xe(ns_s, "dimension", [xa("ref", "A1:A1")], [])),
+    Element(
+      xe(ns_s, "sheetData", [], [
+        Element(
+          xe(ns_s, "row", [xa("r", "1")], [
+            Element(
+              xe(ns_s, "c", [xa("r", "A1"), xa("t", "str")], [
+                Element(xe(ns_s, "v", [], [Text("mapped")])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      catalog_opc_relationship(
+        "rIdTableSingleCells",
+        RT_TABLE_SINGLE_CELLS,
+        "../tables/tableSingleCells1.xml",
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        ("/xl/tables/tableSingleCells1.xml", CT_TABLE_SINGLE_CELLS),
+        (
+          "/xl/connections.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml",
+        ),
+        (
+          "/xl/xmlMaps.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.xmlMaps+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(workbook_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/worksheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    ("xl/tables/tableSingleCells1.xml", write_part(single_xml_cells)),
+    ("xl/connections.xml", write_part(sml_aux_connections_part())),
+    ("xl/xmlMaps.xml", write_part(sml_aux_xml_maps_part())),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// The catalog comments host paints indicators on a synthetic sheet
 /// containing `A1`; keep generated `<comment @ref>` values aligned
 /// with that sheet so §18.7 comments exercise the real renderer path.
@@ -11680,6 +12189,29 @@ fn empty_body_package(format : String) -> Bytes {
           [],
           [],
         ),
+      )
+    "xlsx:worksheetRefs" =>
+      xlsx_package_with_worksheet_refs(
+        xe(ns_s, "worksheet", [], [Element(xe(ns_s, "sheetData", [], []))]),
+      )
+    "xlsx:chartsheet" =>
+      xlsx_package_with_chartsheet(
+        xe(ns_s, "chartsheet", [], [
+          Element(
+            xe(ns_s, "sheetViews", [], [
+              Element(xe(ns_s, "sheetView", [xa("workbookViewId", "0")], [])),
+            ]),
+          ),
+          Element(
+            xe(ns_s, "drawing", [sml_aux_rel_attr("id", "rIdDrawing")], []),
+          ),
+        ]),
+      )
+    "xlsx:dialogsheet" =>
+      xlsx_package_with_dialogsheet(xe(ns_s, "dialogsheet", [], []))
+    "xlsx:tableSingleCells" =>
+      xlsx_package_with_table_single_cells(
+        catalog_sml_single_xml_cells_minimal(),
       )
     "xlsx:pivot" =>
       xlsx_package_with_pivot(

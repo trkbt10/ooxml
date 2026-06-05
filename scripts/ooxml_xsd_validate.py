@@ -44,6 +44,12 @@ CUSTOM_XML_RELATIONSHIP_TYPES = {
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml",
     "http://purl.oclc.org/ooxml/officeDocument/relationships/customXml",
 }
+ROOT_NOT_APPLICABLE_RELATIONSHIP_TYPES = {
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/customProperty",
+    "http://purl.oclc.org/ooxml/officeDocument/relationships/customProperty",
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/control",
+    "http://purl.oclc.org/ooxml/officeDocument/relationships/control",
+}
 
 STRICT_XSD = (
     REPO
@@ -739,7 +745,10 @@ def resolve_internal_relationship_target(source_part: str | None, target: str) -
     return normalized
 
 
-def custom_xml_content_part_targets(archive: zipfile.ZipFile) -> set[str]:
+def relationship_targets(
+    archive: zipfile.ZipFile,
+    relationship_types: set[str],
+) -> set[str]:
     targets: set[str] = set()
     for item_name in archive.namelist():
         if not item_name.endswith(".rels"):
@@ -760,7 +769,7 @@ def custom_xml_content_part_targets(archive: zipfile.ZipFile) -> set[str]:
         for relationship in root:
             if relationship.tag != f"{{{RELATIONSHIPS_NS}}}Relationship":
                 continue
-            if relationship.get("Type", "") not in CUSTOM_XML_RELATIONSHIP_TYPES:
+            if relationship.get("Type", "") not in relationship_types:
                 continue
             if relationship.get("TargetMode", "Internal") != "Internal":
                 continue
@@ -771,6 +780,14 @@ def custom_xml_content_part_targets(archive: zipfile.ZipFile) -> set[str]:
             if resolved:
                 targets.add(resolved)
     return targets
+
+
+def custom_xml_content_part_targets(archive: zipfile.ZipFile) -> set[str]:
+    return relationship_targets(archive, CUSTOM_XML_RELATIONSHIP_TYPES)
+
+
+def root_not_applicable_part_targets(archive: zipfile.ZipFile) -> set[str]:
+    return relationship_targets(archive, ROOT_NOT_APPLICABLE_RELATIONSHIP_TYPES)
 
 
 def part_output_path(parts_root: Path, package: Path, part: str) -> Path:
@@ -889,6 +906,7 @@ def validate_package(
     try:
         with zipfile.ZipFile(package) as archive:
             content_part_targets = custom_xml_content_part_targets(archive)
+            root_not_applicable_targets = root_not_applicable_part_targets(archive)
             parts = sorted(
                 name
                 for name in archive.namelist()
@@ -935,6 +953,20 @@ def validate_package(
                                 (
                                     "ECMA-376 contentPart target has no ECMA-376 XSD "
                                     f"for root namespace: {namespace or '(none)'}"
+                                ),
+                            )
+                        )
+                        continue
+                    if part in root_not_applicable_targets:
+                        results.append(
+                            ValidationResult(
+                                package_label,
+                                part,
+                                "skip",
+                                "(root-not-applicable)",
+                                (
+                                    "ECMA-376 part has no schema-defined root "
+                                    f"for namespace: {namespace or '(none)'}"
                                 ),
                             )
                         )

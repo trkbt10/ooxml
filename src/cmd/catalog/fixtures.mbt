@@ -4878,6 +4878,10 @@ fn generate_visual_fixtures() -> Unit {
       "xlsx:userNames" => xlsx_with_aux_root_package("userNames", c.content)
       "xlsx:volatileDependencies" =>
         xlsx_with_aux_root_package("volatileDependencies", c.content)
+      "xlsx:worksheetRefs" => xlsx_package_with_worksheet_refs(c.content)
+      "xlsx:chartsheet" => xlsx_package_with_chartsheet(c.content)
+      "xlsx:dialogsheet" => xlsx_package_with_dialogsheet(c.content)
+      "xlsx:tableSingleCells" => xlsx_package_with_table_single_cells(c.content)
       "docx:settings" => docx_aux_package("settings", c.content)
       "docx:styles" => docx_aux_package("styles", c.content)
       "docx:numbering" => docx_aux_package("numbering", c.content)
@@ -4918,6 +4922,10 @@ fn generate_visual_fixtures() -> Unit {
       "xlsx:revisionLog" => "xlsx"
       "xlsx:userNames" => "xlsx"
       "xlsx:volatileDependencies" => "xlsx"
+      "xlsx:worksheetRefs" => "xlsx"
+      "xlsx:chartsheet" => "xlsx"
+      "xlsx:dialogsheet" => "xlsx"
+      "xlsx:tableSingleCells" => "xlsx"
       "docx:settings" => "docx"
       "docx:styles" => "docx"
       "docx:numbering" => "docx"
