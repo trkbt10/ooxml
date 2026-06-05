@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `880` |
-| XML parts scanned | `5897` |
-| catalog QNames observed in fixtures | `1294/2296 (56.4%)` |
-| catalog declaration entries observed by QName | `2598/4560 (57.0%)` |
-| observed fixture QNames that are catalog ECMA QNames | `1294/1390 (93.1%)` |
+| package fixtures scanned | `881` |
+| XML parts scanned | `5904` |
+| catalog QNames observed in fixtures | `1352/2296 (58.9%)` |
+| catalog declaration entries observed by QName | `2656/4560 (58.2%)` |
+| observed fixture QNames that are catalog ECMA QNames | `1352/1448 (93.4%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -144,6 +144,19 @@ package-wiring coverage for the deprecated VML compatibility surface, not a
 claim that Excel form-control semantics, rendering, editing, or
 Office/LibreOffice interop are complete.
 
+The legacy VML main, Office VML, Word VML, and PowerPoint VML namespaces are
+now fully observed by QName: `vml-main` is `23/23`,
+`urn:schemas-microsoft-com:office:office` is `32/32`,
+`urn:schemas-microsoft-com:office:word` is `6/6`, and
+`urn:schemas-microsoft-com:office:powerpoint` is `2/2`. The
+`vml-office-drawing` XLSX fixture references the same
+`xl/drawings/vmlDrawing1.vml` part shape and carries schema-valid legacy VML
+roots and local children, including shape layout rules, diagram relations,
+OLE object children, Office stroke children, Word wrap/border elements, and
+PowerPoint comment/textdata elements. This is occurrence and XSD-root coverage
+for deprecated compatibility markup, not VML rendering/editing semantics or an
+Office/LibreOffice round-trip guarantee.
+
 ## Package XSD validation gate
 
 The identifier audit above proves that every vendored ECMA-376 Strict,
@@ -209,12 +222,14 @@ the DrawingML Spreadsheet Drawing rich anchor fixture expansion, the DrawingML
 Locked Canvas GVML-rich fixture expansion, the DrawingML main fixture
 completion, the Wordprocessing Drawing fixture completion, the shared
 ancillary Custom XML Data Storage fixtures, and the OPC digital-signature
-schema fixtures, and the Excel VML Spreadsheet Drawing fixture:
+schema fixtures, the Excel VML Spreadsheet Drawing fixture, and the legacy VML
+main/Office/Word/PowerPoint root coverage fixture:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5895`, `skip: 2`, `fail: 0` |
+| all generated fixtures | `ok: 5949`, `skip: 2`, `fail: 0` |
+| previous full-fixture baseline before legacy VML root coverage | `ok: 5895`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before Excel VML Spreadsheet Drawing completion | `ok: 5887`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before OPC digital-signature fixture completion | `ok: 5866`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before shared ancillary completion | `ok: 5852`, `skip: 2`, `fail: 0` |
