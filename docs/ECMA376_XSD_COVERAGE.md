@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `881` |
-| XML parts scanned | `5904` |
-| catalog QNames observed in fixtures | `1352/2296 (58.9%)` |
-| catalog declaration entries observed by QName | `2656/4560 (58.2%)` |
-| observed fixture QNames that are catalog ECMA QNames | `1352/1448 (93.4%)` |
+| package fixtures scanned | `885` |
+| XML parts scanned | `5920` |
+| catalog QNames observed in fixtures | `1391/2296 (60.6%)` |
+| catalog declaration entries observed by QName | `2734/4560 (60.0%)` |
+| observed fixture QNames that are catalog ECMA QNames | `1391/1487 (93.5%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -111,6 +111,18 @@ nested `grpSp`, and `wp:graphicFrame` / `cNvFrPr`. This completes generated
 fixture QName occurrence coverage for Wordprocessing Drawing; it does not
 prove embedded content rendering, shape editing semantics, text wrapping
 fidelity, or office-suite interop.
+
+The Office Math namespace is now `124/124` QNames observed. The OMML
+completion fixtures cover the remaining display/settings/property branches:
+`m:mathPr` in a real `word/settings.xml` auxiliary part, the
+`wrapIndent`/`wrapRight` choice split across separate settings fixtures,
+`m:oMathPara` / `m:oMathParaPr`, argument sizing and control properties,
+run break/alignment/literal properties, equation-array and matrix spacing
+properties, lower-limit and script property containers, and the last border
+hide side. These fixtures validate through the DOCX package, OPC, format, and
+XSD gates. This completes generated-fixture QName occurrence coverage for
+OMML, not mathematical layout fidelity, equation editing semantics, or
+Office/LibreOffice round-trip interoperability.
 
 The shared Additional Characteristics and Schema Library namespaces are now
 `2/2` QNames observed each. The `shared-ancillary` DOCX fixtures store
@@ -223,12 +235,14 @@ Locked Canvas GVML-rich fixture expansion, the DrawingML main fixture
 completion, the Wordprocessing Drawing fixture completion, the shared
 ancillary Custom XML Data Storage fixtures, and the OPC digital-signature
 schema fixtures, the Excel VML Spreadsheet Drawing fixture, and the legacy VML
-main/Office/Word/PowerPoint root coverage fixture:
+main/Office/Word/PowerPoint root coverage fixture, and the Office Math
+completion fixtures:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5949`, `skip: 2`, `fail: 0` |
+| all generated fixtures | `ok: 5965`, `skip: 2`, `fail: 0` |
+| previous full-fixture baseline before Office Math completion | `ok: 5949`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before legacy VML root coverage | `ok: 5895`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before Excel VML Spreadsheet Drawing completion | `ok: 5887`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before OPC digital-signature fixture completion | `ok: 5866`, `skip: 2`, `fail: 0` |

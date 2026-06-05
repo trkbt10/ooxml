@@ -345,6 +345,157 @@ fn mc_subsup_aln(
 }
 
 ///|
+fn mc_onoff(name : String) -> @xml.Element {
+  xe(NS_M, name, [mc_attr("val", "1")], [])
+}
+
+///|
+fn mc_val(name : String, value : String) -> @xml.Element {
+  xe(NS_M, name, [mc_attr("val", value)], [])
+}
+
+///|
+fn mc_ctrl_pr() -> @xml.Element {
+  xe(NS_M, "ctrlPr", [], [])
+}
+
+///|
+fn mc_math_pr_wrap_indent() -> @xml.Element {
+  xe(NS_M, "mathPr", [], [
+    Element(mc_val("mathFont", "Cambria Math")),
+    Element(mc_val("brkBin", "before")),
+    Element(mc_val("brkBinSub", "--")),
+    Element(mc_onoff("smallFrac")),
+    Element(mc_onoff("dispDef")),
+    Element(mc_val("lMargin", "720")),
+    Element(mc_val("rMargin", "720")),
+    Element(mc_val("defJc", "centerGroup")),
+    Element(mc_val("preSp", "120")),
+    Element(mc_val("postSp", "120")),
+    Element(mc_val("interSp", "60")),
+    Element(mc_val("intraSp", "30")),
+    Element(mc_val("wrapIndent", "1440")),
+    Element(mc_val("intLim", "undOvr")),
+    Element(mc_val("naryLim", "subSup")),
+  ])
+}
+
+///|
+fn mc_math_pr_wrap_right() -> @xml.Element {
+  xe(NS_M, "mathPr", [], [Element(mc_onoff("wrapRight"))])
+}
+
+///|
+fn mc_r_full_props(text : String) -> @xml.Element {
+  let rpr = xe(NS_M, "rPr", [], [
+    Element(mc_onoff("lit")),
+    Element(xe(NS_M, "nor", [], [])),
+    Element(xe(NS_M, "brk", [mc_attr("alnAt", "1")], [])),
+    Element(mc_onoff("aln")),
+  ])
+  xe(NS_M, "r", [], [Element(rpr), Element(m_t(text))])
+}
+
+///|
+fn mc_arg_with_properties(name : String, inner : @xml.Element) -> @xml.Element {
+  xe(NS_M, name, [], [
+    Element(xe(NS_M, "argPr", [], [Element(mc_val("argSz", "1"))])),
+    Element(inner),
+    Element(mc_ctrl_pr()),
+  ])
+}
+
+///|
+fn mc_box_with_arg_properties(e : @xml.Element) -> @xml.Element {
+  xe(NS_M, "box", [], [
+    Element(xe(NS_M, "boxPr", [], [])),
+    Element(mc_arg_with_properties("e", e)),
+  ])
+}
+
+///|
+fn mc_omath_para_with_jc(inner : @xml.Element) -> @xml.Element {
+  xe(NS_W, "body", [], [
+    Element(
+      xe(NS_W, "p", [], [
+        Element(
+          xe(NS_M, "oMathPara", [], [
+            Element(
+              xe(NS_M, "oMathParaPr", [], [Element(mc_val("jc", "center"))]),
+            ),
+            Element(xe(NS_M, "oMath", [], [Element(inner)])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn mc_eqarr_full_props() -> @xml.Element {
+  xe(NS_M, "eqArr", [], [
+    Element(
+      xe(NS_M, "eqArrPr", [], [
+        Element(mc_val("baseJc", "center")),
+        Element(mc_onoff("maxDist")),
+        Element(mc_onoff("objDist")),
+        Element(mc_val("rSpRule", "1")),
+        Element(mc_val("rSp", "2")),
+        Element(mc_ctrl_pr()),
+      ]),
+    ),
+    Element(m_arg("e", m_r("x = 1"))),
+    Element(m_arg("e", m_r("y = 2"))),
+  ])
+}
+
+///|
+fn mc_matrix_full_spacing_props() -> @xml.Element {
+  xe(NS_M, "m", [], [
+    Element(
+      xe(NS_M, "mPr", [], [
+        Element(mc_val("baseJc", "center")),
+        Element(mc_val("rSpRule", "1")),
+        Element(mc_val("cGpRule", "2")),
+        Element(mc_val("rSp", "2")),
+        Element(mc_val("cSp", "1")),
+        Element(mc_val("cGp", "1")),
+        Element(mc_ctrl_pr()),
+      ]),
+    ),
+    Element(xe(NS_M, "mr", [], [Element(m_e("a")), Element(m_e("b"))])),
+    Element(xe(NS_M, "mr", [], [Element(m_e("c")), Element(m_e("d"))])),
+  ])
+}
+
+///|
+fn mc_lim_low_with_pr(base : @xml.Element, lim : @xml.Element) -> @xml.Element {
+  xe(NS_M, "limLow", [], [
+    Element(xe(NS_M, "limLowPr", [], [Element(mc_ctrl_pr())])),
+    Element(m_arg("e", base)),
+    Element(m_arg("lim", lim)),
+  ])
+}
+
+///|
+fn mc_sub_with_pr(e : @xml.Element, sub : @xml.Element) -> @xml.Element {
+  xe(NS_M, "sSub", [], [
+    Element(xe(NS_M, "sSubPr", [], [Element(mc_ctrl_pr())])),
+    Element(m_arg("e", e)),
+    Element(m_arg("sub", sub)),
+  ])
+}
+
+///|
+fn mc_sup_with_pr(e : @xml.Element, sup : @xml.Element) -> @xml.Element {
+  xe(NS_M, "sSup", [], [
+    Element(xe(NS_M, "sSupPr", [], [Element(mc_ctrl_pr())])),
+    Element(m_arg("e", e)),
+    Element(m_arg("sup", sup)),
+  ])
+}
+
+///|
 /// OMML completion fixtures — one (or more) visual case per §22.1.2
 /// element identified as a coverage gap, plus property-level edge
 /// cases for elements whose properties were never exercised.
@@ -942,10 +1093,76 @@ fn extras_omml_complete(cases : Array[VisualCase]) -> Unit {
   })
 
   //
+  // ---- Remaining OMML settings / property QName coverage ----
+  //
+
+  // 35. Document math settings with the full `m:mathPr` sequence up
+  //     through `m:wrapIndent`. `m:wrapIndent` and `m:wrapRight` are
+  //     an XSD choice, so `wrapRight` gets its own settings fixture.
+  cases.push({
+    id: "math-settings-mathpr-wrap-indent",
+    format: "docx:settings",
+    category: "math",
+    content: mc_math_pr_wrap_indent(),
+  })
+
+  // 36. Companion `m:mathPr` settings fixture for the other side of
+  //     the `wrapIndent`/`wrapRight` choice.
+  cases.push({
+    id: "math-settings-mathpr-wrap-right",
+    format: "docx:settings",
+    category: "math",
+    content: mc_math_pr_wrap_right(),
+  })
+
+  // 37. `<m:oMathPara>` with paragraph properties. Existing fixtures
+  //     use inline `<m:oMath>` under `w:p`; this covers the display
+  //     math paragraph root, `m:oMathParaPr`, and its `m:jc` child.
+  cases.push({
+    id: "math-omathpara-jc",
+    format: "docx",
+    category: "math",
+    content: mc_omath_para_with_jc(m_r("x + y")),
+  })
+
+  // 38. Property completion bundle for element QNames whose parents
+  //     already have fixture coverage but whose optional property
+  //     children were still unseen: run properties, argument
+  //     properties, equation-array spacing, matrix spacing, lower
+  //     limit properties, hidden border side, and script properties.
+  cases.push({
+    id: "math-property-completion",
+    format: "docx",
+    category: "math",
+    content: mc_body_many([
+      Element(mc_r_full_props("literal")),
+      Element(mc_box_with_arg_properties(m_r("argument"))),
+      Element(mc_eqarr_full_props()),
+      Element(mc_delim_shp("[", "]", "", false, mc_matrix_full_spacing_props())),
+      Element(mc_lim_low_with_pr(m_r("lim"), m_r("n"))),
+      Element(
+        mc_border_box(
+          false,
+          false,
+          true,
+          false,
+          false,
+          false,
+          false,
+          false,
+          m_r("hide left"),
+        ),
+      ),
+      Element(mc_sub_with_pr(m_r("A"), m_r("i"))),
+      Element(mc_sup_with_pr(m_r("B"), m_r("j"))),
+    ]),
+  })
+
+  //
   // ---- Composite — exercise multiple new elements at once ----
   //
 
-  // 35. Composite showcase — `func(sin)(x) + ⏞{a+b} + ¹⁴C` rendered
+  // 39. Composite showcase — `func(sin)(x) + ⏞{a+b} + ¹⁴C` rendered
   //     in a single `<m:oMath>` paragraph.  Stress-test that m:func,
   //     m:groupChr, and m:sPre coexist with the existing renderer
   //     pipeline without layout interference.
@@ -962,7 +1179,7 @@ fn extras_omml_complete(cases : Array[VisualCase]) -> Unit {
     ]),
   })
 
-  // 36. Composite §22.1.2.39 `m:limUpp` nested inside `m:func` —
+  // 40. Composite §22.1.2.39 `m:limUpp` nested inside `m:func` —
   //     `lim_{n→∞}(f)` styled as a function application where the
   //     "function" itself is an upper-limit construction.  Verifies
   //     that the renderer recurses correctly through both new

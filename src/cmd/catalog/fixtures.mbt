@@ -4846,6 +4846,7 @@ fn generate_visual_fixtures() -> Unit {
         pptx_with_aux_root_package("themeOverride", c.content)
       "pptx:themeManager" =>
         pptx_with_aux_root_package("themeManager", c.content)
+      "docx:settings" => docx_aux_package("settings", c.content)
       "docx:contentPart" => docx_package_with_content_part(c.content)
       _ => docx_package(c.content)
     }
@@ -4854,6 +4855,7 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:viewPr" => "pptx"
       "pptx:themeOverride" => "pptx"
       "pptx:themeManager" => "pptx"
+      "docx:settings" => "docx"
       "docx:contentPart" => "docx"
       _ => c.format
     }
