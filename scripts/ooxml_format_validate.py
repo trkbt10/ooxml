@@ -110,6 +110,9 @@ PRESENTATION_COMMENTS_CT = (
 PRESENTATION_VIEW_PROPS_CT = (
     "application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"
 )
+PRESENTATION_PROPS_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"
+)
 THEME_CT = "application/vnd.openxmlformats-officedocument.theme+xml"
 THEME_OVERRIDE_CT = "application/vnd.openxmlformats-officedocument.themeOverride+xml"
 THEME_MANAGER_CT = "application/vnd.openxmlformats-officedocument.themeManager+xml"
@@ -455,6 +458,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (PML_NS_TRANSITIONAL, "viewPr"),
         (PML_NS_STRICT, "viewPr"),
     },
+    PRESENTATION_PROPS_CT: {
+        (PML_NS_TRANSITIONAL, "presentationPr"),
+        (PML_NS_STRICT, "presentationPr"),
+    },
     THEME_CT: {
         (DML_NS_TRANSITIONAL, "theme"),
         (DML_NS_STRICT, "theme"),
@@ -766,6 +773,11 @@ for contracts in [
         "viewProps",
         {PRESENTATION_VIEW_PROPS_CT},
         CONTENT_TYPE_ROOT_TAGS[PRESENTATION_VIEW_PROPS_CT],
+    ),
+    relationship_contract(
+        "presProps",
+        {PRESENTATION_PROPS_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_PROPS_CT],
     ),
     relationship_contract(
         "themeOverride",

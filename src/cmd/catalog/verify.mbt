@@ -9164,6 +9164,12 @@ fn pptx_with_aux_root_package(
       }
       pptx_package_with_replaced_presentation(pres_root)
     }
+    "presentationPr" =>
+      pptx_package_with_standard_aux_part(
+        "ppt/presProps.xml", "application/vnd.openxmlformats-officedocument.presentationml.presProps+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps",
+        "presProps.xml", content,
+      )
     "viewPr" =>
       pptx_package_with_standard_aux_part(
         "ppt/viewProps.xml", "application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml",

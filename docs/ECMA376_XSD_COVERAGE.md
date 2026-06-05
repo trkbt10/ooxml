@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `885` |
-| XML parts scanned | `5920` |
-| catalog QNames observed in fixtures | `1391/2296 (60.6%)` |
-| catalog declaration entries observed by QName | `2734/4560 (60.0%)` |
-| observed fixture QNames that are catalog ECMA QNames | `1391/1487 (93.5%)` |
+| package fixtures scanned | `890` |
+| XML parts scanned | `5979` |
+| catalog QNames observed in fixtures | `1426/2296 (62.1%)` |
+| catalog declaration entries observed by QName | `2809/4560 (61.6%)` |
+| observed fixture QNames that are catalog ECMA QNames | `1426/1522 (93.7%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -43,6 +43,19 @@ builder, editor, renderer, or office-suite behaviour. Its purpose is to turn
 fixture expansion into a measurable backlog: missing QName buckets are the next
 places to add package examples, then run the XSD, OPC, format, and interop
 gates against those examples.
+
+The PresentationML main namespace is now `102/213` QNames observed. The
+`pml-presentation-properties`, `pml-view-properties-rich`, and
+`pml-presprops-*` fixtures add real `.pptx` auxiliary-package coverage for
+`ppt/presentation.xml`, `ppt/viewProps.xml`, and `ppt/presProps.xml`.
+Together they cover presentation-level embedded font list shells, custom
+shows, photo albums, customer-data list roots, kinsoku rules, default text
+style, modify verifier, extension lists, rich view properties, presentation
+print/show/web properties, and the show-type / slide-list choices that do not
+need new relationship-bearing target parts. These fixtures validate through
+the PPTX package, OPC, format, and XSD gates. This improves PresentationML
+fixture occurrence coverage; it does not complete §19, animation/media
+semantics, editing behaviour, or Office/LibreOffice interoperability.
 
 The DrawingML main namespace is now `305/305` QNames observed. The
 `dml-main-custom-geometry-3d-effects-text` fixture covers custom geometry
@@ -234,14 +247,15 @@ the DrawingML Spreadsheet Drawing rich anchor fixture expansion, the DrawingML
 Locked Canvas GVML-rich fixture expansion, the DrawingML main fixture
 completion, the Wordprocessing Drawing fixture completion, the shared
 ancillary Custom XML Data Storage fixtures, and the OPC digital-signature
-schema fixtures, the Excel VML Spreadsheet Drawing fixture, and the legacy VML
-main/Office/Word/PowerPoint root coverage fixture, and the Office Math
-completion fixtures:
+schema fixtures, the Excel VML Spreadsheet Drawing fixture, the legacy VML
+main/Office/Word/PowerPoint root coverage fixture, the Office Math completion
+fixtures, and the PresentationML auxiliary presentation/property fixtures:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5965`, `skip: 2`, `fail: 0` |
+| all generated fixtures | `ok: 6024`, `skip: 2`, `fail: 0` |
+| previous full-fixture baseline before PresentationML auxiliary coverage | `ok: 5965`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before Office Math completion | `ok: 5949`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before legacy VML root coverage | `ok: 5895`, `skip: 2`, `fail: 0` |
 | previous full-fixture baseline before Excel VML Spreadsheet Drawing completion | `ok: 5887`, `skip: 2`, `fail: 0` |

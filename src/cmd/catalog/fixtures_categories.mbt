@@ -42,6 +42,7 @@ fn extra_cases() -> Array[VisualCase] {
   extras_pml_transitions(cases)
   extras_pml_arrows_extra(cases)
   extras_pml_master_layout(cases)
+  extras_pml_presentation_coverage(cases)
   extras_r29_pml_group(cases)
   extras_dml_color(cases)
   extras_dml_color_complete(cases)

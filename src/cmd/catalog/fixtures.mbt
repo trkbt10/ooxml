@@ -4841,6 +4841,10 @@ fn generate_visual_fixtures() -> Unit {
       "xlsx" => xlsx_package(c.content)
       "pptx" => pptx_package(c.content)
       "pptx:theme" => pptx_with_aux_root_package("theme", c.content)
+      "pptx:presentation" =>
+        pptx_with_aux_root_package("presentation", c.content)
+      "pptx:presentationPr" =>
+        pptx_with_aux_root_package("presentationPr", c.content)
       "pptx:viewPr" => pptx_with_aux_root_package("viewPr", c.content)
       "pptx:themeOverride" =>
         pptx_with_aux_root_package("themeOverride", c.content)
@@ -4852,6 +4856,8 @@ fn generate_visual_fixtures() -> Unit {
     }
     let output_format = match c.format {
       "pptx:theme" => "pptx"
+      "pptx:presentation" => "pptx"
+      "pptx:presentationPr" => "pptx"
       "pptx:viewPr" => "pptx"
       "pptx:themeOverride" => "pptx"
       "pptx:themeManager" => "pptx"
