@@ -262,6 +262,42 @@ PRESENTATION_SLIDE_MASTER_CONTRACT = PartContract(
     },
 )
 
+WORD_STYLES_CONTRACT = PartContract(
+    rel_types("styles"),
+    {WORD_STYLES_CT},
+    {
+        (WML_NS_TRANSITIONAL, "styles"),
+        (WML_NS_STRICT, "styles"),
+    },
+)
+
+SPREADSHEET_STYLES_CONTRACT = PartContract(
+    rel_types("styles"),
+    {SPREADSHEET_STYLES_CT},
+    {
+        (SML_NS_TRANSITIONAL, "styleSheet"),
+        (SML_NS_STRICT, "styleSheet"),
+    },
+)
+
+WORD_COMMENTS_CONTRACT = PartContract(
+    rel_types("comments"),
+    {WORD_COMMENTS_CT},
+    {
+        (WML_NS_TRANSITIONAL, "comments"),
+        (WML_NS_STRICT, "comments"),
+    },
+)
+
+SPREADSHEET_COMMENTS_CONTRACT = PartContract(
+    rel_types("comments"),
+    {SPREADSHEET_COMMENTS_CT},
+    {
+        (SML_NS_TRANSITIONAL, "comments"),
+        (SML_NS_STRICT, "comments"),
+    },
+)
+
 
 CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
     DOCX_MAIN_CT: {
@@ -487,31 +523,11 @@ for contracts in [
         },
     ),
     relationship_contract(
-        "styles",
-        {SPREADSHEET_STYLES_CT, WORD_STYLES_CT},
-        {
-            (SML_NS_TRANSITIONAL, "styleSheet"),
-            (SML_NS_STRICT, "styleSheet"),
-            (WML_NS_TRANSITIONAL, "styles"),
-            (WML_NS_STRICT, "styles"),
-        },
-    ),
-    relationship_contract(
         "sharedStrings",
         {SHARED_STRINGS_CT},
         {
             (SML_NS_TRANSITIONAL, "sst"),
             (SML_NS_STRICT, "sst"),
-        },
-    ),
-    relationship_contract(
-        "comments",
-        {SPREADSHEET_COMMENTS_CT, WORD_COMMENTS_CT},
-        {
-            (SML_NS_TRANSITIONAL, "comments"),
-            (SML_NS_STRICT, "comments"),
-            (WML_NS_TRANSITIONAL, "comments"),
-            (WML_NS_STRICT, "comments"),
         },
     ),
     relationship_contract(
@@ -783,6 +799,40 @@ def ascii_case_key(value: str) -> str:
 
 def content_type_key(content_type: str) -> str:
     return ascii_case_key(content_type)
+
+
+SOURCE_SCOPED_RELATIONSHIP_TARGET_CONTRACTS: dict[str, dict[str, PartContract]] = {}
+
+
+def register_source_scoped_relationship_contract(
+    contract: PartContract,
+    source_content_types: set[str],
+) -> None:
+    for relationship_type in contract.relationship_types:
+        contracts = SOURCE_SCOPED_RELATIONSHIP_TARGET_CONTRACTS.setdefault(
+            relationship_type,
+            {},
+        )
+        for source_content_type in source_content_types:
+            contracts[content_type_key(source_content_type)] = contract
+
+
+register_source_scoped_relationship_contract(
+    WORD_STYLES_CONTRACT,
+    {DOCX_MAIN_CT},
+)
+register_source_scoped_relationship_contract(
+    SPREADSHEET_STYLES_CONTRACT,
+    {XLSX_MAIN_CT},
+)
+register_source_scoped_relationship_contract(
+    WORD_COMMENTS_CONTRACT,
+    {DOCX_MAIN_CT},
+)
+register_source_scoped_relationship_contract(
+    SPREADSHEET_COMMENTS_CONTRACT,
+    {WORKSHEET_CT},
+)
 
 
 def part_name_for_item(item_name: str) -> str:
@@ -1335,7 +1385,32 @@ def validate_relationship_target_contracts(
                     )
                 continue
 
-            contract = RELATIONSHIP_TARGET_CONTRACTS.get(relationship.relationship_type)
+            source_content_type = (
+                None
+                if source_part is None
+                else content_type_for_part(source_part, defaults, overrides)
+            )
+            source_scoped_contracts = SOURCE_SCOPED_RELATIONSHIP_TARGET_CONTRACTS.get(
+                relationship.relationship_type,
+            )
+            if source_scoped_contracts is not None:
+                contract = (
+                    source_scoped_contracts.get(content_type_key(source_content_type))
+                    if source_content_type is not None
+                    else None
+                )
+                if contract is None:
+                    results.append(
+                        fail(
+                            package,
+                            source_label,
+                            "relationship-target",
+                            f"{relationship.relationship_id}: {local_name} relationship is not valid from source content type {source_content_type or '(missing)'}",
+                        )
+                    )
+                    continue
+            else:
+                contract = RELATIONSHIP_TARGET_CONTRACTS.get(relationship.relationship_type)
             if contract is None:
                 if local_name is not None:
                     results.append(
