@@ -66,6 +66,13 @@ pub fn part3_overview_section_name() -> String {
 }
 
 ///|
+/// Return the ECMA-376 Part 3 §7 Mce Elements And Attributes section owned by
+/// this package.
+pub fn part3_mce_elements_and_attributes_section_name() -> String {
+  "ECMA-376 Part 3 §7 Mce Elements And Attributes"
+}
+
+///|
 /// Return the ECMA-376 Part 3 §7.1 Introduction section owned by this package.
 pub fn part3_introduction_section_name() -> String {
   "ECMA-376 Part 3 §7.1 Introduction"

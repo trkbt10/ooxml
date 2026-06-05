@@ -9,14 +9,16 @@
 /// are read_locked_canvas and write_locked_canvas.
 ///
 /// §3 TOC coverage from .kiro/specs/ecma376/drawing_ml/shape/coverage.json is
-/// schema-only for dml-lockedCanvas.xsd; the broader DrawingML package cites
-/// Part 1 §20.3 DrawingML Locked Canvas.
+/// Part 1 §20.3 DrawingML Locked Canvas plus dml-lockedCanvas.xsd.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/drawing_ml/shape"
 }
 
 ///|
-/// Schema validation error for dml-lockedCanvas.xsd content.
+/// Schema validation error for dml-lockedCanvas.xsd content. ResourceMissing is
+/// intentionally outside this package: lockedCanvas has no OPC relationship
+/// target of its own, so relationship resolution is handled by the embedding
+/// package boundary.
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)
 } derive(Debug)
@@ -28,9 +30,11 @@ pub suberror SchemaViolation {
 /// (CT_GroupShapeProperties) children plus an unbounded choice of nested
 /// `txSp`, `sp`, `cxnSp`, `pic`, `graphicFrame`, or `grpSp` content and an
 /// optional `<extLst>` (CT_OfficeArtExtensionList).
-/// EG_ShapeGroupContent variant — the choice column inside
-/// CT_GvmlGroupShape per §20.1.2.2.32. We mirror the @a.CT_Gvml*
-/// types from the drawing_ml main package.
+/// GvmlGroupContent is the package-local projection of the XSD element
+/// lockedCanvas from Schema dml-lockedCanvas.xsd. The lockedCanvas element
+/// binds to `a:CT_GvmlGroupShape`, whose EG_ShapeGroupContent choice contains
+/// `txSp`, `sp`, `cxnSp`, `pic`, `graphicFrame`, and `grpSp` children per
+/// ECMA-376 Part 1 §20.3 / §20.1.2.2.32.
 pub(all) enum GvmlGroupContent {
   TxSp(@a.CT_GvmlTextShape)
   Sp(@a.CT_GvmlShape)

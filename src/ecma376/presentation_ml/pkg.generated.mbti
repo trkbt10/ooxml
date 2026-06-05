@@ -76,6 +76,8 @@ pub fn pml_19_3_slides_section_name() -> String
 
 pub fn pml_19_4_comments_section_name() -> String
 
+pub fn pml_19_5_2_elements_section_name() -> String
+
 pub fn pml_19_5_animation_section_name() -> String
 
 pub fn pml_19_6_slide_synchronization_data_section_name() -> String
@@ -97,6 +99,8 @@ pub fn pml_part4_11_2_6_presentation_part_part_1_13_3_6_section_name() -> String
 pub fn pml_part4_11_2_8_slide_part_part_1_13_3_8_section_name() -> String
 
 pub fn pml_part4_11_2_9_slide_layout_part_part_1_13_3_9_section_name() -> String
+
+pub fn pml_part4_19_5_2_vml_presentationml_drawing_elements_section_name() -> String
 
 pub fn pml_xsd_ct_empty_schema_name() -> String
 

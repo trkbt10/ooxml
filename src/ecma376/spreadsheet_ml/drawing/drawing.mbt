@@ -1,5 +1,6 @@
 ///|
 /// ECMA-376 Part 1 §20.5 Spreadsheet drawings.
+/// ECMA-376 Part 4 §19.4 VML SpreadsheetML Drawing.
 /// Spreadsheet drawing package for DML xdr anchors and legacy VML ClientData.
 /// Schema dml-spreadsheetDrawing.xsd bundle strict/transitional, target
 /// namespace http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing.
@@ -7,6 +8,45 @@
 /// urn:schemas-microsoft-com:office:excel.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/drawing"
+}
+
+///|
+/// ECMA-376 Part 4 §19.4 VML SpreadsheetML Drawing section trace for
+/// vml-spreadsheetDrawing.xsd.
+pub fn spreadsheet_drawing_part4_19_4_vml_spreadsheetml_drawing_schema_name() -> String {
+  "ECMA-376 Part 4 §19.4 VML SpreadsheetML Drawing"
+}
+
+///|
+/// ECMA-376 Part 4 §19.4.1 Table Of Contents section trace for the
+/// vml-spreadsheetDrawing.xsd package inventory.
+pub fn spreadsheet_drawing_part4_19_4_1_table_of_contents_schema_name() -> String {
+  "ECMA-376 Part 4 §19.4.1 Table Of Contents"
+}
+
+///|
+/// ECMA-376 Part 4 §19.4.2 Elements section trace for the VML ClientData
+/// element in vml-spreadsheetDrawing.xsd.
+pub fn spreadsheet_drawing_part4_19_4_2_elements_schema_name() -> String {
+  "ECMA-376 Part 4 §19.4.2 Elements"
+}
+
+///|
+/// ECMA-376 Part 4 §19.4.3 Simple Types section trace for ST_CF and
+/// ST_ObjectType in vml-spreadsheetDrawing.xsd.
+pub fn spreadsheet_drawing_part4_19_4_3_simple_types_schema_name() -> String {
+  "ECMA-376 Part 4 §19.4.3 Simple Types"
+}
+
+///|
+/// Schema vml-spreadsheetDrawing.xsd simple type ST_ObjectType. Base:
+/// xsd:string. ECMA-376 Part 4 §19.4.3 Simple Types. Enumeration values:
+/// Button, Checkbox, Dialog, Drop, Edit, GBox, Label, LineA, List, Movie,
+/// Note, Pict, Radio, RectA, Scroll, Spin, Shape, Group, Rect.
+/// ResourceMissing is outside this simple type because ST_ObjectType validates
+/// only the VML ClientData object-type enumeration.
+pub fn spreadsheet_drawing_xsd_st_objecttype_schema_name() -> String {
+  "Schema vml-spreadsheetDrawing.xsd simple type ST_ObjectType. ECMA-376 Part 4 §19.4.3 Simple Types. Enumeration values: Button, Checkbox, Dialog, Drop, Edit, GBox, Label, LineA, List, Movie, Note, Pict, Radio, RectA, Scroll, Spin, Shape, Group, Rect. ResourceMissing outside lexical enumeration validation."
 }
 
 ///|
@@ -101,6 +141,10 @@ pub fn ST_EditAs::to_string(self : ST_EditAs) -> String {
 pub using @vml_excel {type ST_CF}
 
 ///|
+/// XSD simple type ST_ObjectType from vml-spreadsheetDrawing.xsd, ECMA-376
+/// Part 4 §19.4.3. ResourceMissing is outside this simple type because
+/// ST_ObjectType validates only the VML ClientData object-type enumeration;
+/// OPC relationship resources are resolved by the embedding worksheet part.
 pub using @vml_excel {type ST_ObjectType}
 
 ///|

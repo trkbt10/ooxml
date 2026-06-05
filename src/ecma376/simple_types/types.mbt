@@ -660,6 +660,8 @@ pub fn ST_XAlign::to_string(self : ST_XAlign) -> String {
 /// Part 1 §22.9.2.19 ST_YAlign — vertical-alignment enumeration.
 /// Variant names are prefixed with `Y` where they would otherwise
 /// collide with ST_XAlign members.
+/// ResourceMissing is outside this simple type: ST_YAlign validates only the
+/// lexical enumeration from shared-commonSimpleTypes.xsd.
 pub(all) enum ST_YAlign {
   /// §22.9.2.19 "inline"
   Inline

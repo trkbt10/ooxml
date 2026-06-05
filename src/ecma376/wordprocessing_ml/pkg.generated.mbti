@@ -4,6 +4,8 @@ package "trkbt10/ooxml/ecma376/wordprocessing_ml"
 // Values
 pub fn package_name() -> String
 
+pub fn wml_19_3_3_simple_types_section_name() -> String
+
 pub fn wml_part1_11_2_package_structure_section_name() -> String
 
 pub fn wml_part1_11_3_part_summary_section_name() -> String
@@ -255,6 +257,8 @@ pub fn wml_part4_14_8_4_web_page_settings_section_name() -> String
 pub fn wml_part4_14_8_settings_section_name() -> String
 
 pub fn wml_part4_14_9_miscellaneous_topics_section_name() -> String
+
+pub fn wml_part4_19_3_3_vml_wordprocessingml_drawing_simple_types_section_name() -> String
 
 pub fn wml_xsd_ct_anchor_schema_name() -> String
 

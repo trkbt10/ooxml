@@ -8,6 +8,8 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn simple_types_part1_22_9_shared_simple_types_schema_name() -> String
+
 pub fn simple_types_xsd_st_guid_schema_name() -> String
 
 pub fn simple_types_xsd_st_lang_schema_name() -> String

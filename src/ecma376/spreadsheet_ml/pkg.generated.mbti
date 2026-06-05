@@ -78,6 +78,8 @@ pub fn sml_15_5_1_left_leading_edge_border_section_name() -> String
 
 pub fn sml_15_5_2_right_trailing_edge_border_section_name() -> String
 
+pub fn sml_15_5_styles_section_name() -> String
+
 pub fn sml_15_6_1_pivot_tables_section_name() -> String
 
 pub fn sml_15_7_1_additional_attribute_for_textpr_element_part_1_18_13_12_section_name() -> String
@@ -114,9 +116,13 @@ pub fn sml_18_2_workbook_section_name() -> String
 
 pub fn sml_18_3_worksheets_section_name() -> String
 
+pub fn sml_18_5_tables_section_name() -> String
+
 pub fn sml_18_6_calculation_chain_section_name() -> String
 
 pub fn sml_18_7_comments_section_name() -> String
+
+pub fn sml_18_8_styles_section_name() -> String
 
 pub fn sml_part4_10_2_10_metadata_part_part_1_12_3_10_section_name() -> String
 

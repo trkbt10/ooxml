@@ -25,6 +25,8 @@ pub fn part3_general_description_section_name() -> String
 
 pub fn part3_introduction_section_name() -> String
 
+pub fn part3_mce_elements_and_attributes_section_name() -> String
+
 pub fn part3_mustunderstand_section_name() -> String
 
 pub fn part3_normative_references_section_name() -> String

@@ -1,5 +1,6 @@
 ///|
-/// ECMA-376 Part 1 §22.9 shared common simple types.
+/// ECMA-376 Part 1 §22.9 Shared Simple Types.
+/// This package implements shared common simple types.
 /// Schema shared-commonSimpleTypes.xsd.
 /// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
 /// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
@@ -22,6 +23,13 @@
 /// ST_XAlign, ST_XmlName, ST_Xstring, and ST_YAlign.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/simple_types"
+}
+
+///|
+/// ECMA-376 Part 1 §22.9 Shared Simple Types section trace for
+/// shared-commonSimpleTypes.xsd.
+pub fn simple_types_part1_22_9_shared_simple_types_schema_name() -> String {
+  "ECMA-376 Part 1 §22.9 Shared Simple Types"
 }
 
 ///|

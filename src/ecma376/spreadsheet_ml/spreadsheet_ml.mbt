@@ -111,6 +111,12 @@ pub fn sml_18_3_worksheets_section_name() -> String {
 }
 
 ///|
+/// Return the ECMA-376 Part 1 §18.5 Tables section owned by this package.
+pub fn sml_18_5_tables_section_name() -> String {
+  "ECMA-376 Part 1 §18.5 Tables"
+}
+
+///|
 /// Return the ECMA-376 Part 1 §18.6 Calculation Chain section owned by this package.
 pub fn sml_18_6_calculation_chain_section_name() -> String {
   "ECMA-376 Part 1 §18.6 Calculation Chain"
@@ -120,6 +126,12 @@ pub fn sml_18_6_calculation_chain_section_name() -> String {
 /// Return the ECMA-376 Part 1 §18.7 Comments section owned by this package.
 pub fn sml_18_7_comments_section_name() -> String {
   "ECMA-376 Part 1 §18.7 Comments"
+}
+
+///|
+/// Return the ECMA-376 Part 1 §18.8 Styles section owned by this package.
+pub fn sml_18_8_styles_section_name() -> String {
+  "ECMA-376 Part 1 §18.8 Styles"
 }
 
 ///|
@@ -210,6 +222,12 @@ pub fn sml_15_4_1_worksheets_section_name() -> String {
 /// Return the ECMA-376 Part 4 §15.4.2 Autofilter Settings section owned by this package.
 pub fn sml_15_4_2_autofilter_settings_section_name() -> String {
   "ECMA-376 Part 4 §15.4.2 Autofilter Settings"
+}
+
+///|
+/// Return the ECMA-376 Part 4 §15.5 Styles section owned by this package.
+pub fn sml_15_5_styles_section_name() -> String {
+  "ECMA-376 Part 4 §15.5 Styles"
 }
 
 ///|

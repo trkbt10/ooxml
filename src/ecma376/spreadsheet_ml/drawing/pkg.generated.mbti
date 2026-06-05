@@ -19,6 +19,16 @@ pub fn read_to(Bytes) -> CT_Marker raise
 
 pub fn read_ws_dr(Bytes) -> CT_Drawing raise
 
+pub fn spreadsheet_drawing_part4_19_4_1_table_of_contents_schema_name() -> String
+
+pub fn spreadsheet_drawing_part4_19_4_2_elements_schema_name() -> String
+
+pub fn spreadsheet_drawing_part4_19_4_3_simple_types_schema_name() -> String
+
+pub fn spreadsheet_drawing_part4_19_4_vml_spreadsheetml_drawing_schema_name() -> String
+
+pub fn spreadsheet_drawing_xsd_st_objecttype_schema_name() -> String
+
 pub fn write_client_data(@vml_excel.CT_ClientData) -> Bytes
 
 pub fn write_from(CT_Marker) -> Bytes

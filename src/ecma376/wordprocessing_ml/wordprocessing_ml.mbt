@@ -1385,6 +1385,21 @@ pub fn wml_xsd_st_verticalanchor_schema_name() -> String {
 }
 
 ///|
+/// ECMA-376 Part 4 §19.3.3 Simple Types section trace for VML
+/// WordprocessingML Drawing simple types.
+pub fn wml_part4_19_3_3_vml_wordprocessingml_drawing_simple_types_section_name() -> String {
+  "ECMA-376 Part 4 §19.3.3 Simple Types"
+}
+
+///|
+/// ECMA-376 Part 4 §19.3.3 Simple Types.
+/// Source: references/spec/part4/sections/19.3.3__simple-types.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_19_3_3_simple_types_section_name() -> String {
+  "ECMA-376 Part 4 §19.3.3 Simple Types. Source: references/spec/part4/sections/19.3.3__simple-types.md. Owned by src/ecma376/wordprocessing_ml."
+}
+
+///|
 /// XSD complex type CT_Cnf.
 /// Schema wml.xsd complex type `CT_Cnf`. Attributes: `firstRow`, `lastRow`, `firstColumn`, `lastColumn`, `oddVBand`, `evenVBand`, `oddHBand`, `evenHBand`, `firstRowFirstColumn`, `firstRowLastColumn`, `lastRowFirstColumn`, `lastRowLastColumn`.
 pub fn wml_xsd_ct_cnf_schema_name() -> String {

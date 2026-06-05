@@ -1,5 +1,7 @@
 ///|
-/// XSD complex type VmlPresentationDrawing_CT_Empty from vml-presentationDrawing.xsd (Part 4 §16).
+/// XSD complex type VmlPresentationDrawing_CT_Empty from
+/// vml-presentationDrawing.xsd. ECMA-376 Part 4 §19.5.2 Elements defines VML
+/// PresentationML Drawing elements such as `iscomment`.
 pub(all) struct VmlPresentationDrawing_CT_Empty {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -57,7 +59,9 @@ pub fn VmlPresentationDrawing_CT_Rel::to_element(
 }
 
 ///|
-/// Construct top-level vml-presentationDrawing.xsd element iscomment as VmlPresentationDrawing_CT_Empty (Part 4 §16).
+/// Construct top-level vml-presentationDrawing.xsd element iscomment as
+/// VmlPresentationDrawing_CT_Empty. ECMA-376 Part 4 §19.5.2 Elements owns the
+/// VML PresentationML Drawing `iscomment` element.
 pub fn vml_presentation_drawing_iscomment(
   element : @xml.Element,
 ) -> VmlPresentationDrawing_CT_Empty {
@@ -65,7 +69,9 @@ pub fn vml_presentation_drawing_iscomment(
 }
 
 ///|
-/// Construct top-level vml-presentationDrawing.xsd element textdata as VmlPresentationDrawing_CT_Rel (Part 4 §16).
+/// Construct top-level vml-presentationDrawing.xsd element textdata as
+/// VmlPresentationDrawing_CT_Rel. ECMA-376 Part 4 §19.5.2 Elements owns the
+/// VML PresentationML Drawing `textdata` element.
 pub fn vml_presentation_drawing_textdata(
   element : @xml.Element,
 ) -> VmlPresentationDrawing_CT_Rel {

@@ -297,6 +297,21 @@ pub fn pml_16_6_32_changed_attribute_for_sndtgt_element_part_1_19_5_70_section_n
 }
 
 ///|
+/// Return the ECMA-376 Part 4 §19.5.2 Elements section owned by this package
+/// for VML PresentationML Drawing.
+pub fn pml_part4_19_5_2_vml_presentationml_drawing_elements_section_name() -> String {
+  "ECMA-376 Part 4 §19.5.2 Elements"
+}
+
+///|
+/// ECMA-376 Part 4 §19.5.2 Elements.
+/// Source: references/spec/part4/sections/19.5.2__elements.md.
+/// Owned by src/ecma376/presentation_ml.
+pub fn pml_19_5_2_elements_section_name() -> String {
+  "ECMA-376 Part 4 §19.5.2 Elements. Source: references/spec/part4/sections/19.5.2__elements.md. Owned by src/ecma376/presentation_ml."
+}
+
+///|
 /// Return the vml-presentationDrawing.xsd CT_Rel schema row owned by this
 /// package. The `id` attribute is an OPC relationship id; an unresolved
 /// id surfaces as ResourceMissing from the OPC layer (`src/ecma376/opc`).
