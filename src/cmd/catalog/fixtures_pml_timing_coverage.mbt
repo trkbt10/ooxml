@@ -107,6 +107,22 @@ fn pml_tcov_tgt_el(target : @xml.Element) -> @xml.Element {
 }
 
 ///|
+fn pml_tcov_rel_attr(local_name : String, value : String) -> @xml.Attribute {
+  { name: { prefix: Some("r"), local_name, ns: Some(NS_OFFICE_REL) }, value }
+}
+
+///|
+fn pml_tcov_embedded_wav(name : String, rid : String) -> @xml.Element {
+  xep(
+    "p",
+    NS_PML,
+    name,
+    [pml_tcov_rel_attr("embed", rid), xa("name", "Catalog sound")],
+    [],
+  )
+}
+
+///|
 fn pml_tcov_attr_names() -> @xml.Element {
   xe(NS_PML, "attrNameLst", [], [
     Element(xe(NS_PML, "attrName", [], [Text("style.color")])),
@@ -293,6 +309,15 @@ fn pml_tcov_set() -> @xml.Element {
 
 ///|
 fn pml_tcov_media_node(name : String, id : String) -> @xml.Element {
+  pml_tcov_media_node_target(name, id, xe(NS_PML, "sldTgt", [], []))
+}
+
+///|
+fn pml_tcov_media_node_target(
+  name : String,
+  id : String,
+  target : @xml.Element,
+) -> @xml.Element {
   pml_tcov_el(name, [], [
     pml_tcov_el(
       "cMediaNode",
@@ -302,7 +327,7 @@ fn pml_tcov_media_node(name : String, id : String) -> @xml.Element {
         xa("numSld", "1"),
         xa("showWhenStopped", "1"),
       ],
-      [pml_tcov_simple_ctn(id), pml_tcov_tgt_el(xe(NS_PML, "sldTgt", [], []))],
+      [pml_tcov_simple_ctn(id), pml_tcov_tgt_el(target)],
     ),
   ])
 }
@@ -432,6 +457,65 @@ fn pml_tcov_slide() -> @xml.Element {
     ],
     [pml_tcov_timing()],
   )
+}
+
+///|
+fn pml_tcov_transition_sound() -> @xml.Element {
+  pml_tcov_el("transition", [xa("spd", "fast")], [
+    pml_tcov_el("sndAc", [], [
+      pml_tcov_el("stSnd", [xa("loop", "1")], [
+        pml_tcov_embedded_wav("snd", "rId2"),
+      ]),
+    ]),
+  ])
+}
+
+///|
+fn pml_tcov_sound_timing() -> @xml.Element {
+  pml_tcov_el("timing", [], [
+    pml_tcov_el("tnLst", [], [
+      pml_tcov_el("par", [], [
+        pml_tcov_ctn("30", [
+          pml_tcov_el("childTnLst", [], [
+            pml_tcov_media_node_target(
+              "audio",
+              "31",
+              pml_tcov_embedded_wav("sndTgt", "rId2"),
+            ),
+          ]),
+        ]),
+      ]),
+    ]),
+  ])
+}
+
+///|
+fn pml_tcov_sound_slide() -> @xml.Element {
+  pml_ml_cSld_with_extras(
+    [
+      pptx_shape(
+        "2", "SoundTarget", "rect", "1828800", "1828800", "5486400", "3200400", "DDEBF7",
+      ),
+    ],
+    [pml_tcov_transition_sound(), pml_tcov_sound_timing()],
+  )
+}
+
+///|
+fn extras_pml_timing_media_slides(cases : Array[MediaSlideCase]) -> Unit {
+  let extra_rels : Array[(String, String, String, String)] = [
+    (
+      "rId2", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio",
+      "https://example.com/catalog.wav", "External",
+    ),
+  ]
+  cases.push({
+    id: "pml-timing-sound-target-rich",
+    format: "pptx",
+    category: "timing",
+    content: pml_tcov_sound_slide(),
+    extra_rels,
+  })
 }
 
 ///|

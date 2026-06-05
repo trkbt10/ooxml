@@ -6417,6 +6417,8 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
       )
     "pptx:theme" => pptx_with_aux_root_package("theme", content)
     "pptx:presentation" => pptx_with_aux_root_package("presentation", content)
+    "pptx:presentationPr" =>
+      pptx_with_aux_root_package("presentationPr", content)
     "pptx:viewPr" => pptx_with_aux_root_package("viewPr", content)
     "pptx:themeOverride" => pptx_with_aux_root_package("themeOverride", content)
     "pptx:themeManager" => pptx_with_aux_root_package("themeManager", content)
@@ -6426,6 +6428,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "pptx:comments" => pptx_with_aux_root_package("comments", content)
     "pptx:commentAuthors" =>
       pptx_with_aux_root_package("commentAuthors", content)
+    "pptx:sldSyncPr" => pptx_with_aux_root_package("sldSyncPr", content)
     "pptx:notes" => pptx_with_aux_root_package("notes", content)
     "pptx:notesMaster" => pptx_with_aux_root_package("notesMaster", content)
     "pptx:handoutMaster" => pptx_with_aux_root_package("handoutMaster", content)
@@ -9177,12 +9180,7 @@ fn pptx_with_aux_root_package(
       }
       pptx_package_with_replaced_presentation(pres_root)
     }
-    "presentationPr" =>
-      pptx_package_with_standard_aux_part(
-        "ppt/presProps.xml", "application/vnd.openxmlformats-officedocument.presentationml.presProps+xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/presProps",
-        "presProps.xml", content,
-      )
+    "presentationPr" => pptx_package_with_presentation_props(content)
     "viewPr" =>
       pptx_package_with_standard_aux_part(
         "ppt/viewProps.xml", "application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml",
@@ -9206,6 +9204,12 @@ fn pptx_with_aux_root_package(
         "ppt/comments/comment1.xml", "application/vnd.openxmlformats-officedocument.presentationml.comments+xml",
         "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
         "../comments/comment1.xml", content,
+      )
+    "sldSyncPr" =>
+      pptx_package_with_slide_aux_part(
+        "ppt/slideUpdateInfo/slideUpdateInfo1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideUpdateInfo+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideUpdateInfo",
+        "../slideUpdateInfo/slideUpdateInfo1.xml", content,
       )
     "commentAuthors" =>
       pptx_package_with_standard_aux_part(
@@ -9251,6 +9255,25 @@ fn pptx_relationship(
     NS_PKG_REL,
     "Relationship",
     [xa("Id", id), xa("Type", relationship_type), xa("Target", target)],
+    [],
+  )
+}
+
+///|
+fn pptx_external_relationship(
+  id : String,
+  relationship_type : String,
+  target : String,
+) -> @xml.Element {
+  xe(
+    NS_PKG_REL,
+    "Relationship",
+    [
+      xa("Id", id),
+      xa("Type", relationship_type),
+      xa("Target", target),
+      xa("TargetMode", "External"),
+    ],
     [],
   )
 }
@@ -9529,6 +9552,59 @@ fn pptx_package_with_presentation_refs(presentation : @xml.Element) -> Bytes {
   parts.push(("ppt/fonts/bold.fntdata", Bytes::new(0)))
   parts.push(("ppt/fonts/italic.fntdata", Bytes::new(0)))
   parts.push(("ppt/fonts/boldItalic.fntdata", Bytes::new(0)))
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// Presentation properties host.  `<p:htmlPubPr>` carries an
+/// `@r:id` scoped to `ppt/presProps.xml`, so the aux part needs its
+/// own relationship table in addition to the presentation.xml link.
+fn pptx_package_with_presentation_props(content : @xml.Element) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let base = pptx_package(pptx_common_slide_data(ns_p, []))
+  let archive = @zip.read(base) catch { _ => return Bytes::new(0) }
+  let parts : Array[(String, Bytes)] = []
+  for entry in archive.entries {
+    if entry.name != "[Content_Types].xml" &&
+      entry.name != "ppt/_rels/presentation.xml.rels" {
+      parts.push((entry.name, entry.data))
+    }
+  }
+  let ct_overrides = pptx_base_content_type_overrides()
+  ct_overrides.push(
+    (
+      "/ppt/presProps.xml", "application/vnd.openxmlformats-officedocument.presentationml.presProps+xml",
+    ),
+  )
+  parts.push(("[Content_Types].xml", content_types_part(ct_overrides)))
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      pptx_relationship("rId1", pptx_od_rel("slide"), "slides/slide1.xml"),
+    ),
+    Element(
+      pptx_relationship(
+        "rId2",
+        pptx_od_rel("slideMaster"),
+        "slideMasters/slideMaster1.xml",
+      ),
+    ),
+    Element(pptx_relationship("rId3", pptx_od_rel("theme"), "theme/theme1.xml")),
+    Element(
+      pptx_relationship("rId4", pptx_od_rel("presProps"), "presProps.xml"),
+    ),
+  ])
+  let props_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      pptx_external_relationship(
+        "rId1",
+        pptx_od_rel("htmlPubSaveAs"),
+        "catalog.html",
+      ),
+    ),
+  ])
+  parts.push(("ppt/_rels/presentation.xml.rels", write_part(pres_rels)))
+  parts.push(("ppt/_rels/presProps.xml.rels", write_part(props_rels)))
+  parts.push(("ppt/presProps.xml", write_part(content)))
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
@@ -11290,6 +11366,11 @@ fn empty_body_package(format : String) -> Bytes {
         "presentation",
         xep("p", ns_p, "presentation", [], []),
       )
+    "pptx:presentationPr" =>
+      pptx_with_aux_root_package(
+        "presentationPr",
+        xep("p", ns_p, "presentationPr", [], []),
+      )
     "pptx:viewPr" =>
       pptx_with_aux_root_package("viewPr", xep("p", ns_p, "viewPr", [], []))
     "pptx:themeOverride" =>
@@ -11313,6 +11394,8 @@ fn empty_body_package(format : String) -> Bytes {
         "commentAuthors",
         pml_cov_comment_authors_root(),
       )
+    "pptx:sldSyncPr" =>
+      pptx_with_aux_root_package("sldSyncPr", pml_cov_slide_sync_root())
     "pptx:notes" => pptx_with_aux_root_package("notes", pml_cov_notes_root())
     "pptx:notesMaster" =>
       pptx_with_aux_root_package("notesMaster", pml_cov_notes_master_root())

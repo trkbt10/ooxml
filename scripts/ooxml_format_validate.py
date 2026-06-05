@@ -131,6 +131,9 @@ PRESENTATION_VIEW_PROPS_CT = (
 PRESENTATION_PROPS_CT = (
     "application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"
 )
+PRESENTATION_SLIDE_UPDATE_INFO_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.slideUpdateInfo+xml"
+)
 THEME_CT = "application/vnd.openxmlformats-officedocument.theme+xml"
 THEME_OVERRIDE_CT = "application/vnd.openxmlformats-officedocument.themeOverride+xml"
 THEME_MANAGER_CT = "application/vnd.openxmlformats-officedocument.themeManager+xml"
@@ -527,6 +530,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (PML_NS_TRANSITIONAL, "presentationPr"),
         (PML_NS_STRICT, "presentationPr"),
     },
+    PRESENTATION_SLIDE_UPDATE_INFO_CT: {
+        (PML_NS_TRANSITIONAL, "sldSyncPr"),
+        (PML_NS_STRICT, "sldSyncPr"),
+    },
     THEME_CT: {
         (DML_NS_TRANSITIONAL, "theme"),
         (DML_NS_STRICT, "theme"),
@@ -895,6 +902,11 @@ for contracts in [
         CONTENT_TYPE_ROOT_TAGS[PRESENTATION_PROPS_CT],
     ),
     relationship_contract(
+        "slideUpdateInfo",
+        {PRESENTATION_SLIDE_UPDATE_INFO_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_SLIDE_UPDATE_INFO_CT],
+    ),
+    relationship_contract(
         "themeOverride",
         {THEME_OVERRIDE_CT},
         CONTENT_TYPE_ROOT_TAGS[THEME_OVERRIDE_CT],
@@ -978,6 +990,7 @@ for contracts in [
 EXTERNAL_TARGET_RELATIONSHIP_TYPES = (
     rel_types("audio")
     | rel_types("externalLinkPath")
+    | rel_types("htmlPubSaveAs")
     | rel_types("hyperlink")
     | rel_types("image")
     | rel_types("video")

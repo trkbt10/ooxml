@@ -24,6 +24,22 @@ fn pml_cov_ext_list() -> @xml.Element {
 }
 
 ///|
+fn pml_cov_html_pub_pr() -> @xml.Element {
+  xep(
+    "p",
+    NS_PML,
+    "htmlPubPr",
+    [
+      pml_cov_rid_attr("rId1"),
+      xa("showSpeakerNotes", "1"),
+      xa("target", "catalog"),
+      xa("title", "Catalog HTML Publish"),
+    ],
+    [Element(xep("p", NS_PML, "sldAll", [], [])), Element(pml_cov_ext_list())],
+  )
+}
+
+///|
 fn pml_cov_color(hex : String) -> @xml.Element {
   xe(NS_A, "srgbClr", [xa("val", hex)], [])
 }
@@ -190,6 +206,21 @@ fn pml_cov_handout_master_root() -> @xml.Element {
       ),
     ),
   ])
+}
+
+///|
+fn pml_cov_slide_sync_root() -> @xml.Element {
+  xep(
+    "p",
+    NS_PML,
+    "sldSyncPr",
+    [
+      xa("serverSldId", "catalog-slide"),
+      xa("serverSldModifiedTime", "2026-06-06T00:00:00Z"),
+      xa("clientInsertedTime", "2026-06-06T00:00:00Z"),
+    ],
+    [Element(pml_cov_ext_list())],
+  )
 }
 
 ///|
@@ -452,6 +483,7 @@ fn pml_cov_presentation_pr_root(
     _ => xe(NS_PML, "sldAll", [], [])
   }
   xep("p", NS_PML, "presentationPr", [], [
+    Element(pml_cov_html_pub_pr()),
     Element(
       xe(
         NS_PML,
@@ -522,6 +554,178 @@ fn pml_cov_master_tx_styles_root() -> @xml.Element {
 }
 
 ///|
+fn pml_cov_shape_style() -> @xml.Element {
+  xep("p", NS_PML, "style", [], [
+    Element(
+      xep("a", NS_A, "lnRef", [xa("idx", "1")], [
+        Element(pml_cov_color("4472C4")),
+      ]),
+    ),
+    Element(
+      xep("a", NS_A, "fillRef", [xa("idx", "1")], [
+        Element(pml_cov_color("E2F0D9")),
+      ]),
+    ),
+    Element(
+      xep("a", NS_A, "effectRef", [xa("idx", "0")], [
+        Element(pml_cov_color("F2F2F2")),
+      ]),
+    ),
+    Element(
+      xep("a", NS_A, "fontRef", [xa("idx", "minor")], [
+        Element(pml_cov_color("404040")),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn pml_cov_ole_choice(kind : String) -> @xml.Element {
+  match kind {
+    "link" =>
+      xep("p", NS_PML, "link", [xa("updateAutomatic", "1")], [
+        Element(pml_cov_ext_list()),
+      ])
+    _ =>
+      xep("p", NS_PML, "embed", [xa("followColorScheme", "none")], [
+        Element(pml_cov_ext_list()),
+      ])
+  }
+}
+
+///|
+fn pml_cov_ole_pic(
+  id_ : String,
+  name : String,
+  x : String,
+  fill : String,
+) -> @xml.Element {
+  xep("p", NS_PML, "pic", [], [
+    Element(
+      xep("p", NS_PML, "nvPicPr", [], [
+        Element(
+          xep("p", NS_PML, "cNvPr", [xa("id", id_), xa("name", name)], []),
+        ),
+        Element(
+          xep("p", NS_PML, "cNvPicPr", [], [
+            Element(xep("a", NS_A, "picLocks", [xa("noChangeAspect", "1")], [])),
+          ]),
+        ),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "blipFill", [], [
+        Element(xep("a", NS_A, "blip", [], [])),
+        Element(catalog_default_stretch()),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "spPr", [], [
+        Element(sp_xfrm(x, "1828800", "2286000", "1714500")),
+        Element(
+          xep("a", NS_A, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", NS_A, "avLst", [], [])),
+          ]),
+        ),
+        Element(solid_fill(fill)),
+      ]),
+    ),
+    Element(pml_cov_shape_style()),
+  ])
+}
+
+///|
+fn pml_cov_ole_obj(
+  kind : String,
+  spid : String,
+  name : String,
+  x : String,
+  fill : String,
+) -> @xml.Element {
+  xep(
+    "p",
+    NS_PML,
+    "oleObj",
+    [
+      xa("progId", "Package"),
+      xa("spid", spid),
+      xa("name", name),
+      xa("showAsIcon", "0"),
+      xa("imgW", "2286000"),
+      xa("imgH", "1714500"),
+    ],
+    [
+      Element(pml_cov_ole_choice(kind)),
+      Element(pml_cov_ole_pic(spid, name + " Preview", x, fill)),
+    ],
+  )
+}
+
+///|
+fn pml_cov_ole_graphic_frame(
+  id_ : String,
+  name : String,
+  x : String,
+  kind : String,
+  fill : String,
+) -> @xml.Element {
+  xep("p", NS_PML, "graphicFrame", [], [
+    Element(
+      xep("p", NS_PML, "nvGraphicFramePr", [], [
+        Element(
+          xep("p", NS_PML, "cNvPr", [xa("id", id_), xa("name", name)], []),
+        ),
+        Element(xep("p", NS_PML, "cNvGraphicFramePr", [], [])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "xfrm", [], [
+        Element(xep("a", NS_A, "off", [xa("x", x), xa("y", "1371600")], [])),
+        Element(
+          xep("a", NS_A, "ext", [xa("cx", "2743200"), xa("cy", "2286000")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("a", NS_A, "graphic", [], [
+        Element(
+          xep(
+            "a",
+            NS_A,
+            "graphicData",
+            [
+              xa(
+                "uri", "http://schemas.openxmlformats.org/presentationml/2006/ole",
+              ),
+            ],
+            [Element(pml_cov_ole_obj(kind, id_, name + " Object", x, fill))],
+          ),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn extras_pml_ole_slides(cases : Array[MediaSlideCase]) -> Unit {
+  let extra_rels : Array[(String, String, String, String)] = []
+  cases.push({
+    id: "pml-ole-objects-rich",
+    format: "pptx",
+    category: "presentation",
+    content: sp_tree([
+      pml_cov_ole_graphic_frame(
+        "2", "Embedded OLE", "914400", "embed", "DDEBF7",
+      ),
+      pml_cov_ole_graphic_frame("3", "Linked OLE", "5029200", "link", "FCE4D6"),
+    ]),
+    extra_rels,
+  })
+}
+
+///|
 fn extras_pml_presentation_coverage(cases : Array[VisualCase]) -> Unit {
   cases.push({
     id: "pml-slide-refs-rich",
@@ -563,6 +767,13 @@ fn extras_pml_presentation_coverage(cases : Array[VisualCase]) -> Unit {
     format: "pptx:handoutMaster",
     category: "presentation",
     content: pml_cov_handout_master_root(),
+  })
+
+  cases.push({
+    id: "pml-slide-sync-properties-rich",
+    format: "pptx:sldSyncPr",
+    category: "presentation",
+    content: pml_cov_slide_sync_root(),
   })
 
   cases.push({

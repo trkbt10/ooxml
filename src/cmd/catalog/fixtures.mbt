@@ -4856,6 +4856,7 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:comments" => pptx_with_aux_root_package("comments", c.content)
       "pptx:commentAuthors" =>
         pptx_with_aux_root_package("commentAuthors", c.content)
+      "pptx:sldSyncPr" => pptx_with_aux_root_package("sldSyncPr", c.content)
       "pptx:notes" => pptx_with_aux_root_package("notes", c.content)
       "pptx:notesMaster" => pptx_with_aux_root_package("notesMaster", c.content)
       "pptx:handoutMaster" =>
@@ -4893,6 +4894,7 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:slideRefs" => "pptx"
       "pptx:comments" => "pptx"
       "pptx:commentAuthors" => "pptx"
+      "pptx:sldSyncPr" => "pptx"
       "pptx:notes" => "pptx"
       "pptx:notesMaster" => "pptx"
       "pptx:handoutMaster" => "pptx"
