@@ -7143,13 +7143,17 @@ fn catalog_autofilter_styles() -> @xml.Element {
 
 ///|
 /// Build a `<c:chartSpace>` minimal tree that includes a
-/// `<c:userShapes r:id="rId1"/>` reference (the chart-part-rels rId
-/// the test PPTX wires to the user-shapes part).  Mirrors the
-/// scaffold barChart `enhance_chart_space_for_render` injects so the
-/// chart still has a renderable plotArea.
+/// `<c:userShapes r:id="rId1"/>` reference plus chart-owned
+/// relationship references for `<c:externalData r:id="rId2">` and
+/// `<c:legacyDrawingHF r:id="rId3"/>`.  Mirrors the scaffold
+/// barChart `enhance_chart_space_for_render` injects so the chart
+/// still has a renderable plotArea.
 fn default_minimal_chart_space_with_userShapes() -> @xml.Element {
   let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let rel_attr = fn(id : String) -> @xml.Attribute {
+    { name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) }, value: id }
+  }
   let bar_chart = xep("c", ns_c, "barChart", [], [
     Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
     Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
@@ -7232,33 +7236,58 @@ fn default_minimal_chart_space_with_userShapes() -> @xml.Element {
     ),
     Element(xep("c", ns_c, "plotVisOnly", [xa("val", "1")], [])),
   ])
-  // `<c:userShapes r:id="rId1"/>` — rId1 is the chart-part-rels Id
-  // pptx_package_with_chart_usershapes_real writes for the user-shapes
-  // sibling part.
-  let user_shapes_ref = xep(
-    "c",
-    ns_c,
-    "userShapes",
-    [
-      {
-        name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-        value: "rId1",
-      },
-    ],
-    [],
-  )
+  let external_data_ref = xep("c", ns_c, "externalData", [rel_attr("rId2")], [
+    Element(xep("c", ns_c, "autoUpdate", [xa("val", "0")], [])),
+  ])
+  let print_settings = xep("c", ns_c, "printSettings", [], [
+    Element(xep("c", ns_c, "legacyDrawingHF", [rel_attr("rId3")], [])),
+  ])
+  let user_shapes_ref = xep("c", ns_c, "userShapes", [rel_attr("rId1")], [])
   xep("c", ns_c, "chartSpace", [], [
     Element(chart_inner),
+    Element(external_data_ref),
+    Element(print_settings),
     Element(user_shapes_ref),
   ])
 }
 
 ///|
+/// Minimal VML Drawing part used by chart `<c:legacyDrawingHF>`.
+/// ECMA-376 Transitional VML Drawing has a no-namespace `<xml>` root
+/// containing VML (`v:*`) drawing payloads.
+fn chart_legacy_vml_drawing_part() -> @xml.Element {
+  let ns_v = "urn:schemas-microsoft-com:vml"
+  {
+    name: { prefix: None, local_name: "xml", ns: None },
+    attributes: [],
+    children: [
+      Element(
+        xep(
+          "v",
+          ns_v,
+          "rect",
+          [
+            xa("id", "_x0000_s1025"),
+            xa(
+              "style", "position:absolute;margin-left:0;margin-top:0;width:72pt;height:18pt",
+            ),
+            xa("fillcolor", "#F2F7FF"),
+            xa("strokecolor", "#2F5597"),
+          ],
+          [],
+        ),
+      ),
+    ],
+  }
+}
+
+///|
 /// `.pptx` package mirroring `pptx_package_with_chart` but additionally
 /// wiring a `<c:userShapes>` sibling part bound to the chart via
-/// chart-part rels (rId1).  Used by `pptx:chart-usershapes` to host
-/// §21.3 chartDrawing per-element tests in a structure the chart
-/// renderer can resolve through its `chart_part_resolver_factory`.
+/// chart-part rels (rId1).  The same chart rels part also binds
+/// `<c:externalData r:id="rId2">` to an External workbook target and
+/// `<c:legacyDrawingHF r:id="rId3">` to a VML Drawing part, so the
+/// chart relationship references are validated together.
 fn pptx_package_with_chart_usershapes_real(
   slide_body : @xml.Element,
   chart_space : @xml.Element,
@@ -7429,8 +7458,9 @@ fn pptx_package_with_chart_usershapes_real(
       ),
     ),
   ])
-  // Chart rels: rId1 → userShapes part (the `<c:userShapes>` ref the
-  // chart_space carries above resolves to rId1 in this rels table).
+  // Chart rels: rId1 → userShapes part, rId2 → External workbook
+  // data source, rId3 → VML Drawing part for legacy header/footer
+  // drawing.  The chart_space helper above carries all three refs.
   let chart_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -7442,6 +7472,35 @@ fn pptx_package_with_chart_usershapes_real(
             "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartUserShapes",
           ),
           xa("Target", "userShapes1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath",
+          ),
+          xa("Target", "file:///tmp/ooxml-catalog-chart-data.xlsx"),
+          xa("TargetMode", "External"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing",
+          ),
+          xa("Target", "../drawings/vmlDrawing1.vml"),
         ],
         [],
       ),
@@ -7477,6 +7536,9 @@ fn pptx_package_with_chart_usershapes_real(
         (
           "/ppt/charts/userShapes1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml",
         ),
+        (
+          "/ppt/drawings/vmlDrawing1.vml", "application/vnd.openxmlformats-officedocument.vmlDrawing",
+        ),
       ]),
     ),
     ("_rels/.rels", root_rels_part("ppt/presentation.xml")),
@@ -7492,6 +7554,10 @@ fn pptx_package_with_chart_usershapes_real(
     ("ppt/charts/chart1.xml", write_part(chart_space)),
     ("ppt/charts/_rels/chart1.xml.rels", write_part(chart_rels)),
     ("ppt/charts/userShapes1.xml", write_part(user_shapes_content)),
+    (
+      "ppt/drawings/vmlDrawing1.vml",
+      write_part(chart_legacy_vml_drawing_part()),
+    ),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }

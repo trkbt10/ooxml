@@ -32,9 +32,9 @@ Current generated-fixture snapshot:
 |---|---|
 | package fixtures scanned | `851` |
 | XML parts scanned | `5610` |
-| catalog QNames observed in fixtures | `952/2296 (41.5%)` |
-| catalog declaration entries observed by QName | `1976/4560 (43.3%)` |
-| observed fixture QNames that are catalog ECMA QNames | `952/1010 (94.3%)` |
+| catalog QNames observed in fixtures | `955/2296 (41.6%)` |
+| catalog declaration entries observed by QName | `1981/4560 (43.4%)` |
+| observed fixture QNames that are catalog ECMA QNames | `955/1013 (94.3%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -44,9 +44,13 @@ fixture expansion into a measurable backlog: missing QName buckets are the next
 places to add package examples, then run the XSD, OPC, format, and interop
 gates against those examples.
 
-The DrawingML chart namespace is now `217/220` QNames observed. The remaining
-chart QNames are relationship-bearing branches: `externalData`,
-`autoUpdate`, and `legacyDrawingHF`.
+The DrawingML chart namespace is now `220/220` QNames observed. The final
+relationship-bearing chart branches (`externalData`, `autoUpdate`, and
+`legacyDrawingHF`) are carried by the chart `userShapes` fixture, whose chart
+part now has real chart-side relationships for the user-shapes part, an
+External workbook target, and a VML Drawing header/footer part. This completes
+fixture occurrence coverage for §21.2 chart QNames, not semantic chart editing
+or Office/LibreOffice interop coverage.
 
 ## Package XSD validation gate
 
@@ -102,8 +106,9 @@ by `scripts/ooxml_format_validate.py`. Application-open checks are covered by
 
 Current package-validation snapshot, after ECMA/VML fixture repairs,
 schema-set wildcard validation, the bibliography Custom XML Data Storage
-fixture, the Chart Drawing `userShapes` fixture, and the DrawingML chart
-rare/3-D/surface fixture expansion:
+fixture, the Chart Drawing `userShapes` fixture, the DrawingML chart
+rare/3-D/surface fixture expansion, and the chart relationship fixture
+expansion:
 
 | Scope | Result |
 |---|---|
@@ -237,6 +242,11 @@ The validator checks:
   Storage item-properties parts, and media image parts. Unknown internal Office
   relationship types fail so new generated coverage cannot silently bypass this
   contract.
+- Chart-side `externalData` references may resolve to `externalLinkPath`
+  relationships with `TargetMode="External"`. Chart-side
+  `legacyDrawingHF` references resolve to VML Drawing parts with the
+  `application/vnd.openxmlformats-officedocument.vmlDrawing` content type and
+  the no-namespace `<xml>` root used by ECMA Transitional VML Drawing.
 - Relationship types whose local names are shared by multiple MLs are
   disambiguated by the source part content type before validating the target
   part. For example, a WordprocessingML main document `styles` relationship must

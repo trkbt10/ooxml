@@ -110,6 +110,7 @@ PRESENTATION_COMMENTS_CT = (
 THEME_CT = "application/vnd.openxmlformats-officedocument.theme+xml"
 CHART_CT = "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"
 CHART_USER_SHAPES_CT = "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml"
+VML_DRAWING_CT = "application/vnd.openxmlformats-officedocument.vmlDrawing"
 DIAGRAM_DATA_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramData+xml"
 DIAGRAM_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramLayout+xml"
 DIAGRAM_STYLE_CT = "application/vnd.openxmlformats-officedocument.drawingml.diagramStyle+xml"
@@ -457,6 +458,9 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (DML_CHART_NS_TRANSITIONAL, "userShapes"),
         (DML_CHART_NS_STRICT, "userShapes"),
     },
+    VML_DRAWING_CT: {
+        ("", "xml"),
+    },
     DIAGRAM_DATA_CT: {
         (DML_DIAGRAM_NS_TRANSITIONAL, "dataModel"),
         (DML_DIAGRAM_NS_STRICT, "dataModel"),
@@ -743,6 +747,13 @@ for contracts in [
         {
             (DML_CHART_NS_TRANSITIONAL, "userShapes"),
             (DML_CHART_NS_STRICT, "userShapes"),
+        },
+    ),
+    relationship_contract(
+        "vmlDrawing",
+        {VML_DRAWING_CT},
+        {
+            ("", "xml"),
         },
     ),
     relationship_contract(
