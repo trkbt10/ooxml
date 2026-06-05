@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `841` |
-| XML parts scanned | `5488` |
-| catalog QNames observed in fixtures | `867/2296 (37.8%)` |
-| catalog declaration entries observed by QName | `1803/4560 (39.5%)` |
-| observed fixture QNames that are catalog ECMA QNames | `867/914 (94.9%)` |
+| package fixtures scanned | `842` |
+| XML parts scanned | `5502` |
+| catalog QNames observed in fixtures | `885/2296 (38.5%)` |
+| catalog declaration entries observed by QName | `1841/4560 (40.4%)` |
+| observed fixture QNames that are catalog ECMA QNames | `885/942 (93.9%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -97,13 +97,13 @@ by `scripts/ooxml_format_validate.py`. Application-open checks are covered by
 `docs/OOXML_INTEROP_SMOKE.md` and must not be treated as schema validation.
 
 Current package-validation snapshot, after ECMA/VML fixture repairs,
-schema-set wildcard validation, and the bibliography Custom XML Data Storage
-fixture:
+schema-set wildcard validation, the bibliography Custom XML Data Storage
+fixture, and the Chart Drawing `userShapes` fixture:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5488`, `fail: 0` |
+| all generated fixtures | `ok: 5502`, `fail: 0` |
 | previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
 | earlier full-fixture baseline before schema-order repairs | `ok: 5365`, `fail: 120` |
 
@@ -177,7 +177,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 841`, `fail: 0` |
+| all generated fixtures | `ok: 842`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -228,9 +228,10 @@ The validator checks:
   including themes, slide layouts, charts, diagrams, SpreadsheetML tables,
   pivot parts, styles, shared strings, WordprocessingML/SpreadsheetML/
   PresentationML comments, WordprocessingML glossary and web-settings parts,
-  numbering, headers/footers, Custom XML Data Storage item-properties parts,
-  and media image parts. Unknown internal Office relationship types fail so new
-  generated coverage cannot silently bypass this contract.
+  numbering, headers/footers, Chart Drawing user-shapes parts, Custom XML Data
+  Storage item-properties parts, and media image parts. Unknown internal Office
+  relationship types fail so new generated coverage cannot silently bypass this
+  contract.
 - Relationship types whose local names are shared by multiple MLs are
   disambiguated by the source part content type before validating the target
   part. For example, a WordprocessingML main document `styles` relationship must
@@ -253,14 +254,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 841`, `fail: 0` |
+| all generated fixtures | `ok: 842`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5488` across the regenerated fixture parts.
+reports `ok: 5502` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 

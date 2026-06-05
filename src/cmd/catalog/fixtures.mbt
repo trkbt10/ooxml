@@ -189,6 +189,20 @@ struct ChartedCase {
 }
 
 ///|
+/// A `.pptx` fixture whose chart part references a Chart Drawing
+/// `userShapes` part.  Distinct from `ChartedCase` because the
+/// chart part itself owns an additional `_rels/chart1.xml.rels`
+/// relationship to `ppt/charts/userShapes1.xml`.
+struct ChartUserShapesCase {
+  id : String
+  format : String
+  category : String
+  content : @xml.Element
+  chart_space : @xml.Element
+  user_shapes : @xml.Element
+}
+
+///|
 /// A `.pptx` fixture exercising §21.4 DrawingML SmartArt / diagram
 /// plumbing — four extra parts on top of the slide (data model,
 /// layout definition, style definition, color transform) wired
@@ -4956,6 +4970,28 @@ fn generate_visual_fixtures() -> Unit {
       _ => written = written + 1
     }
   }
+  // Chart-user-shapes-case pass: pptx fixtures whose chart part
+  // carries a `<c:userShapes r:id>` relationship to a §21.3 Chart
+  // Drawing part.  Built by `pptx_package_with_chart_usershapes_real`
+  // so the chart-side relationship, chartshapes content type, and
+  // `cdr:*` payload are validated together.
+  for c in chart_user_shapes_cases() {
+    total = total + 1
+    let bytes = pptx_package_with_chart_usershapes_real(
+      c.content,
+      c.chart_space,
+      c.user_shapes,
+    )
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
+    }
+  }
   // Diagrammed-case pass: pptx fixtures whose slide carries a
   // `<p:graphicFrame>` referencing the four §21.4 DrawingML
   // SmartArt parts (data model, layout def, style def, color
@@ -5093,6 +5129,16 @@ fn charted_cases() -> Array[ChartedCase] {
   let ccases : Array[ChartedCase] = []
   extras_dml_charts(ccases)
   ccases
+}
+
+///|
+/// Collect every Chart Drawing `userShapes` package fixture.  These
+/// cover §21.3 chartDrawing payloads reached through a chart part's
+/// `chartUserShapes` relationship.
+fn chart_user_shapes_cases() -> Array[ChartUserShapesCase] {
+  let cdcases : Array[ChartUserShapesCase] = []
+  extras_dml_chart_drawing(cdcases)
+  cdcases
 }
 
 ///|

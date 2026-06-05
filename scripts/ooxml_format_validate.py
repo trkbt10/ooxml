@@ -454,8 +454,8 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (DML_CHART_NS_STRICT, "chartSpace"),
     },
     CHART_USER_SHAPES_CT: {
-        (DML_CHART_DRAWING_NS_TRANSITIONAL, "userShapes"),
-        (DML_CHART_DRAWING_NS_STRICT, "userShapes"),
+        (DML_CHART_NS_TRANSITIONAL, "userShapes"),
+        (DML_CHART_NS_STRICT, "userShapes"),
     },
     DIAGRAM_DATA_CT: {
         (DML_DIAGRAM_NS_TRANSITIONAL, "dataModel"),
@@ -741,8 +741,8 @@ for contracts in [
         "chartUserShapes",
         {CHART_USER_SHAPES_CT},
         {
-            (DML_CHART_DRAWING_NS_TRANSITIONAL, "userShapes"),
-            (DML_CHART_DRAWING_NS_STRICT, "userShapes"),
+            (DML_CHART_NS_TRANSITIONAL, "userShapes"),
+            (DML_CHART_NS_STRICT, "userShapes"),
         },
     ),
     relationship_contract(

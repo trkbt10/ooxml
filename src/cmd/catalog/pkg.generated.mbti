@@ -9,6 +9,8 @@ pub fn structural_validity(String) -> Array[String]
 // Types and methods
 type CatalogPartRoot
 
+type ChartUserShapesCase
+
 type ChartedCase
 
 type CustomXmlCase
