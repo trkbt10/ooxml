@@ -138,6 +138,7 @@ WORD_FOOTER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml
 WORD_WEB_SETTINGS_CT = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml"
 )
+WORD_FONT_DATA_CT = "application/x-fontdata"
 CORE_PROPERTIES_CT = "application/vnd.openxmlformats-package.core-properties+xml"
 EXTENDED_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.extended-properties+xml"
 CUSTOM_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
@@ -330,6 +331,12 @@ PRESENTATION_COMMENTS_CONTRACT = PartContract(
         (PML_NS_TRANSITIONAL, "cmLst"),
         (PML_NS_STRICT, "cmLst"),
     },
+)
+
+WORD_FONT_DATA_CONTRACT = PartContract(
+    rel_types("font"),
+    {WORD_FONT_DATA_CT},
+    set(),
 )
 
 
@@ -978,6 +985,10 @@ register_source_scoped_relationship_contract(
 register_source_scoped_relationship_contract(
     PRESENTATION_COMMENTS_CONTRACT,
     {SLIDE_CT},
+)
+register_source_scoped_relationship_contract(
+    WORD_FONT_DATA_CONTRACT,
+    {WORD_FONT_TABLE_CT},
 )
 
 

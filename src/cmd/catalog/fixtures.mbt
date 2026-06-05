@@ -4851,6 +4851,13 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:themeManager" =>
         pptx_with_aux_root_package("themeManager", c.content)
       "docx:settings" => docx_aux_package("settings", c.content)
+      "docx:styles" => docx_aux_package("styles", c.content)
+      "docx:numbering" => docx_aux_package("numbering", c.content)
+      "docx:fonts" => docx_aux_package("fonts", c.content)
+      "docx:webSettings" => docx_aux_package("webSettings", c.content)
+      "docx:comments" => docx_aux_package("comments", c.content)
+      "docx:footnotes" => docx_aux_package("footnotes", c.content)
+      "docx:endnotes" => docx_aux_package("endnotes", c.content)
       "docx:contentPart" => docx_package_with_content_part(c.content)
       _ => docx_package(c.content)
     }
@@ -4862,6 +4869,13 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:themeOverride" => "pptx"
       "pptx:themeManager" => "pptx"
       "docx:settings" => "docx"
+      "docx:styles" => "docx"
+      "docx:numbering" => "docx"
+      "docx:fonts" => "docx"
+      "docx:webSettings" => "docx"
+      "docx:comments" => "docx"
+      "docx:footnotes" => "docx"
+      "docx:endnotes" => "docx"
       "docx:contentPart" => "docx"
       _ => c.format
     }

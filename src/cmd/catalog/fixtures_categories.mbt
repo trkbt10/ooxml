@@ -29,6 +29,7 @@ fn extra_cases() -> Array[VisualCase] {
   extras_wml_fields(cases)
   extras_wml_drawings(cases)
   extras_wml_extras(cases)
+  extras_wml_aux_parts(cases)
   extras_sml(cases)
   extras_sml_advanced(cases)
   extras_sml_cf(cases)
