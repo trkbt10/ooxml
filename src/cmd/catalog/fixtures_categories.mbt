@@ -46,6 +46,7 @@ fn extra_cases() -> Array[VisualCase] {
   extras_dml_color(cases)
   extras_dml_color_complete(cases)
   extras_dml_effects(cases)
+  extras_dml_main_coverage(cases)
   extras_dml_locked_canvas(cases)
   extras_omml(cases)
   extras_omml_advanced(cases)

@@ -291,4 +291,82 @@ fn extras_dml_color_complete(cases : Array[VisualCase]) -> Unit {
       ]),
     ]),
   })
+
+  // ===== Remaining direct channel/alpha transforms =================
+  cases.push({
+    id: "color-mod-alphaOff",
+    format: "pptx",
+    category: "color",
+    content: xform_swatch_with_reference(
+      xform_swatch("3", "AlphaOff25", [
+        xe(NS_A, "alphaOff", [xa("val", "25000")], []),
+      ]),
+    ),
+  })
+
+  cases.push({
+    id: "color-mod-hue-180",
+    format: "pptx",
+    category: "color",
+    content: xform_swatch_with_reference(
+      xform_swatch("3", "Hue180", [xe(NS_A, "hue", [xa("val", "10800000")], [])]),
+    ),
+  })
+
+  cases.push({
+    id: "color-mod-green-blue-offsets",
+    format: "pptx",
+    category: "color",
+    content: swatch_row([
+      srgb_with_mods(blue, [
+        xe(NS_A, "greenMod", [xa("val", "60000")], []),
+        xe(NS_A, "greenOff", [xa("val", "20000")], []),
+      ]),
+      srgb_with_mods(blue, [
+        xe(NS_A, "blueMod", [xa("val", "60000")], []),
+        xe(NS_A, "blueOff", [xa("val", "20000")], []),
+      ]),
+    ]),
+  })
+
+  cases.push({
+    id: "color-mod-red-sat-remaining",
+    format: "pptx",
+    category: "color",
+    content: swatch_row([
+      srgb_with_mods(blue, [
+        xe(NS_A, "redMod", [xa("val", "60000")], []),
+        xe(NS_A, "redOff", [xa("val", "20000")], []),
+      ]),
+      srgb_with_mods(blue, [xe(NS_A, "sat", [xa("val", "65000")], [])]),
+    ]),
+  })
+
+  cases.push({
+    id: "color-choice-hsl-scrgb",
+    format: "pptx",
+    category: "color",
+    content: swatch_row([
+      xe(NS_A, "solidFill", [], [
+        Element(
+          xe(
+            NS_A,
+            "hslClr",
+            [xa("hue", "12600000"), xa("sat", "60000"), xa("lum", "50000")],
+            [],
+          ),
+        ),
+      ]),
+      xe(NS_A, "solidFill", [], [
+        Element(
+          xe(
+            NS_A,
+            "scrgbClr",
+            [xa("r", "25000"), xa("g", "50000"), xa("b", "75000")],
+            [],
+          ),
+        ),
+      ]),
+    ]),
+  })
 }

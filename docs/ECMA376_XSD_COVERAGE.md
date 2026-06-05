@@ -30,11 +30,11 @@ Current generated-fixture snapshot:
 
 | Scope | Result |
 |---|---|
-| package fixtures scanned | `856` |
-| XML parts scanned | `5675` |
-| catalog QNames observed in fixtures | `1010/2296 (44.0%)` |
-| catalog declaration entries observed by QName | `2095/4560 (45.9%)` |
-| observed fixture QNames that are catalog ECMA QNames | `1010/1089 (92.7%)` |
+| package fixtures scanned | `863` |
+| XML parts scanned | `5752` |
+| catalog QNames observed in fixtures | `1127/2296 (49.1%)` |
+| catalog declaration entries observed by QName | `2336/4560 (51.2%)` |
+| observed fixture QNames that are catalog ECMA QNames | `1127/1207 (93.4%)` |
 
 This is intentionally a **fixture occurrence** metric, not a schema or
 semantic proof. It does not distinguish two schema declarations that share the
@@ -43,6 +43,20 @@ builder, editor, renderer, or office-suite behaviour. Its purpose is to turn
 fixture expansion into a measurable backlog: missing QName buckets are the next
 places to add package examples, then run the XSD, OPC, format, and interop
 gates against those examples.
+
+The DrawingML main namespace is now `246/305` QNames observed. The
+`dml-main-custom-geometry-3d-effects-text` fixture covers custom geometry
+guides, handles, connection points, path commands, 3-D scene/shape branches,
+effect DAG branches, and rich text paragraph/list/bullet/font branches. The
+`dml-main-table-graphic-data` fixture embeds an `a:tbl` payload under
+`a:graphicData` and covers table style, borders, headers, grid columns, and
+cell 3-D branches. The color completion fixtures cover the remaining direct
+color-choice and transform buckets such as `alphaOff`, `hue`, RGB offsets and
+mods, `sat`, `hslClr`, and `scrgbClr`. This raises concrete generated-fixture
+occurrence and schema validation coverage for DrawingML main; it is not a
+claim that DrawingML text, geometry, table, color, or 3-D semantics are fully
+implemented in editors/viewers or that Office/LibreOffice round trips are
+complete.
 
 The DrawingML chart namespace is now `220/220` QNames observed. The final
 relationship-bearing chart branches (`externalData`, `autoUpdate`, and
@@ -140,13 +154,15 @@ schema-set wildcard validation, the bibliography Custom XML Data Storage
 fixture, the Chart Drawing `userShapes` fixture, the DrawingML chart
 rare/3-D/surface fixture expansion, the chart relationship fixture expansion,
 the DrawingML diagram rich optional-branch and header/list fixture expansions,
-the DrawingML Spreadsheet Drawing rich anchor fixture expansion, and the
-DrawingML Locked Canvas fixture expansion:
+the DrawingML Spreadsheet Drawing rich anchor fixture expansion, the DrawingML
+Locked Canvas fixture expansion, and the DrawingML main geometry/text/table/
+color fixture expansion:
 
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 19` |
-| all generated fixtures | `ok: 5674`, `skip: 1`, `fail: 0` |
+| all generated fixtures | `ok: 5751`, `skip: 1`, `fail: 0` |
+| previous full-fixture baseline before DrawingML main geometry/text/table/color expansion | `ok: 5674`, `skip: 1`, `fail: 0` |
 | previous full-fixture baseline before diagram header/list and Locked Canvas expansion | `ok: 5633`, `skip: 1`, `fail: 0` |
 | previous full-fixture baseline before Spreadsheet Drawing expansion | `ok: 5625`, `fail: 0` |
 | previous full-fixture baseline before extension repairs | `ok: 5454`, `fail: 23` |
@@ -222,7 +238,7 @@ Current OPC package-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 856`, `fail: 0` |
+| all generated fixtures | `ok: 863`, `fail: 0` |
 
 This is still not a general Markup Compatibility preprocessor beyond the
 Relationships-part preprocessing required by OPC §6.5.3, application
@@ -304,14 +320,14 @@ Current format contract-validation snapshot:
 | Scope | Result |
 |---|---|
 | default representative fixtures | `ok: 3` |
-| all generated fixtures | `ok: 856`, `fail: 0` |
+| all generated fixtures | `ok: 863`, `fail: 0` |
 
 This gate found two SpreadsheetML external-reference fixtures whose
 `externalBook/@r:id` pointed at a missing
 `xl/externalLinks/_rels/externalLink1.xml.rels` part. The catalog fixture
 builder now emits the required `externalLinkPath` relationship with
 `TargetMode="External"` for those packages. The current XSD package sweep
-reports `ok: 5674`, `skip: 1` across the regenerated fixture parts.
+reports `ok: 5751`, `skip: 1` across the regenerated fixture parts.
 
 ## ECMA-376 Part 1 Strict XSD
 
