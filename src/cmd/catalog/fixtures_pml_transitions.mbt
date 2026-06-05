@@ -232,6 +232,36 @@ fn pmltr_transition(
 }
 
 ///|
+fn pmltr_transition_with_end_sound(
+  child_name : String,
+  child_attrs : Array[@xml.Attribute],
+) -> @xml.Element {
+  xe(NS_PML, "transition", [xa("spd", "slow"), xa("advClick", "1")], [
+    Element(xe(NS_PML, child_name, child_attrs, [])),
+    Element(xe(NS_PML, "sndAc", [], [Element(xe(NS_PML, "endSnd", [], []))])),
+  ])
+}
+
+///|
+fn pmltr_add_transition_case(
+  cases : Array[VisualCase],
+  id : String,
+  child_name : String,
+  child_attrs : Array[@xml.Attribute],
+  transition_witness : @xml.Element,
+) -> Unit {
+  cases.push({
+    id,
+    format: "pptx",
+    category: "transition",
+    content: pmltr_cSld_with_transition(
+      pmltr_transition(child_name, child_attrs),
+      [transition_witness],
+    ),
+  })
+}
+
+///|
 fn extras_pml_transitions(cases : Array[VisualCase]) -> Unit {
   // A reusable visible shape used by every transition fixture.  Big
   // central rectangle in accent blue so the renderer's shape
@@ -307,6 +337,122 @@ fn extras_pml_transitions(cases : Array[VisualCase]) -> Unit {
     category: "transition",
     content: pmltr_cSld_with_transition(
       pmltr_transition("zoom", [xa("dir", "in")]),
+      [transition_witness],
+    ),
+  })
+
+  // ---- 7. remaining transition choice variants --------------------
+  pmltr_add_transition_case(
+    cases,
+    "transition-blinds",
+    "blinds",
+    [xa("dir", "vert")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-checker",
+    "checker",
+    [xa("dir", "horz")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-dissolve",
+    "dissolve",
+    [],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-comb",
+    "comb",
+    [xa("dir", "vert")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-cover",
+    "cover",
+    [xa("dir", "ld")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-cut",
+    "cut",
+    [xa("thruBlk", "1")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-diamond",
+    "diamond",
+    [],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-newsflash",
+    "newsflash",
+    [],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-plus",
+    "plus",
+    [],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-pull",
+    "pull",
+    [xa("dir", "ru")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-random",
+    "random",
+    [],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-random-bar",
+    "randomBar",
+    [xa("dir", "vert")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-strips",
+    "strips",
+    [xa("dir", "ld")],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-wedge",
+    "wedge",
+    [],
+    transition_witness,
+  )
+  pmltr_add_transition_case(
+    cases,
+    "transition-wheel",
+    "wheel",
+    [xa("spokes", "8")],
+    transition_witness,
+  )
+  cases.push({
+    id: "transition-end-sound",
+    format: "pptx",
+    category: "transition",
+    content: pmltr_cSld_with_transition(
+      pmltr_transition_with_end_sound("fade", []),
       [transition_witness],
     ),
   })

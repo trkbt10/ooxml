@@ -4851,6 +4851,7 @@ fn generate_visual_fixtures() -> Unit {
         pptx_with_aux_root_package("themeOverride", c.content)
       "pptx:themeManager" =>
         pptx_with_aux_root_package("themeManager", c.content)
+      "pptx:master-txstyle" => pptx_package_with_master_tx_styles(c.content)
       "xlsx:workbook" => xlsx_with_aux_root_package("workbook", c.content)
       "xlsx:sharedStrings" =>
         xlsx_with_aux_root_package("sharedStrings", c.content)
@@ -4874,6 +4875,7 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:viewPr" => "pptx"
       "pptx:themeOverride" => "pptx"
       "pptx:themeManager" => "pptx"
+      "pptx:master-txstyle" => "pptx"
       "xlsx:workbook" => "xlsx"
       "xlsx:sharedStrings" => "xlsx"
       "xlsx:styles" => "xlsx"

@@ -276,6 +276,15 @@ fn pml_cov_presentation_pr_root(
 }
 
 ///|
+fn pml_cov_master_tx_styles_root() -> @xml.Element {
+  xep("p", NS_PML, "txStyles", [], [
+    Element(xe(NS_PML, "titleStyle", [], [Element(pml_cov_text_list_style())])),
+    Element(xe(NS_PML, "bodyStyle", [], [Element(pml_cov_text_list_style())])),
+    Element(xe(NS_PML, "otherStyle", [], [Element(pml_cov_text_list_style())])),
+  ])
+}
+
+///|
 fn extras_pml_presentation_coverage(cases : Array[VisualCase]) -> Unit {
   cases.push({
     id: "pml-presentation-properties",
@@ -310,5 +319,12 @@ fn extras_pml_presentation_coverage(cases : Array[VisualCase]) -> Unit {
     format: "pptx:presentationPr",
     category: "presentation",
     content: pml_cov_presentation_pr_root("kiosk", "custom"),
+  })
+
+  cases.push({
+    id: "pml-master-text-styles-rich",
+    format: "pptx:master-txstyle",
+    category: "presentation",
+    content: pml_cov_master_tx_styles_root(),
   })
 }

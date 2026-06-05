@@ -43,6 +43,7 @@ fn extra_cases() -> Array[VisualCase] {
   extras_pml_advanced(cases)
   extras_pml_lines(cases)
   extras_pml_transitions(cases)
+  extras_pml_timing_coverage(cases)
   extras_pml_arrows_extra(cases)
   extras_pml_master_layout(cases)
   extras_pml_presentation_coverage(cases)
