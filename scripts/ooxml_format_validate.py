@@ -112,6 +112,19 @@ SLIDE_LAYOUT_CT = "application/vnd.openxmlformats-officedocument.presentationml.
 PRESENTATION_COMMENTS_CT = (
     "application/vnd.openxmlformats-officedocument.presentationml.comments+xml"
 )
+PRESENTATION_COMMENT_AUTHORS_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.commentAuthors+xml"
+)
+PRESENTATION_NOTES_SLIDE_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"
+)
+PRESENTATION_NOTES_MASTER_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"
+)
+PRESENTATION_HANDOUT_MASTER_CT = (
+    "application/vnd.openxmlformats-officedocument.presentationml.handoutMaster+xml"
+)
+PRESENTATION_TAGS_CT = "application/vnd.openxmlformats-officedocument.presentationml.tags+xml"
 PRESENTATION_VIEW_PROPS_CT = (
     "application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"
 )
@@ -486,6 +499,26 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (PML_NS_TRANSITIONAL, "cmLst"),
         (PML_NS_STRICT, "cmLst"),
     },
+    PRESENTATION_COMMENT_AUTHORS_CT: {
+        (PML_NS_TRANSITIONAL, "cmAuthorLst"),
+        (PML_NS_STRICT, "cmAuthorLst"),
+    },
+    PRESENTATION_NOTES_SLIDE_CT: {
+        (PML_NS_TRANSITIONAL, "notes"),
+        (PML_NS_STRICT, "notes"),
+    },
+    PRESENTATION_NOTES_MASTER_CT: {
+        (PML_NS_TRANSITIONAL, "notesMaster"),
+        (PML_NS_STRICT, "notesMaster"),
+    },
+    PRESENTATION_HANDOUT_MASTER_CT: {
+        (PML_NS_TRANSITIONAL, "handoutMaster"),
+        (PML_NS_STRICT, "handoutMaster"),
+    },
+    PRESENTATION_TAGS_CT: {
+        (PML_NS_TRANSITIONAL, "tagLst"),
+        (PML_NS_STRICT, "tagLst"),
+    },
     PRESENTATION_VIEW_PROPS_CT: {
         (PML_NS_TRANSITIONAL, "viewPr"),
         (PML_NS_STRICT, "viewPr"),
@@ -819,6 +852,31 @@ for contracts in [
         },
     ),
     relationship_contract(
+        "commentAuthors",
+        {PRESENTATION_COMMENT_AUTHORS_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_COMMENT_AUTHORS_CT],
+    ),
+    relationship_contract(
+        "notesSlide",
+        {PRESENTATION_NOTES_SLIDE_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_NOTES_SLIDE_CT],
+    ),
+    relationship_contract(
+        "notesMaster",
+        {PRESENTATION_NOTES_MASTER_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_NOTES_MASTER_CT],
+    ),
+    relationship_contract(
+        "handoutMaster",
+        {PRESENTATION_HANDOUT_MASTER_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_HANDOUT_MASTER_CT],
+    ),
+    relationship_contract(
+        "tags",
+        {PRESENTATION_TAGS_CT},
+        CONTENT_TYPE_ROOT_TAGS[PRESENTATION_TAGS_CT],
+    ),
+    relationship_contract(
         "theme",
         {THEME_CT},
         {
@@ -1038,7 +1096,7 @@ register_source_scoped_relationship_contract(
 )
 register_source_scoped_relationship_contract(
     WORD_FONT_DATA_CONTRACT,
-    {WORD_FONT_TABLE_CT},
+    {WORD_FONT_TABLE_CT, PPTX_MAIN_CT},
 )
 
 

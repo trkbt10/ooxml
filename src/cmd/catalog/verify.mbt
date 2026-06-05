@@ -6422,6 +6422,14 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "pptx:themeManager" => pptx_with_aux_root_package("themeManager", content)
     "pptx:master-txstyle" => pptx_package_with_master_tx_styles(content)
     "pptx:placeholder-chain" => pptx_package_with_placeholder_chain(content)
+    "pptx:slideRefs" => pptx_package_with_slide_refs(content)
+    "pptx:comments" => pptx_with_aux_root_package("comments", content)
+    "pptx:commentAuthors" =>
+      pptx_with_aux_root_package("commentAuthors", content)
+    "pptx:notes" => pptx_with_aux_root_package("notes", content)
+    "pptx:notesMaster" => pptx_with_aux_root_package("notesMaster", content)
+    "pptx:handoutMaster" => pptx_with_aux_root_package("handoutMaster", content)
+    "pptx:presentationRefs" => pptx_package_with_presentation_refs(content)
     "pptx:picture-blip" =>
       pptx_package_with_embedded_image(
         catalog_pml_picture_blip_root(content),
@@ -9193,8 +9201,335 @@ fn pptx_with_aux_root_package(
         "http://schemas.openxmlformats.org/officeDocument/2006/relationships/themeManager",
         "theme/themeManager.xml", content,
       )
+    "comments" =>
+      pptx_package_with_slide_aux_part(
+        "ppt/comments/comment1.xml", "application/vnd.openxmlformats-officedocument.presentationml.comments+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
+        "../comments/comment1.xml", content,
+      )
+    "commentAuthors" =>
+      pptx_package_with_standard_aux_part(
+        "ppt/commentAuthors.xml", "application/vnd.openxmlformats-officedocument.presentationml.commentAuthors+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/commentAuthors",
+        "commentAuthors.xml", content,
+      )
+    "notes" =>
+      pptx_package_with_slide_aux_part(
+        "ppt/notesSlides/notesSlide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide",
+        "../notesSlides/notesSlide1.xml", content,
+      )
+    "notesMaster" =>
+      pptx_package_with_standard_aux_part(
+        "ppt/notesMasters/notesMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesMaster",
+        "notesMasters/notesMaster1.xml", content,
+      )
+    "handoutMaster" =>
+      pptx_package_with_standard_aux_part(
+        "ppt/handoutMasters/handoutMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.handoutMaster+xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/handoutMaster",
+        "handoutMasters/handoutMaster1.xml", content,
+      )
     _ => pptx_package(content)
   }
+}
+
+///|
+fn pptx_od_rel(local_name : String) -> String {
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships/" +
+  local_name
+}
+
+///|
+fn pptx_relationship(
+  id : String,
+  relationship_type : String,
+  target : String,
+) -> @xml.Element {
+  xe(
+    NS_PKG_REL,
+    "Relationship",
+    [xa("Id", id), xa("Type", relationship_type), xa("Target", target)],
+    [],
+  )
+}
+
+///|
+fn pptx_base_content_type_overrides() -> Array[(String, String)] {
+  [
+    (
+      "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+    ),
+    (
+      "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+    ),
+    (
+      "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+    ),
+    (
+      "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+    ),
+    (
+      "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+    ),
+  ]
+}
+
+///|
+fn pptx_catalog_tag_list_part() -> @xml.Element {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  xep("p", ns_p, "tagLst", [], [
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "tag",
+        [xa("name", "CatalogTag"), xa("val", "CatalogValue")],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn pptx_catalog_custom_xml_part(name : String) -> @xml.Element {
+  xe("urn:ooxml:catalog", name, [], [])
+}
+
+///|
+/// Add one slide-owned PresentationML auxiliary XML part to the
+/// canonical one-slide package.  The slide relationship table is the
+/// source of truth for comments / notes slides and other slide-local
+/// data parts.
+fn pptx_package_with_slide_aux_part(
+  part_name : String,
+  content_type : String,
+  relationship_type : String,
+  target : String,
+  content : @xml.Element,
+) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let base = pptx_package(pptx_common_slide_data(ns_p, []))
+  let archive = @zip.read(base) catch { _ => return Bytes::new(0) }
+  let parts : Array[(String, Bytes)] = []
+  for entry in archive.entries {
+    if entry.name != "[Content_Types].xml" &&
+      entry.name != "ppt/slides/_rels/slide1.xml.rels" {
+      parts.push((entry.name, entry.data))
+    }
+  }
+  let ct_overrides = pptx_base_content_type_overrides()
+  ct_overrides.push(("/" + part_name, content_type))
+  parts.push(("[Content_Types].xml", content_types_part(ct_overrides)))
+  let slide_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      pptx_relationship(
+        "rId1",
+        pptx_od_rel("slideLayout"),
+        "../slideLayouts/slideLayout1.xml",
+      ),
+    ),
+    Element(pptx_relationship("rId2", relationship_type, target)),
+  ])
+  parts.push(("ppt/slides/_rels/slide1.xml.rels", write_part(slide_rels)))
+  parts.push((part_name, write_part(content)))
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// Rich slide-local relationship host for §19.3.1.16 common slide
+/// data references: contentPart, custData, tags and controls live in
+/// the slide XML while their targets are wired through slide1.xml.rels.
+fn pptx_package_with_slide_refs(c_sld : @xml.Element) -> Bytes {
+  let base = pptx_package(c_sld)
+  let archive = @zip.read(base) catch { _ => return Bytes::new(0) }
+  let parts : Array[(String, Bytes)] = []
+  for entry in archive.entries {
+    if entry.name != "[Content_Types].xml" &&
+      entry.name != "ppt/slides/_rels/slide1.xml.rels" {
+      parts.push((entry.name, entry.data))
+    }
+  }
+  let ct_overrides = pptx_base_content_type_overrides()
+  ct_overrides.push(
+    (
+      "/ppt/tags/tag1.xml", "application/vnd.openxmlformats-officedocument.presentationml.tags+xml",
+    ),
+  )
+  parts.push(("[Content_Types].xml", content_types_part(ct_overrides)))
+  let slide_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      pptx_relationship(
+        "rId1",
+        pptx_od_rel("slideLayout"),
+        "../slideLayouts/slideLayout1.xml",
+      ),
+    ),
+    Element(
+      pptx_relationship(
+        "rId2",
+        pptx_od_rel("customXml"),
+        "../customXml/contentPart1.xml",
+      ),
+    ),
+    Element(
+      pptx_relationship(
+        "rId3",
+        pptx_od_rel("customXml"),
+        "../customXml/customerData1.xml",
+      ),
+    ),
+    Element(pptx_relationship("rId4", pptx_od_rel("tags"), "../tags/tag1.xml")),
+  ])
+  parts.push(("ppt/slides/_rels/slide1.xml.rels", write_part(slide_rels)))
+  parts.push(("ppt/tags/tag1.xml", write_part(pptx_catalog_tag_list_part())))
+  parts.push(
+    (
+      "ppt/customXml/contentPart1.xml",
+      write_part(pptx_catalog_custom_xml_part("contentPart")),
+    ),
+  )
+  parts.push(
+    (
+      "ppt/customXml/customerData1.xml",
+      write_part(pptx_catalog_custom_xml_part("customerData")),
+    ),
+  )
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// Presentation-owned relationship host for master ids, smart tags,
+/// custom data tags and embedded font-data ids.
+fn pptx_package_with_presentation_refs(presentation : @xml.Element) -> Bytes {
+  let base = pptx_package_with_replaced_presentation(presentation)
+  let archive = @zip.read(base) catch { _ => return Bytes::new(0) }
+  let parts : Array[(String, Bytes)] = []
+  for entry in archive.entries {
+    if entry.name != "[Content_Types].xml" &&
+      entry.name != "ppt/_rels/presentation.xml.rels" {
+      parts.push((entry.name, entry.data))
+    }
+  }
+  let ct_overrides = pptx_base_content_type_overrides()
+  ct_overrides.push(
+    (
+      "/ppt/notesMasters/notesMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml",
+    ),
+  )
+  ct_overrides.push(
+    (
+      "/ppt/handoutMasters/handoutMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.handoutMaster+xml",
+    ),
+  )
+  ct_overrides.push(
+    (
+      "/ppt/tags/presentationTags.xml", "application/vnd.openxmlformats-officedocument.presentationml.tags+xml",
+    ),
+  )
+  ct_overrides.push(("/ppt/fonts/regular.fntdata", "application/x-fontdata"))
+  ct_overrides.push(("/ppt/fonts/bold.fntdata", "application/x-fontdata"))
+  ct_overrides.push(("/ppt/fonts/italic.fntdata", "application/x-fontdata"))
+  ct_overrides.push(("/ppt/fonts/boldItalic.fntdata", "application/x-fontdata"))
+  parts.push(("[Content_Types].xml", content_types_part(ct_overrides)))
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      pptx_relationship("rId1", pptx_od_rel("slide"), "slides/slide1.xml"),
+    ),
+    Element(
+      pptx_relationship(
+        "rId2",
+        pptx_od_rel("slideMaster"),
+        "slideMasters/slideMaster1.xml",
+      ),
+    ),
+    Element(pptx_relationship("rId3", pptx_od_rel("theme"), "theme/theme1.xml")),
+    Element(
+      pptx_relationship(
+        "rId4",
+        pptx_od_rel("notesMaster"),
+        "notesMasters/notesMaster1.xml",
+      ),
+    ),
+    Element(
+      pptx_relationship(
+        "rId5",
+        pptx_od_rel("handoutMaster"),
+        "handoutMasters/handoutMaster1.xml",
+      ),
+    ),
+    Element(
+      pptx_relationship(
+        "rId6",
+        pptx_od_rel("customXml"),
+        "customXml/smartTags.xml",
+      ),
+    ),
+    Element(
+      pptx_relationship(
+        "rId7",
+        pptx_od_rel("customXml"),
+        "customXml/customerData.xml",
+      ),
+    ),
+    Element(
+      pptx_relationship(
+        "rId8",
+        pptx_od_rel("tags"),
+        "tags/presentationTags.xml",
+      ),
+    ),
+    Element(
+      pptx_relationship("rId9", pptx_od_rel("font"), "fonts/regular.fntdata"),
+    ),
+    Element(
+      pptx_relationship("rId10", pptx_od_rel("font"), "fonts/bold.fntdata"),
+    ),
+    Element(
+      pptx_relationship("rId11", pptx_od_rel("font"), "fonts/italic.fntdata"),
+    ),
+    Element(
+      pptx_relationship(
+        "rId12",
+        pptx_od_rel("font"),
+        "fonts/boldItalic.fntdata",
+      ),
+    ),
+  ])
+  parts.push(("ppt/_rels/presentation.xml.rels", write_part(pres_rels)))
+  parts.push(
+    (
+      "ppt/notesMasters/notesMaster1.xml",
+      write_part(pml_cov_notes_master_root()),
+    ),
+  )
+  parts.push(
+    (
+      "ppt/handoutMasters/handoutMaster1.xml",
+      write_part(pml_cov_handout_master_root()),
+    ),
+  )
+  parts.push(
+    ("ppt/tags/presentationTags.xml", write_part(pptx_catalog_tag_list_part())),
+  )
+  parts.push(
+    (
+      "ppt/customXml/smartTags.xml",
+      write_part(pptx_catalog_custom_xml_part("smartTags")),
+    ),
+  )
+  parts.push(
+    (
+      "ppt/customXml/customerData.xml",
+      write_part(pptx_catalog_custom_xml_part("presentationData")),
+    ),
+  )
+  parts.push(("ppt/fonts/regular.fntdata", Bytes::new(0)))
+  parts.push(("ppt/fonts/bold.fntdata", Bytes::new(0)))
+  parts.push(("ppt/fonts/italic.fntdata", Bytes::new(0)))
+  parts.push(("ppt/fonts/boldItalic.fntdata", Bytes::new(0)))
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
 ///|
@@ -10970,6 +11305,21 @@ fn empty_body_package(format : String) -> Bytes {
     "pptx:table" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:master-txstyle" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:diagram-relids" => pptx_package(pptx_common_slide_data(ns_p, []))
+    "pptx:slideRefs" => pptx_package_with_slide_refs(pml_cov_slide_refs_root())
+    "pptx:comments" =>
+      pptx_with_aux_root_package("comments", pml_cov_comments_root())
+    "pptx:commentAuthors" =>
+      pptx_with_aux_root_package(
+        "commentAuthors",
+        pml_cov_comment_authors_root(),
+      )
+    "pptx:notes" => pptx_with_aux_root_package("notes", pml_cov_notes_root())
+    "pptx:notesMaster" =>
+      pptx_with_aux_root_package("notesMaster", pml_cov_notes_master_root())
+    "pptx:handoutMaster" =>
+      pptx_with_aux_root_package("handoutMaster", pml_cov_handout_master_root())
+    "pptx:presentationRefs" =>
+      pptx_package_with_presentation_refs(pml_cov_presentation_refs_root())
     "xlsx:workbook" =>
       xlsx_with_aux_root_package("workbook", xe(ns_s, "workbook", [], []))
     "xlsx:sharedStrings" =>

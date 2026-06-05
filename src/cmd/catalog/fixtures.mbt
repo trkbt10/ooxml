@@ -4852,6 +4852,15 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:themeManager" =>
         pptx_with_aux_root_package("themeManager", c.content)
       "pptx:master-txstyle" => pptx_package_with_master_tx_styles(c.content)
+      "pptx:slideRefs" => pptx_package_with_slide_refs(c.content)
+      "pptx:comments" => pptx_with_aux_root_package("comments", c.content)
+      "pptx:commentAuthors" =>
+        pptx_with_aux_root_package("commentAuthors", c.content)
+      "pptx:notes" => pptx_with_aux_root_package("notes", c.content)
+      "pptx:notesMaster" => pptx_with_aux_root_package("notesMaster", c.content)
+      "pptx:handoutMaster" =>
+        pptx_with_aux_root_package("handoutMaster", c.content)
+      "pptx:presentationRefs" => pptx_package_with_presentation_refs(c.content)
       "xlsx:workbook" => xlsx_with_aux_root_package("workbook", c.content)
       "xlsx:sharedStrings" =>
         xlsx_with_aux_root_package("sharedStrings", c.content)
@@ -4881,6 +4890,13 @@ fn generate_visual_fixtures() -> Unit {
       "pptx:themeOverride" => "pptx"
       "pptx:themeManager" => "pptx"
       "pptx:master-txstyle" => "pptx"
+      "pptx:slideRefs" => "pptx"
+      "pptx:comments" => "pptx"
+      "pptx:commentAuthors" => "pptx"
+      "pptx:notes" => "pptx"
+      "pptx:notesMaster" => "pptx"
+      "pptx:handoutMaster" => "pptx"
+      "pptx:presentationRefs" => "pptx"
       "xlsx:workbook" => "xlsx"
       "xlsx:sharedStrings" => "xlsx"
       "xlsx:styles" => "xlsx"

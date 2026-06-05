@@ -40,6 +40,243 @@ fn pml_cov_text_list_style() -> @xml.Element {
 }
 
 ///|
+fn pml_cov_clr_map() -> @xml.Element {
+  xep(
+    "p",
+    NS_PML,
+    "clrMap",
+    [
+      xa("bg1", "lt1"),
+      xa("tx1", "dk1"),
+      xa("bg2", "lt2"),
+      xa("tx2", "dk2"),
+      xa("accent1", "accent1"),
+      xa("accent2", "accent2"),
+      xa("accent3", "accent3"),
+      xa("accent4", "accent4"),
+      xa("accent5", "accent5"),
+      xa("accent6", "accent6"),
+      xa("hlink", "hlink"),
+      xa("folHlink", "folHlink"),
+    ],
+    [],
+  )
+}
+
+///|
+fn pml_cov_shape_tree_with_content_part() -> @xml.Element {
+  let tree = pptx_shape_tree(NS_PML, [])
+  let children : Array[@xml.Node] = []
+  for child in tree.children {
+    children.push(child)
+  }
+  children.push(
+    Element(xep("p", NS_PML, "contentPart", [pml_cov_rid_attr("rId2")], [])),
+  )
+  { name: tree.name, attributes: tree.attributes, children }
+}
+
+///|
+fn pml_cov_slide_refs_root() -> @xml.Element {
+  xep("p", NS_PML, "cSld", [xa("name", "Catalog slide refs")], [
+    Element(
+      xep("p", NS_PML, "bg", [], [
+        Element(
+          xep("p", NS_PML, "bgRef", [xa("idx", "1001")], [
+            Element(xe(NS_A, "schemeClr", [xa("val", "bg1")], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(pml_cov_shape_tree_with_content_part()),
+    Element(
+      xep("p", NS_PML, "custDataLst", [], [
+        Element(xep("p", NS_PML, "custData", [pml_cov_rid_attr("rId3")], [])),
+        Element(xep("p", NS_PML, "tags", [pml_cov_rid_attr("rId4")], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "controls", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "control",
+            [xa("name", "CatalogControl"), xa("showAsIcon", "0")],
+            [Element(pml_cov_ext_list())],
+          ),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn pml_cov_comments_root() -> @xml.Element {
+  xep("p", NS_PML, "cmLst", [], [
+    Element(
+      xep(
+        "p",
+        NS_PML,
+        "cm",
+        [xa("authorId", "0"), xa("idx", "1"), xa("dt", "2026-06-06T00:00:00Z")],
+        [
+          Element(xep("p", NS_PML, "pos", [xa("x", "0"), xa("y", "0")], [])),
+          Element(xep("p", NS_PML, "text", [], [Text("Catalog comment")])),
+        ],
+      ),
+    ),
+  ])
+}
+
+///|
+fn pml_cov_comment_authors_root() -> @xml.Element {
+  xep("p", NS_PML, "cmAuthorLst", [], [
+    Element(
+      xep(
+        "p",
+        NS_PML,
+        "cmAuthor",
+        [
+          xa("id", "0"),
+          xa("name", "Catalog Author"),
+          xa("initials", "CA"),
+          xa("lastIdx", "1"),
+          xa("clrIdx", "0"),
+        ],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn pml_cov_notes_root() -> @xml.Element {
+  xep("p", NS_PML, "notes", [], [Element(pptx_common_slide_data(NS_PML, []))])
+}
+
+///|
+fn pml_cov_notes_master_root() -> @xml.Element {
+  xep("p", NS_PML, "notesMaster", [], [
+    Element(pptx_common_slide_data(NS_PML, [])),
+    Element(pml_cov_clr_map()),
+    Element(
+      xep(
+        "p",
+        NS_PML,
+        "hf",
+        [xa("sldNum", "1"), xa("hdr", "1"), xa("ftr", "1"), xa("dt", "1")],
+        [],
+      ),
+    ),
+    Element(
+      xep("p", NS_PML, "notesStyle", [], [Element(pml_cov_text_list_style())]),
+    ),
+  ])
+}
+
+///|
+fn pml_cov_handout_master_root() -> @xml.Element {
+  xep("p", NS_PML, "handoutMaster", [], [
+    Element(pptx_common_slide_data(NS_PML, [])),
+    Element(pml_cov_clr_map()),
+    Element(
+      xep(
+        "p",
+        NS_PML,
+        "hf",
+        [xa("sldNum", "1"), xa("hdr", "1"), xa("ftr", "1"), xa("dt", "1")],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn pml_cov_presentation_refs_root() -> @xml.Element {
+  xep("p", NS_PML, "presentation", [], [
+    Element(
+      xep("p", NS_PML, "sldMasterIdLst", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "sldMasterId",
+            [xa("id", "2147483648"), pml_cov_rid_attr("rId2")],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "notesMasterIdLst", [], [
+        Element(
+          xep("p", NS_PML, "notesMasterId", [pml_cov_rid_attr("rId4")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "handoutMasterIdLst", [], [
+        Element(
+          xep("p", NS_PML, "handoutMasterId", [pml_cov_rid_attr("rId5")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "sldId",
+            [xa("id", "256"), pml_cov_rid_attr("rId1")],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        NS_PML,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
+      ),
+    ),
+    Element(
+      xe(NS_PML, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
+    Element(xep("p", NS_PML, "smartTags", [pml_cov_rid_attr("rId6")], [])),
+    Element(
+      xep("p", NS_PML, "embeddedFontLst", [], [
+        Element(
+          xep("p", NS_PML, "embeddedFont", [], [
+            Element(xep("p", NS_PML, "font", [xa("typeface", "Aptos")], [])),
+            Element(xep("p", NS_PML, "regular", [pml_cov_rid_attr("rId9")], [])),
+            Element(xep("p", NS_PML, "bold", [pml_cov_rid_attr("rId10")], [])),
+            Element(xep("p", NS_PML, "italic", [pml_cov_rid_attr("rId11")], [])),
+            Element(
+              xep("p", NS_PML, "boldItalic", [pml_cov_rid_attr("rId12")], []),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "custDataLst", [], [
+        Element(xep("p", NS_PML, "custData", [pml_cov_rid_attr("rId7")], [])),
+        Element(xep("p", NS_PML, "tags", [pml_cov_rid_attr("rId8")], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_PML, "defaultTextStyle", [], [Element(pml_cov_text_list_style())]),
+    ),
+    Element(pml_cov_ext_list()),
+  ])
+}
+
+///|
 fn pml_cov_presentation_root() -> @xml.Element {
   xep("p", NS_PML, "presentation", [], [
     Element(
@@ -286,6 +523,55 @@ fn pml_cov_master_tx_styles_root() -> @xml.Element {
 
 ///|
 fn extras_pml_presentation_coverage(cases : Array[VisualCase]) -> Unit {
+  cases.push({
+    id: "pml-slide-refs-rich",
+    format: "pptx:slideRefs",
+    category: "presentation",
+    content: pml_cov_slide_refs_root(),
+  })
+
+  cases.push({
+    id: "pml-comments-rich",
+    format: "pptx:comments",
+    category: "presentation",
+    content: pml_cov_comments_root(),
+  })
+
+  cases.push({
+    id: "pml-comment-authors-rich",
+    format: "pptx:commentAuthors",
+    category: "presentation",
+    content: pml_cov_comment_authors_root(),
+  })
+
+  cases.push({
+    id: "pml-notes-rich",
+    format: "pptx:notes",
+    category: "presentation",
+    content: pml_cov_notes_root(),
+  })
+
+  cases.push({
+    id: "pml-notes-master-rich",
+    format: "pptx:notesMaster",
+    category: "presentation",
+    content: pml_cov_notes_master_root(),
+  })
+
+  cases.push({
+    id: "pml-handout-master-rich",
+    format: "pptx:handoutMaster",
+    category: "presentation",
+    content: pml_cov_handout_master_root(),
+  })
+
+  cases.push({
+    id: "pml-presentation-refs-rich",
+    format: "pptx:presentationRefs",
+    category: "presentation",
+    content: pml_cov_presentation_refs_root(),
+  })
+
   cases.push({
     id: "pml-presentation-properties",
     format: "pptx:presentation",
