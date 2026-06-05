@@ -82,6 +82,46 @@ const RT_TABLE_SINGLE_CELLS : String = "http://schemas.openxmlformats.org/office
 const RT_CONTROL : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/control"
 
 ///|
+/// Word relationship type for Alternative Format Import parts.
+const RT_AF_CHUNK : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/aFChunk"
+
+///|
+/// Word relationship type for an attached document template.
+const RT_ATTACHED_TEMPLATE : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/attachedTemplate"
+
+///|
+/// Word relationship type for mail-merge source data.
+const RT_MAIL_MERGE_SOURCE : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/mailMergeSource"
+
+///|
+/// Word relationship type for mail-merge header source data.
+const RT_MAIL_MERGE_HEADER_SOURCE : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/mailMergeHeaderSource"
+
+///|
+/// Word relationship type for mail-merge recipient data.
+const RT_MAIL_MERGE_RECIPIENT_DATA : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/mailMergeRecipientData"
+
+///|
+/// Word relationship type for embedded OLE object data.
+const RT_OLE_OBJECT : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject"
+
+///|
+/// Word relationship type for section printer-settings data.
+const RT_PRINTER_SETTINGS : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings"
+
+///|
+/// Word relationship type for sub-document references.
+const RT_SUB_DOCUMENT : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/subDocument"
+
+///|
+/// Office relationship type for external or embedded video resources.
+const RT_VIDEO : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video"
+
+///|
+/// Office relationship type for frame hyperlinks.
+const RT_HYPERLINK : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+
+///|
 /// Core-properties content type.
 const CT_CORE_PROPERTIES : String = "application/vnd.openxmlformats-package.core-properties+xml"
 
@@ -112,6 +152,34 @@ const CT_TABLE_SINGLE_CELLS : String = "application/vnd.openxmlformats-officedoc
 ///|
 /// Embedded ActiveX control persistence content type.
 const CT_ACTIVE_X_CONTROL : String = "application/vnd.ms-office.activeX+xml"
+
+///|
+/// WordprocessingML document main part content type.
+const CT_WORD_DOCUMENT_MAIN : String = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+
+///|
+/// WordprocessingML template main part content type.
+const CT_WORD_TEMPLATE_MAIN : String = "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml"
+
+///|
+/// WordprocessingML mail-merge recipient data content type.
+const CT_WORD_MAIL_MERGE_RECIPIENT_DATA : String = "application/vnd.openxmlformats-officedocument.wordprocessingml.mailMergeRecipientData+xml"
+
+///|
+/// WordprocessingML printer-settings content type.
+const CT_WORD_PRINTER_SETTINGS : String = "application/vnd.openxmlformats-officedocument.wordprocessingml.printerSettings"
+
+///|
+/// Embedded OLE object content type.
+const CT_OLE_OBJECT : String = "application/vnd.openxmlformats-officedocument.oleObject"
+
+///|
+/// Generic binary payload content type.
+const CT_OCTET_STREAM : String = "application/octet-stream"
+
+///|
+/// Alternative Format Import HTML content type.
+const CT_TEXT_HTML : String = "text/html"
 
 ///|
 /// Catalog bitmap fixture content type.
@@ -560,6 +628,169 @@ fn docx_package_with_content_part(body : @xml.Element) -> Bytes {
     ("_rels/.rels", root_rels_part("word/document.xml")),
     ("word/document.xml", write_part(document)),
     ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("customXml/item1.xml", write_part(custom_xml)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+fn minimal_wml_document_with_text(text : String) -> @xml.Element {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xep("w", ns_w, "document", [], [
+    Element(
+      xep("w", ns_w, "body", [], [
+        Element(
+          xep("w", ns_w, "p", [], [
+            Element(
+              xep("w", ns_w, "r", [], [
+                Element(xep("w", ns_w, "t", [], [Text(text)])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn wml_mail_merge_recipients_part() -> @xml.Element {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let w_attr = fn(local_name : String, value : String) -> @xml.Attribute {
+    { name: { prefix: Some("w"), local_name, ns: Some(ns_w) }, value }
+  }
+  xep("w", ns_w, "recipients", [], [
+    Element(
+      xep("w", ns_w, "recipientData", [], [
+        Element(xep("w", ns_w, "active", [w_attr("val", "1")], [])),
+        Element(xep("w", ns_w, "column", [w_attr("val", "1")], [])),
+        Element(xep("w", ns_w, "uniqueTag", [w_attr("val", "AQID")], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn package_relationship(
+  id : String,
+  type_ : String,
+  target : String,
+  target_mode : String?,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = [
+    xa("Id", id),
+    xa("Type", type_),
+    xa("Target", target),
+  ]
+  match target_mode {
+    Some(mode) => attrs.push(xa("TargetMode", mode))
+    None => ()
+  }
+  xe(NS_PKG_REL, "Relationship", attrs, [])
+}
+
+///|
+fn docx_package_with_relationship_rich_body(body : @xml.Element) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let document : @xml.Element = if body.name.local_name == "document" {
+    body
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(body)],
+    }
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      package_relationship(
+        "rIdContentPart",
+        RT_CUSTOM_XML,
+        "../customXml/item1.xml",
+        None,
+      ),
+    ),
+    Element(
+      package_relationship(
+        "rIdAltChunk",
+        RT_AF_CHUNK,
+        "altChunk/alt1.html",
+        None,
+      ),
+    ),
+    Element(
+      package_relationship(
+        "rIdOleEmbed",
+        RT_OLE_OBJECT,
+        "embeddings/oleObject1.bin",
+        None,
+      ),
+    ),
+    Element(
+      package_relationship(
+        "rIdOleLink",
+        RT_OLE_OBJECT,
+        "embeddings/oleObject2.bin",
+        None,
+      ),
+    ),
+    Element(
+      package_relationship(
+        "rIdMovie",
+        RT_VIDEO,
+        "https://example.invalid/catalog-video.mp4",
+        Some("External"),
+      ),
+    ),
+    Element(
+      package_relationship(
+        "rIdPrinterSettings",
+        RT_PRINTER_SETTINGS,
+        "printerSettings/printerSettings1.bin",
+        None,
+      ),
+    ),
+    Element(
+      package_relationship("rIdSubDoc", RT_SUB_DOCUMENT, "subdoc.xml", None),
+    ),
+  ])
+  let custom_xml = xe(
+    "http://www.w3.org/2000/svg",
+    "svg",
+    [xa("viewBox", "0 0 10 10")],
+    [
+      Element(
+        xe("http://www.w3.org/2000/svg", "title", [], [
+          Text("OOXML contentPart"),
+        ]),
+      ),
+    ],
+  )
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        ("/word/document.xml", CT_WORD_DOCUMENT_MAIN),
+        ("/word/altChunk/alt1.html", CT_TEXT_HTML),
+        ("/word/embeddings/oleObject1.bin", CT_OLE_OBJECT),
+        ("/word/embeddings/oleObject2.bin", CT_OLE_OBJECT),
+        ("/word/printerSettings/printerSettings1.bin", CT_WORD_PRINTER_SETTINGS),
+        ("/word/subdoc.xml", CT_WORD_DOCUMENT_MAIN),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    (
+      "word/altChunk/alt1.html", b"<html><body><p>Alternative format import</p></body></html>",
+    ),
+    ("word/embeddings/oleObject1.bin", b"OOXML-OLE-EMBED"),
+    ("word/embeddings/oleObject2.bin", b"OOXML-OLE-LINK"),
+    ("word/printerSettings/printerSettings1.bin", b"OOXML-PRINTER-SETTINGS"),
+    (
+      "word/subdoc.xml",
+      write_part(minimal_wml_document_with_text("Sub document")),
+    ),
     ("customXml/item1.xml", write_part(custom_xml)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
@@ -6460,6 +6691,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "docx:endnotes" => docx_aux_package("endnotes", content)
     "docx:annotationRefs" => docx_package_with_annotation_refs(content)
     "docx:contentPart" => docx_package_with_content_part(content)
+    "docx:relationshipRich" => docx_package_with_relationship_rich_body(content)
     "docx:picture-blip" =>
       docx_package_with_embedded_image(
         catalog_wml_picture_blip_root(content),
@@ -9063,20 +9295,23 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
       ),
     ),
   ])
-  // §17.8.2.4 — only the `fonts` aux part carries `r:id` pointers
-  // (`<w:embedRegular/Bold/Italic/BoldItalic>` reference satellite
-  // font-data parts). Other WML aux parts (`settings`, `styles`,
-  // ...) do not. Attaching an aux-part rels file unconditionally
-  // breaks the open of the parts that don't need rels because the
-  // Content-Types map lacks the satellite part's content type.
+  // Aux-part satellite relationships are emitted only for part kinds
+  // whose fixture payloads carry explicit `r:id` values.
   let ct_overrides : Array[(String, String)] = [
-    (
-      "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
-    ),
+    ("/word/document.xml", CT_WORD_DOCUMENT_MAIN),
     ("/word/" + part_path, content_type),
   ]
   if part_kind == "fonts" {
     ct_overrides.push(("/word/fonts/font0.fntdata", "application/x-fontdata"))
+  }
+  if part_kind == "settings" {
+    ct_overrides.push(("/word/attached/template.xml", CT_WORD_TEMPLATE_MAIN))
+    ct_overrides.push(("/word/mailMerge/source.bin", CT_OCTET_STREAM))
+    ct_overrides.push(("/word/mailMerge/header.bin", CT_OCTET_STREAM))
+    ct_overrides.push(("/word/mailMerge/odso-source.bin", CT_OCTET_STREAM))
+    ct_overrides.push(
+      ("/word/mailMerge/recipientData.xml", CT_WORD_MAIL_MERGE_RECIPIENT_DATA),
+    )
   }
   let parts : Array[(String, Bytes)] = [
     ("[Content_Types].xml", content_types_part(ct_overrides)),
@@ -9110,6 +9345,89 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
     ])
     parts.push(("word/_rels/" + part_path + ".rels", write_part(aux_rels)))
     parts.push(("word/fonts/font0.fntdata", Bytes::new(0)))
+  }
+  if part_kind == "settings" {
+    let settings_rels = xe(NS_PKG_REL, "Relationships", [], [
+      Element(
+        package_relationship(
+          "rIdAttachedTemplate",
+          RT_ATTACHED_TEMPLATE,
+          "attached/template.xml",
+          None,
+        ),
+      ),
+      Element(
+        package_relationship(
+          "rIdDataSource",
+          RT_MAIL_MERGE_SOURCE,
+          "mailMerge/source.bin",
+          None,
+        ),
+      ),
+      Element(
+        package_relationship(
+          "rIdHeaderSource",
+          RT_MAIL_MERGE_HEADER_SOURCE,
+          "mailMerge/header.bin",
+          None,
+        ),
+      ),
+      Element(
+        package_relationship(
+          "rIdOdsoSource",
+          RT_MAIL_MERGE_SOURCE,
+          "mailMerge/odso-source.bin",
+          None,
+        ),
+      ),
+      Element(
+        package_relationship(
+          "rIdRecipientData",
+          RT_MAIL_MERGE_RECIPIENT_DATA,
+          "mailMerge/recipientData.xml",
+          None,
+        ),
+      ),
+    ])
+    parts.push(("word/_rels/settings.xml.rels", write_part(settings_rels)))
+    parts.push(
+      (
+        "word/attached/template.xml",
+        write_part(minimal_wml_document_with_text("Attached template")),
+      ),
+    )
+    parts.push(("word/mailMerge/source.bin", b"OOXML-MAIL-MERGE-SOURCE"))
+    parts.push(("word/mailMerge/header.bin", b"OOXML-MAIL-MERGE-HEADER"))
+    parts.push(("word/mailMerge/odso-source.bin", b"OOXML-MAIL-MERGE-ODSO"))
+    parts.push(
+      (
+        "word/mailMerge/recipientData.xml",
+        write_part(wml_mail_merge_recipients_part()),
+      ),
+    )
+  }
+  if part_kind == "webSettings" {
+    let web_settings_rels = xe(NS_PKG_REL, "Relationships", [], [
+      Element(
+        package_relationship(
+          "rIdFrameLongDesc",
+          RT_HYPERLINK,
+          "https://example.invalid/frame-description",
+          Some("External"),
+        ),
+      ),
+      Element(
+        package_relationship(
+          "rIdFrameSource",
+          RT_HYPERLINK,
+          "https://example.invalid/frame-source.html",
+          Some("External"),
+        ),
+      ),
+    ])
+    parts.push(
+      ("word/_rels/webSettings.xml.rels", write_part(web_settings_rels)),
+    )
   }
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
@@ -12186,6 +12504,8 @@ fn empty_body_package(format : String) -> Bytes {
       docx_package_with_annotation_refs(xep("w", ns_w, "body", [], []))
     "docx:contentPart" =>
       docx_package_with_content_part(xep("w", ns_w, "body", [], []))
+    "docx:relationshipRich" =>
+      docx_package_with_relationship_rich_body(xep("w", ns_w, "body", [], []))
     "pptx:theme" =>
       pptx_with_aux_root_package(
         "theme",

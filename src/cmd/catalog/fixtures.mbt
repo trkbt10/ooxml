@@ -4821,6 +4821,14 @@ fn extended_cases() -> Array[ExtendedCase] {
 }
 
 ///|
+fn fixture_output_format(format : String) -> String {
+  match format.find(":") {
+    Some(i) => format[0:i].to_owned()
+    None => format
+  }
+}
+
+///|
 /// Generate every visual fixture file under .snapshots/fixtures/.
 fn generate_visual_fixtures() -> Unit {
   let cases = visual_cases()
@@ -4895,56 +4903,11 @@ fn generate_visual_fixtures() -> Unit {
       "docx:endnotes" => docx_aux_package("endnotes", c.content)
       "docx:annotationRefs" => docx_package_with_annotation_refs(c.content)
       "docx:contentPart" => docx_package_with_content_part(c.content)
+      "docx:relationshipRich" =>
+        docx_package_with_relationship_rich_body(c.content)
       _ => docx_package(c.content)
     }
-    let output_format = match c.format {
-      "pptx:theme" => "pptx"
-      "pptx:presentation" => "pptx"
-      "pptx:presentationPr" => "pptx"
-      "pptx:viewPr" => "pptx"
-      "pptx:themeOverride" => "pptx"
-      "pptx:themeManager" => "pptx"
-      "pptx:master-txstyle" => "pptx"
-      "pptx:slideRefs" => "pptx"
-      "pptx:comments" => "pptx"
-      "pptx:commentAuthors" => "pptx"
-      "pptx:sldSyncPr" => "pptx"
-      "pptx:notes" => "pptx"
-      "pptx:notesMaster" => "pptx"
-      "pptx:handoutMaster" => "pptx"
-      "pptx:presentationRefs" => "pptx"
-      "xlsx:workbook" => "xlsx"
-      "xlsx:sharedStrings" => "xlsx"
-      "xlsx:styles" => "xlsx"
-      "xlsx:comments" => "xlsx"
-      "xlsx:calcChain" => "xlsx"
-      "xlsx:connections" => "xlsx"
-      "xlsx:metadata" => "xlsx"
-      "xlsx:xmlMaps" => "xlsx"
-      "xlsx:queryTable" => "xlsx"
-      "xlsx:revisionHeaders" => "xlsx"
-      "xlsx:revisionLog" => "xlsx"
-      "xlsx:userNames" => "xlsx"
-      "xlsx:volatileDependencies" => "xlsx"
-      "xlsx:worksheetRefs" => "xlsx"
-      "xlsx:chartsheet" => "xlsx"
-      "xlsx:dialogsheet" => "xlsx"
-      "xlsx:tableSingleCells" => "xlsx"
-      "docx:settings" => "docx"
-      "docx:styles" => "docx"
-      "docx:numbering" => "docx"
-      "docx:header" => "docx"
-      "docx:footer" => "docx"
-      "docx:glossary" => "docx"
-      "docx:fonts" => "docx"
-      "docx:webSettings" => "docx"
-      "docx:comments" => "docx"
-      "docx:footnotes" => "docx"
-      "docx:endnotes" => "docx"
-      "docx:annotationRefs" => "docx"
-      "docx:contentPart" => "docx"
-      _ => c.format
-    }
+    let output_format = fixture_output_format(c.format)
     let _ = try? @fs.create_dir(".snapshots/fixtures/" + output_format)
     let dir = ".snapshots/fixtures/" + output_format + "/" + c.category
     let _ = try? @fs.create_dir(dir)

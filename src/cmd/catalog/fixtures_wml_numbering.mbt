@@ -90,6 +90,18 @@ fn extras_wml_numbering(xcases : Array[ExtendedCase]) -> Unit {
         Element(xe(NS_W, "suff", [w_attr("val", "space")], [])),
         Element(xe(NS_W, "lvlText", [w_attr("val", text)], [])),
         Element(xe(NS_W, "lvlPicBulletId", [w_attr("val", pic_id)], [])),
+        Element(
+          xe(
+            NS_W,
+            "legacy",
+            [
+              w_attr("legacy", "1"),
+              w_attr("legacySpace", "360"),
+              w_attr("legacyIndent", "-360"),
+            ],
+            [],
+          ),
+        ),
         Element(xe(NS_W, "lvlJc", [w_attr("val", "left")], [])),
       ],
     )

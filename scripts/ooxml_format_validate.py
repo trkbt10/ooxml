@@ -79,6 +79,9 @@ CUSTOM_XML_PROPS_NS_TRANSITIONAL = (
 CUSTOM_XML_PROPS_NS_STRICT = "http://purl.oclc.org/ooxml/officeDocument/customXml"
 
 DOCX_MAIN_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+DOCX_TEMPLATE_MAIN_CT = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml"
+)
 XLSX_MAIN_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"
 PPTX_MAIN_CT = "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"
 WORKSHEET_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
@@ -175,7 +178,14 @@ WORD_FOOTER_CT = "application/vnd.openxmlformats-officedocument.wordprocessingml
 WORD_WEB_SETTINGS_CT = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml"
 )
+WORD_MAIL_MERGE_RECIPIENT_DATA_CT = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.mailMergeRecipientData+xml"
+)
+WORD_PRINTER_SETTINGS_CT = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.printerSettings"
+)
 WORD_FONT_DATA_CT = "application/x-fontdata"
+OLE_OBJECT_CT = "application/vnd.openxmlformats-officedocument.oleObject"
 CORE_PROPERTIES_CT = "application/vnd.openxmlformats-package.core-properties+xml"
 EXTENDED_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.extended-properties+xml"
 CUSTOM_PROPERTIES_CT = "application/vnd.openxmlformats-officedocument.custom-properties+xml"
@@ -382,6 +392,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
         (WML_NS_TRANSITIONAL, "document"),
         (WML_NS_STRICT, "document"),
     },
+    DOCX_TEMPLATE_MAIN_CT: {
+        (WML_NS_TRANSITIONAL, "document"),
+        (WML_NS_STRICT, "document"),
+    },
     WORD_GLOSSARY_DOCUMENT_CT: {
         (WML_NS_TRANSITIONAL, "glossaryDocument"),
         (WML_NS_STRICT, "glossaryDocument"),
@@ -425,6 +439,10 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
     WORD_WEB_SETTINGS_CT: {
         (WML_NS_TRANSITIONAL, "webSettings"),
         (WML_NS_STRICT, "webSettings"),
+    },
+    WORD_MAIL_MERGE_RECIPIENT_DATA_CT: {
+        (WML_NS_TRANSITIONAL, "recipients"),
+        (WML_NS_STRICT, "recipients"),
     },
     XLSX_MAIN_CT: {
         (SML_NS_TRANSITIONAL, "workbook"),
@@ -678,6 +696,22 @@ for contracts in [
             (WML_NS_STRICT, "glossaryDocument"),
         },
     ),
+    relationship_contract(
+        "attachedTemplate",
+        {DOCX_MAIN_CT, DOCX_TEMPLATE_MAIN_CT},
+        {
+            (WML_NS_TRANSITIONAL, "document"),
+            (WML_NS_STRICT, "document"),
+        },
+    ),
+    relationship_contract(
+        "subDocument",
+        {DOCX_MAIN_CT, DOCX_TEMPLATE_MAIN_CT},
+        {
+            (WML_NS_TRANSITIONAL, "document"),
+            (WML_NS_STRICT, "document"),
+        },
+    ),
     {
         PACKAGE_CORE_PROPERTIES_REL_TYPE: PartContract(
             {PACKAGE_CORE_PROPERTIES_REL_TYPE},
@@ -709,6 +743,28 @@ for contracts in [
         {CUSTOM_XML_PROPERTIES_CT},
         CONTENT_TYPE_ROOT_TAGS[CUSTOM_XML_PROPERTIES_CT],
     ),
+    relationship_contract(
+        "mailMergeSource",
+        {"application/octet-stream", "application/xml", "text/csv", "text/plain"},
+        set(),
+    ),
+    relationship_contract(
+        "mailMergeHeaderSource",
+        {"application/octet-stream", "application/xml", "text/csv", "text/plain"},
+        set(),
+    ),
+    relationship_contract(
+        "mailMergeRecipientData",
+        {WORD_MAIL_MERGE_RECIPIENT_DATA_CT},
+        CONTENT_TYPE_ROOT_TAGS[WORD_MAIL_MERGE_RECIPIENT_DATA_CT],
+    ),
+    relationship_contract(
+        "aFChunk",
+        {"application/xml", "application/xhtml+xml", "text/html"},
+        set(),
+    ),
+    relationship_contract("oleObject", {OLE_OBJECT_CT}, set()),
+    relationship_contract("printerSettings", {WORD_PRINTER_SETTINGS_CT}, set()),
     relationship_contract(
         "worksheet",
         {WORKSHEET_CT},

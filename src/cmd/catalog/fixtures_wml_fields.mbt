@@ -141,6 +141,162 @@ fn extras_wml_fields(cases : Array[VisualCase]) -> Unit {
   // `<w:r><w:tab/></w:r>` — embedded tab character (§17.3.3.32).
   let tab_run = xe(NS_W, "r", [], [Element(xe(NS_W, "tab", [], []))])
 
+  let w_rel_attr = fn(localn : String, value : String) -> @xml.Attribute {
+    {
+      name: { prefix: Some("r"), local_name: localn, ns: Some(NS_OFFICE_REL) },
+      value,
+    }
+  }
+
+  let field_relationship_fldsimple = xe(
+    NS_W,
+    "fldSimple",
+    [w_attr("instr", "MERGEFIELD CatalogName")],
+    [
+      Element(xe(NS_W, "fldData", [], [Text("catalog-field-data")])),
+      Element(w_run(None, "CatalogName")),
+    ],
+  )
+
+  let content_part_run = xe(NS_W, "r", [], [
+    Element(xe(NS_W, "contentPart", [w_rel_attr("id", "rIdContentPart")], [])),
+  ])
+
+  let object_embed = xe(
+    NS_W,
+    "object",
+    [w_attr("dxaOrig", "1440"), w_attr("dyaOrig", "720")],
+    [
+      Element(
+        xe(
+          NS_W,
+          "objectEmbed",
+          [
+            w_rel_attr("id", "rIdOleEmbed"),
+            w_attr("drawAspect", "content"),
+            w_attr("progId", "Package"),
+          ],
+          [],
+        ),
+      ),
+    ],
+  )
+
+  let object_link = xe(NS_W, "object", [], [
+    Element(
+      xe(
+        NS_W,
+        "objectLink",
+        [
+          w_rel_attr("id", "rIdOleLink"),
+          w_attr("drawAspect", "icon"),
+          w_attr("progId", "Package"),
+          w_attr("updateMode", "onCall"),
+        ],
+        [],
+      ),
+    ),
+  ])
+
+  let picture_carrier = xe(NS_W, "pict", [], [
+    Element(xe(NS_W, "movie", [w_rel_attr("id", "rIdMovie")], [])),
+    Element(
+      xe(
+        NS_W,
+        "control",
+        [w_attr("name", "CatalogControl"), w_attr("shapeid", "_x0000_s1")],
+        [],
+      ),
+    ),
+  ])
+
+  let numbering_change_run = xe(NS_W, "r", [], [
+    Element(
+      xe(NS_W, "fldChar", [w_attr("fldCharType", "begin")], [
+        Element(
+          xe(
+            NS_W,
+            "numberingChange",
+            [
+              w_attr("id", "401"),
+              w_attr("author", "Catalog"),
+              w_attr("date", "2026-06-06T00:00:00Z"),
+              w_attr("original", "1."),
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+
+  let smart_tag = xe(
+    NS_W,
+    "smartTag",
+    [w_attr("element", "catalogTag"), w_attr("uri", "urn:catalog")],
+    [
+      Element(
+        xe(NS_W, "smartTagPr", [], [
+          Element(
+            xe(
+              NS_W,
+              "attr",
+              [w_attr("name", "kind"), w_attr("val", "relationship")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(w_run(None, "smart tag")),
+    ],
+  )
+
+  cases.push({
+    id: "field-relationship-carriers",
+    format: "docx:relationshipRich",
+    category: "field",
+    content: xe(NS_W, "body", [], [
+      Element(
+        w_p(None, [
+          w_run(Some(w_rpr([w_flag("oMath")])), "Math-styled run. "),
+          smart_tag,
+          xe(NS_W, "subDoc", [w_rel_attr("id", "rIdSubDoc")], []),
+        ]),
+      ),
+      Element(w_p(None, [field_relationship_fldsimple])),
+      Element(
+        w_p(None, [
+          content_part_run,
+          numbering_change_run,
+          xe(NS_W, "r", [], [Element(object_embed)]),
+          xe(NS_W, "r", [], [Element(object_link)]),
+          xe(NS_W, "r", [], [Element(picture_carrier)]),
+        ]),
+      ),
+      Element(
+        xe(NS_W, "altChunk", [w_rel_attr("id", "rIdAltChunk")], [
+          Element(
+            xe(NS_W, "altChunkPr", [], [
+              Element(xe(NS_W, "matchSrc", [w_attr("val", "1")], [])),
+            ]),
+          ),
+        ]),
+      ),
+      Element(
+        xe(NS_W, "sectPr", [], [
+          Element(
+            xe(
+              NS_W,
+              "printerSettings",
+              [w_rel_attr("id", "rIdPrinterSettings")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+    ]),
+  })
+
   // ---- §17.16 simple fields (`<w:fldSimple>`) ------------------
 
   // PAGE — current page number, cached as "1".
@@ -254,7 +410,7 @@ fn extras_wml_fields(cases : Array[VisualCase]) -> Unit {
               [],
             ),
             xe(NS_W, "checkBox", [], [
-              Element(w_val("sizeAuto", "1")),
+              Element(w_flag("sizeAuto")),
               Element(w_val("default", "0")),
               Element(w_val("checked", "1")),
             ]),
@@ -303,6 +459,26 @@ fn extras_wml_fields(cases : Array[VisualCase]) -> Unit {
           ]),
           fldchar_run("separate"),
           w_run(None, "Catalog"),
+          fldchar_run("end"),
+        ]),
+      ),
+      Element(
+        w_p(None, [
+          w_run(None, "Fixed-size checkbox: "),
+          fldchar_form_run([
+            w_val("name", "FixedSizeChoice"),
+            w_val("label", "4"),
+            w_val("tabIndex", "4"),
+            w_val("enabled", "1"),
+            w_val("calcOnExit", "0"),
+            xe(NS_W, "checkBox", [], [
+              Element(w_val("size", "20")),
+              Element(w_val("default", "1")),
+              Element(w_val("checked", "0")),
+            ]),
+          ]),
+          fldchar_run("separate"),
+          w_run(None, "unchecked"),
           fldchar_run("end"),
         ]),
       ),

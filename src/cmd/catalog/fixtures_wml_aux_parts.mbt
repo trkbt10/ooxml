@@ -94,6 +94,11 @@ fn wml_settings_core_part() -> @xml.Element {
       [],
     ),
     w_flag("formsDesign"),
+    wml_aux_el(
+      "attachedTemplate",
+      [wml_aux_rel_attr("id", "rIdAttachedTemplate")],
+      [],
+    ),
     w_flag("linkStyles"),
     xe(
       NS_W,
@@ -114,6 +119,8 @@ fn wml_settings_core_part() -> @xml.Element {
       w_val("dataType", "native"),
       w_val("connectString", "Driver=Text"),
       w_val("query", "SELECT * FROM Contacts"),
+      wml_aux_el("dataSource", [wml_aux_rel_attr("id", "rIdDataSource")], []),
+      wml_aux_el("headerSource", [wml_aux_rel_attr("id", "rIdHeaderSource")], []),
       w_flag("doNotSuppressBlankLines"),
       w_val("destination", "email"),
       w_val("addressFieldName", "Email"),
@@ -125,6 +132,7 @@ fn wml_settings_core_part() -> @xml.Element {
       wml_aux_el("odso", [], [
         w_val("udl", "Provider=Text"),
         w_val("table", "Contacts"),
+        wml_aux_el("src", [wml_aux_rel_attr("id", "rIdOdsoSource")], []),
         w_val("colDelim", "44"),
         w_val("type", "email"),
         w_flag("fHdr"),
@@ -136,6 +144,11 @@ fn wml_settings_core_part() -> @xml.Element {
           w_val("lid", "en-US"),
           w_flag("dynamicAddress"),
         ]),
+        wml_aux_el(
+          "recipientData",
+          [wml_aux_rel_attr("id", "rIdRecipientData")],
+          [],
+        ),
       ]),
     ]),
     xe(
@@ -214,6 +227,7 @@ fn wml_settings_core_part() -> @xml.Element {
     w_flag("showXMLTags"),
     w_flag("alwaysMergeEmptyNamespace"),
     w_flag("updateFields"),
+    wml_aux_el("hdrShapeDefaults", [], []),
     wml_aux_el("docVars", [], [
       xe(
         NS_W,
@@ -304,6 +318,7 @@ fn wml_settings_core_part() -> @xml.Element {
       ],
       [],
     ),
+    wml_aux_el("shapeDefaults", [], []),
     w_flag("doNotEmbedSmartTags"),
     w_val("decimalSymbol", "."),
     w_val("listSeparator", ","),
@@ -369,6 +384,12 @@ fn wml_web_settings_part() -> @xml.Element {
         w_val("sz", "50%"),
         w_val("name", "left"),
         w_val("title", "Left pane"),
+        wml_aux_el("longDesc", [wml_aux_rel_attr("id", "rIdFrameLongDesc")], []),
+        wml_aux_el(
+          "sourceFileName",
+          [wml_aux_rel_attr("id", "rIdFrameSource")],
+          [],
+        ),
         w_val("marW", "12"),
         w_val("marH", "12"),
         w_val("scrollbar", "auto"),
@@ -390,6 +411,16 @@ fn wml_web_settings_part() -> @xml.Element {
             wml_aux_border("left"),
             wml_aux_border("bottom"),
             wml_aux_border("right"),
+          ]),
+        ),
+        Element(
+          wml_aux_el("divsChild", [], [
+            xe(NS_W, "div", [wml_aux_attr("id", "2")], [
+              Element(w_val("marLeft", "60")),
+              Element(w_val("marRight", "60")),
+              Element(w_val("marTop", "30")),
+              Element(w_val("marBottom", "30")),
+            ]),
           ]),
         ),
       ]),
