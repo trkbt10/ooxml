@@ -686,6 +686,28 @@ fn make_colors_def(unique_id : String) -> @xml.Element {
 }
 
 ///|
+fn diagram_header(tag : String, unique_id : String) -> @xml.Element {
+  dgm_elem(
+    tag,
+    [
+      xa("uniqueId", unique_id),
+      xa("minVer", "http://schemas.openxmlformats.org/drawingml/2006/diagram"),
+      xa("resId", "1"),
+    ],
+    [
+      Element(dgm_elem("title", [xa("val", unique_id)], [])),
+      Element(dgm_elem("desc", [xa("val", unique_id)], [])),
+      Element(dgm_cat_lst_rich()),
+    ],
+  )
+}
+
+///|
+fn diagram_header_list(tag : String, header : @xml.Element) -> @xml.Element {
+  dgm_elem(tag, [], [Element(header)])
+}
+
+///|
 /// `<p:graphicFrame>` carrying a `<dgm:relIds>` that points at the
 /// four SmartArt parts the builder writes (rId2 → dm, rId3 → lo,
 /// rId4 → qs, rId5 → cs per §21.4.2.22 CT_RelIds).
@@ -834,6 +856,48 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     layout_def: rich_layout_def("urn:test:diagram:rich-options"),
     style_def: rich_style_def("urn:test:diagram:rich-options:style"),
     colors_def: rich_colors_def("urn:test:diagram:rich-options:colors"),
+    drawing: None,
+  })
+
+  // ---- standalone header roots ----------------------------------
+  // Covers the diagram layout/style/color header part roots. The
+  // data model is still a normal SmartArt data part; only the
+  // relationship targets for layout, quick style, and colors use the
+  // header root forms allowed by dml-diagram.xsd.
+  dcases.push({
+    id: "diagram-header-roots",
+    format: "pptx",
+    category: "diagram",
+    content: sp_tree([diagram_graphic_frame("2", "Diagram Header Roots")]),
+    data_model: default_diagram_data_model(),
+    layout_def: diagram_header("layoutDefHdr", "urn:test:diagram:header:layout"),
+    style_def: diagram_header("styleDefHdr", "urn:test:diagram:header:style"),
+    colors_def: diagram_header("colorsDefHdr", "urn:test:diagram:header:colors"),
+    drawing: None,
+  })
+
+  // ---- standalone header-list roots ------------------------------
+  // Covers the list roots that package galleries use to enumerate
+  // available layout/style/color definitions without embedding full
+  // definitions.
+  dcases.push({
+    id: "diagram-header-list-roots",
+    format: "pptx",
+    category: "diagram",
+    content: sp_tree([diagram_graphic_frame("2", "Diagram Header Lists")]),
+    data_model: default_diagram_data_model(),
+    layout_def: diagram_header_list(
+      "layoutDefHdrLst",
+      diagram_header("layoutDefHdr", "urn:test:diagram:header-list:layout"),
+    ),
+    style_def: diagram_header_list(
+      "styleDefHdrLst",
+      diagram_header("styleDefHdr", "urn:test:diagram:header-list:style"),
+    ),
+    colors_def: diagram_header_list(
+      "colorsDefHdrLst",
+      diagram_header("colorsDefHdr", "urn:test:diagram:header-list:colors"),
+    ),
     drawing: None,
   })
 

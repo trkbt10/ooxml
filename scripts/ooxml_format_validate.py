@@ -467,15 +467,27 @@ CONTENT_TYPE_ROOT_TAGS: dict[str, set[tuple[str, str]]] = {
     },
     DIAGRAM_LAYOUT_CT: {
         (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDef"),
+        (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDefHdr"),
+        (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDefHdrLst"),
         (DML_DIAGRAM_NS_STRICT, "layoutDef"),
+        (DML_DIAGRAM_NS_STRICT, "layoutDefHdr"),
+        (DML_DIAGRAM_NS_STRICT, "layoutDefHdrLst"),
     },
     DIAGRAM_STYLE_CT: {
         (DML_DIAGRAM_NS_TRANSITIONAL, "styleDef"),
+        (DML_DIAGRAM_NS_TRANSITIONAL, "styleDefHdr"),
+        (DML_DIAGRAM_NS_TRANSITIONAL, "styleDefHdrLst"),
         (DML_DIAGRAM_NS_STRICT, "styleDef"),
+        (DML_DIAGRAM_NS_STRICT, "styleDefHdr"),
+        (DML_DIAGRAM_NS_STRICT, "styleDefHdrLst"),
     },
     DIAGRAM_COLORS_CT: {
         (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDef"),
+        (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDefHdr"),
+        (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDefHdrLst"),
         (DML_DIAGRAM_NS_STRICT, "colorsDef"),
+        (DML_DIAGRAM_NS_STRICT, "colorsDefHdr"),
+        (DML_DIAGRAM_NS_STRICT, "colorsDefHdrLst"),
     },
     CORE_PROPERTIES_CT: {
         (OPC_CORE_PROPERTIES_NS, "coreProperties"),
@@ -769,7 +781,11 @@ for contracts in [
         {DIAGRAM_LAYOUT_CT},
         {
             (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDef"),
+            (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDefHdr"),
+            (DML_DIAGRAM_NS_TRANSITIONAL, "layoutDefHdrLst"),
             (DML_DIAGRAM_NS_STRICT, "layoutDef"),
+            (DML_DIAGRAM_NS_STRICT, "layoutDefHdr"),
+            (DML_DIAGRAM_NS_STRICT, "layoutDefHdrLst"),
         },
     ),
     relationship_contract(
@@ -777,7 +793,11 @@ for contracts in [
         {DIAGRAM_STYLE_CT},
         {
             (DML_DIAGRAM_NS_TRANSITIONAL, "styleDef"),
+            (DML_DIAGRAM_NS_TRANSITIONAL, "styleDefHdr"),
+            (DML_DIAGRAM_NS_TRANSITIONAL, "styleDefHdrLst"),
             (DML_DIAGRAM_NS_STRICT, "styleDef"),
+            (DML_DIAGRAM_NS_STRICT, "styleDefHdr"),
+            (DML_DIAGRAM_NS_STRICT, "styleDefHdrLst"),
         },
     ),
     relationship_contract(
@@ -785,7 +805,11 @@ for contracts in [
         {DIAGRAM_COLORS_CT},
         {
             (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDef"),
+            (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDefHdr"),
+            (DML_DIAGRAM_NS_TRANSITIONAL, "colorsDefHdrLst"),
             (DML_DIAGRAM_NS_STRICT, "colorsDef"),
+            (DML_DIAGRAM_NS_STRICT, "colorsDefHdr"),
+            (DML_DIAGRAM_NS_STRICT, "colorsDefHdrLst"),
         },
     ),
     relationship_contract("image", IMAGE_CONTENT_TYPES, set()),

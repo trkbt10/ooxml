@@ -300,6 +300,32 @@ def write_docx_with_glossary_styles_and_web_settings(package: Path) -> None:
 
 
 class FormatValidatorRegressionTest(unittest.TestCase):
+    def test_diagram_content_types_accept_header_roots(self) -> None:
+        self.assertIn(
+            (format_validate.DML_DIAGRAM_NS_TRANSITIONAL, "layoutDefHdr"),
+            format_validate.CONTENT_TYPE_ROOT_TAGS[format_validate.DIAGRAM_LAYOUT_CT],
+        )
+        self.assertIn(
+            (format_validate.DML_DIAGRAM_NS_TRANSITIONAL, "layoutDefHdrLst"),
+            format_validate.CONTENT_TYPE_ROOT_TAGS[format_validate.DIAGRAM_LAYOUT_CT],
+        )
+        self.assertIn(
+            (format_validate.DML_DIAGRAM_NS_TRANSITIONAL, "styleDefHdr"),
+            format_validate.CONTENT_TYPE_ROOT_TAGS[format_validate.DIAGRAM_STYLE_CT],
+        )
+        self.assertIn(
+            (format_validate.DML_DIAGRAM_NS_TRANSITIONAL, "styleDefHdrLst"),
+            format_validate.CONTENT_TYPE_ROOT_TAGS[format_validate.DIAGRAM_STYLE_CT],
+        )
+        self.assertIn(
+            (format_validate.DML_DIAGRAM_NS_TRANSITIONAL, "colorsDefHdr"),
+            format_validate.CONTENT_TYPE_ROOT_TAGS[format_validate.DIAGRAM_COLORS_CT],
+        )
+        self.assertIn(
+            (format_validate.DML_DIAGRAM_NS_TRANSITIONAL, "colorsDefHdrLst"),
+            format_validate.CONTENT_TYPE_ROOT_TAGS[format_validate.DIAGRAM_COLORS_CT],
+        )
+
     def test_content_types_mapping_uses_ascii_case_insensitive_opc_rules(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
             package = Path(tempdir) / "case-mixed.docx"
