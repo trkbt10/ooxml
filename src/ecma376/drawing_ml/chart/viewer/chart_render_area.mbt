@@ -19,6 +19,9 @@ fn render_area_chart(
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
   disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
+  show_dlbls_over_max? : Bool = true,
+  wireframe? : Bool = false,
+  surface_band_fills? : Array[String] = [],
 ) -> Array[@xml.Node] {
   let all_series : Array[(Array[String], Array[Double?])] = []
   let ser_elems : Array[@xml.Element] = []
@@ -26,7 +29,7 @@ fn render_area_chart(
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
-          let labels = read_cat_labels(se)
+          let labels = read_cat_axis_labels(se, axes)
           let values = read_val_number_slots(se)
           if values.length() > 0 {
             ser_elems.push(se)
@@ -40,6 +43,11 @@ fn render_area_chart(
     return []
   }
   let (labels, _) = all_series[0]
+  let cat_serials = if ser_elems.length() > 0 {
+    read_cat_number_slots(ser_elems[0])
+  } else {
+    []
+  }
   let mut data_max = 0.0
   let mut n = 0
   for s in all_series {
@@ -57,8 +65,37 @@ fn render_area_chart(
   // §21.2.2.170 CT_Scaling / orientation — maxMin reverses the axis.
   let val_rev = axes.val_reversed()
   let cat_rev = axes.cat_reversed()
+  let cat_cross = axes.val_cross_between()
+  let value_axis_x = category_axis_cross_position(
+    px,
+    pw,
+    n,
+    cat_rev,
+    cat_cross,
+    axes.cat_crosses(),
+    axes.cat_crosses_at(),
+  )
+  let category_axis_y = value_axis_cross_y(
+    py,
+    ph,
+    0.0,
+    max_v,
+    val_rev,
+    axes.val_y_crosses(),
+    axes.val_y_crosses_at(),
+  )
   let nodes : Array[@xml.Node] = []
-  nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
+  nodes.push(
+    plot_axes_rect(
+      px,
+      py,
+      pw,
+      ph,
+      style=Some(style),
+      vertical_axis_x=Some(value_axis_x),
+      horizontal_axis_y=Some(category_axis_y),
+    ),
+  )
   if !axes.val_deleted() {
     for
       tick in y_axis_ticks(
@@ -71,51 +108,66 @@ fn render_area_chart(
         axes.val_major(),
         style=Some(style),
         draw_minor_gridlines=axes.val_minor_gridlines(),
+        major_gridlines_element=axes.val_major_gridlines_element(),
+        minor_gridlines_element=axes.val_minor_gridlines_element(),
+        ctx=Some(ctx),
+        defs=Some(defs),
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        major_tick_mark=axes.val_major_tick_mark(),
+        minor_tick_mark=axes.val_minor_tick_mark(),
+        major_unit=axes.val_y_major_unit(),
+        minor_unit=axes.val_y_minor_unit(),
         reversed=val_rev,
+        axis_x=Some(value_axis_x),
+        display_unit_factor=axes.val_y_disp_unit_factor(),
       ) {
       nodes.push(tick)
     }
   }
-  if n > 0 {
-    let axis_color = "#bfbfbf"
-    let major_half = fh * 0.0121
-    let tick_stroke = format_double((if pw < ph { pw } else { ph }) * 0.004)
-    let xstep = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
-    let mut i = 0
-    while i < n {
-      let x = px + i.to_double() * xstep
-      nodes.push(
-        axis_tick_v_line(
-          py + ph - major_half,
-          py + ph + major_half,
-          x,
-          axis_color,
-          tick_stroke,
-        ),
-      )
-      i = i + 1
+  if !axes.cat_deleted() {
+    for
+      tick in date_axis_ticks_bottom(
+        px,
+        py,
+        pw,
+        ph,
+        fh,
+        n,
+        axes,
+        cat_serials,
+        major_tick_mark=axes.cat_major_tick_mark(),
+        minor_tick_mark=axes.cat_minor_tick_mark(),
+        cross_between=cat_cross,
+        axis_y=Some(category_axis_y),
+        tick_mark_skip=axes.cat_tick_mark_skip(),
+      ) {
+      nodes.push(tick)
     }
   }
-  let step = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
   // §21.2.2.170 — single source of truth for area's category→x and
   // value→y mapping under axis orientation flips.  The area baseline is
-  // the value-0 line: bottom (py+ph) for minMax, top (py) for maxMin.
+  // the actual category-axis crossing line.
   let cat_x = fn(i : Int) -> Double {
-    px + category_index(i, n, cat_rev).to_double() * step
+    date_axis_position_for_index(
+      px, pw, n, i, cat_rev, cat_cross, axes, cat_serials,
+    )
   }
   let val_y = fn(v : Double) -> Double {
     value_axis_y(v, max_v, py, ph, val_rev)
   }
-  let baseline_y = value_axis_y(0.0, max_v, py, ph, val_rev)
+  let baseline_y = category_axis_y
   // §21.2.2.78 grouping — draw back-to-front so the first series
   // (index 0) is visually on top.
   let mut si = all_series.length() - 1
   while si >= 0 {
     let (_, values) = all_series[si]
-    let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
+    let series_color = if surface_band_fills.length() > 0 {
+      surface_band_fills[si % surface_band_fills.length()]
+    } else {
+      resolve_series_color(ser_elems[si], si, ctx, defs)
+    }
     let segments = chart_point_segments(values, disp_blanks_as)
     for segment in segments {
       if segment.length() == 0 {
@@ -150,10 +202,12 @@ fn render_area_chart(
           @markup.svg_ns,
           [
             @markup.attr("points", buf.to_string()),
-            @markup.attr("fill", series_color),
+            @markup.attr("fill", if wireframe { "none" } else { series_color }),
             @markup.attr(
               "fill-opacity",
-              if all_series.length() > 1 {
+              if wireframe {
+                "0"
+              } else if all_series.length() > 1 {
                 "0.7"
               } else {
                 "1"
@@ -169,24 +223,25 @@ fn render_area_chart(
     }
     si = si - 1
   }
-  for i, label in labels {
-    if i >= n {
-      break
+  if !axes.cat_deleted() && axes.cat_tick_lbl_pos() != "none" {
+    let label_side = axes.cat_tick_lbl_pos()
+    let label_offset = category_horizontal_label_offset(fh, axes)
+    let anchor = category_label_anchor(axes)
+    for i, label in labels {
+      if i >= n {
+        break
+      }
+      if !date_axis_label_should_render(axes, cat_serials, i) {
+        continue
+      }
+      let bx = cat_x(i)
+      let (by, baseline) = category_horizontal_label_y(
+        py, category_axis_y, label_side, label_offset,
+      )
+      nodes.push(
+        chart_text(label, bx, by, w, h, anchor~, baseline~, style=Some(style)),
+      )
     }
-    let bx = cat_x(i)
-    let by = py + ph + fh * 0.018
-    nodes.push(
-      chart_text(
-        label,
-        bx,
-        by,
-        w,
-        h,
-        anchor="middle",
-        baseline="hanging",
-        style=Some(style),
-      ),
-    )
   }
   // §21.2.2.49 dLbls — data labels at each data point.
   let dlbl_config = read_data_labels(elem)
@@ -199,16 +254,36 @@ fn render_area_chart(
           Some(nm) => nm
           None => ""
         }
+        let value_num_fmt = read_val_number_format(ser_elems[si])
         let total = sum_positive_slots(values, disp_blanks_as)
-        let points : Array[(Double, Double, Double, String)] = []
+        let points : Array[DataLabelPoint] = []
         for point in chart_rendered_points(values, disp_blanks_as) {
           let (i, v) = point
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
-          points.push((cat_x(i), val_y(v), v, cat_name))
+          points.push({
+            idx: i,
+            x: cat_x(i),
+            y: val_y(v),
+            value: v,
+            cat_name,
+            bubble_size: None,
+          })
         }
+        let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
         for
           nd in render_data_labels(
-            cfg, points, ser_name, total, w, h, label_offset, style,
+            cfg,
+            points,
+            ser_name,
+            total,
+            w,
+            h,
+            label_offset,
+            style,
+            legend_key_color=Some(series_color),
+            value_num_fmt~,
+            show_over_max=show_dlbls_over_max,
+            max_value=axes.val_y_scaling_max(),
           ) {
           nodes.push(nd)
         }

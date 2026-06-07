@@ -257,6 +257,7 @@ pub fn Presentation::to_svg_for_slide(
     None => self.resolve_first_theme()
   }
   let chain = self.resolve_slide_chain(slide)
+  let table_style_list = self.resolve_table_style_list()
   // §19.2.1.39 / §19.3.1.41 sldSz — when `<p:presentation>/<p:sldSz>`
   // is present its `@cx` / `@cy` (EMU) MUST drive every rendered
   // slide's viewport. Without sldSz the viewer falls back to its
@@ -274,6 +275,7 @@ pub fn Presentation::to_svg_for_slide(
         chart_part_resolver_factory~,
         hyperlink_resolver~,
         theme=typed_theme,
+        table_style_list~,
         chain~,
         presentation=presentation_root,
       )
@@ -285,6 +287,7 @@ pub fn Presentation::to_svg_for_slide(
         chart_part_resolver_factory~,
         hyperlink_resolver~,
         theme=typed_theme,
+        table_style_list~,
         chain~,
         presentation=presentation_root,
       )
@@ -518,6 +521,41 @@ fn Presentation::resolve_first_theme(
       _ => continue
     } noraise {
       t => return Some(t)
+    }
+  }
+  None
+}
+
+///|
+/// §19 presentation relationships — resolve `/ppt/tableStyles.xml`
+/// through the presentation part's explicit `…/tableStyles`
+/// relationship and parse it as DrawingML `CT_TableStyleList`.
+fn Presentation::resolve_table_style_list(
+  self : Presentation,
+) -> @a.CT_TableStyleList? {
+  let rels = match self.opc_package.relationships(self.presentation_part) {
+    Some(rs) => rs
+    None => return None
+  }
+  for rel in rels.relationships {
+    if rel.type_uri.has_suffix("/tableStyles") &&
+      rel.target_mode == @relationships.TargetMode::Internal {
+      let part_name = try
+        @opc_part_name.resolve_target(self.presentation_part, rel.target)
+      catch {
+        _ => return None
+      } noraise {
+        name => name
+      }
+      let part = match self.opc_package.part(part_name) {
+        Some(p) => p
+        None => return None
+      }
+      try @a.read_table_style_list(part.data) catch {
+        _ => return None
+      } noraise {
+        styles => return Some(styles)
+      }
     }
   }
   None

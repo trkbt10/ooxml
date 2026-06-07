@@ -29,24 +29,52 @@ fn render_scatter_chart(
     return []
   }
   let (px, py, pw, ph) = chart_plot_inset(w, h, fw, fh, axes=Some(axes))
-  let max_x = effective_axis_max(
+  let max_x = effective_axis_max_from_scaling(
     xy_series_axis_max(ser_elems, "xVal", disp_blanks_as),
-    axes,
+    axes.val_x_scaling_max(),
   )
-  let max_y = effective_axis_max(
+  let max_y = effective_axis_max_from_scaling(
     xy_series_axis_max(ser_elems, "yVal", disp_blanks_as),
-    axes,
+    axes.val_y_scaling_max(),
   )
   // §21.2.2.170 — axis origin defaults to 0 for scatter/bubble.
-  let min_x = effective_axis_min(axes)
-  let min_y = effective_axis_min(axes)
+  let min_x = effective_axis_min_from_scaling(axes.val_x_scaling_min())
+  let min_y = effective_axis_min_from_scaling(axes.val_y_scaling_min())
   // §21.2.2.170 CT_Scaling / orientation — the scatter chart has two
   // INDEPENDENT value axes; resolve the horizontal (X) and vertical (Y)
   // reversal flags separately by axPos.
   let val_x_rev = axes.val_x_reversed()
   let val_y_rev = axes.val_y_reversed()
+  let vertical_axis_x = value_axis_cross_x(
+    px,
+    pw,
+    min_x,
+    max_x,
+    val_x_rev,
+    axes.val_x_crosses(),
+    axes.val_x_crosses_at(),
+  )
+  let horizontal_axis_y = value_axis_cross_y(
+    py,
+    ph,
+    min_y,
+    max_y,
+    val_y_rev,
+    axes.val_y_crosses(),
+    axes.val_y_crosses_at(),
+  )
   let nodes : Array[@xml.Node] = []
-  nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(chart_style)))
+  nodes.push(
+    plot_axes_rect(
+      px,
+      py,
+      pw,
+      ph,
+      style=Some(chart_style),
+      vertical_axis_x=Some(vertical_axis_x),
+      horizontal_axis_y=Some(horizontal_axis_y),
+    ),
+  )
   if !axes.val_deleted() {
     for
       tick in y_axis_ticks(
@@ -59,10 +87,20 @@ fn render_scatter_chart(
         axes.val_major(),
         style=Some(chart_style),
         draw_minor_gridlines=axes.val_minor_gridlines(),
+        major_gridlines_element=axes.val_major_gridlines_element(),
+        minor_gridlines_element=axes.val_minor_gridlines_element(),
+        ctx=Some(ctx),
+        defs=Some(defs),
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        major_tick_mark=axes.val_major_tick_mark(),
+        minor_tick_mark=axes.val_minor_tick_mark(),
+        major_unit=axes.val_y_major_unit(),
+        minor_unit=axes.val_y_minor_unit(),
         reversed=val_y_rev,
+        axis_x=Some(vertical_axis_x),
+        display_unit_factor=axes.val_y_disp_unit_factor(),
       ) {
       nodes.push(tick)
     }
@@ -83,7 +121,16 @@ fn render_scatter_chart(
         fh,
         axes.val_major(),
         style=Some(chart_style),
+        major_gridlines_element=axes.val_major_gridlines_element(),
+        ctx=Some(ctx),
+        defs=Some(defs),
+        major_tick_mark=axes.val_major_tick_mark(),
+        minor_tick_mark=axes.val_minor_tick_mark(),
+        major_unit=axes.val_x_major_unit(),
+        minor_unit=axes.val_x_minor_unit(),
         reversed=val_x_rev,
+        axis_y=Some(horizontal_axis_y),
+        display_unit_factor=axes.val_x_disp_unit_factor(),
       ) {
       nodes.push(tick)
     }
@@ -181,23 +228,11 @@ fn render_scatter_chart(
     // axes/gridlines).  All other styles emit markers.
     let draw_markers = style != "none"
     if draw_markers {
-      let marker_r = h * 0.012
+      let (marker_sym, marker_r) = read_marker_config(ser, h * 0.012)
       for point in chart_xy_rendered_points(xs, ys, disp_blanks_as) {
         let (_, xv, yv) = point
         let (x, y) = to_xy(xv, yv)
-        nodes.push(
-          @markup.elem_ns(
-            "circle",
-            @markup.svg_ns,
-            [
-              @markup.attr("cx", format_double(x)),
-              @markup.attr("cy", format_double(y)),
-              @markup.attr("r", format_double(marker_r)),
-              @markup.attr("fill", series_color),
-            ],
-            [],
-          ),
-        )
+        nodes.push(render_marker(x, y, marker_r, marker_sym, series_color))
       }
     }
   }

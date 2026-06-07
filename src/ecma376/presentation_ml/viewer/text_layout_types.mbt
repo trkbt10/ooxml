@@ -272,6 +272,9 @@ pub struct BulletConfig {
   char : String
   /// Font size in points.
   font_size : Double
+  /// Percent of the inherited run size. `None` means `font_size`
+  /// already carries an absolute point size or should inherit as-is.
+  font_size_percent : Double?
   /// Colour hex (with leading `#`).
   color : String
   font_family : String

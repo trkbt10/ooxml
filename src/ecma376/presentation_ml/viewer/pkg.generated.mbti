@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/presentation_ml/viewer"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml",
   "trkbt10/ooxml/ecma376/drawing_ml/paint",
   "trkbt10/ooxml/ecma376/drawing_ml/theme",
   "trkbt10/ooxml/ecma376/presentation_ml/domain",
@@ -74,13 +75,13 @@ pub fn render_effects_filter_attr(@xml.Element, String, @paint.ColorResolveConte
 
 pub fn render_fill_attr(@xml.Element, @paint.SvgDefsCollector, @paint.ColorResolveContext, shape_width? : Double, shape_height? : Double, image_resolver? : (String) -> ResolvedImage?) -> FillAttrResult
 
-pub fn render_graphic_frame_table_svg(@xml.Element, Double, Double, @paint.ColorResolveContext, @paint.SvgDefsCollector, hyperlink_resolver? : (String) -> String?) -> Array[@xml.Node]
+pub fn render_graphic_frame_table_svg(@xml.Element, Double, Double, @paint.ColorResolveContext, @paint.SvgDefsCollector, hyperlink_resolver? : (String) -> String?, table_style_list? : @drawing_ml.CT_TableStyleList?) -> Array[@xml.Node]
 
 pub fn render_preset_geometry(@xml.Element, Double, Double) -> String?
 
 pub fn render_preset_geometry_layered(@xml.Element, Double, Double) -> Array[PresetLayer]?
 
-pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, part_resolver? : (String) -> @xml.Element?, chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)?, hyperlink_resolver? : (String) -> String?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?, presentation? : @xml.Element?) -> String
+pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, part_resolver? : (String) -> @xml.Element?, chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)?, hyperlink_resolver? : (String) -> String?, theme? : @theme.CT_OfficeStyleSheet?, table_style_list? : @drawing_ml.CT_TableStyleList?, chain? : @placeholder_resolver.SlideChain?, presentation? : @xml.Element?) -> String
 
 // Errors
 
@@ -99,6 +100,7 @@ pub(all) enum AutoFitConfig {
 pub struct BulletConfig {
   char : String
   font_size : Double
+  font_size_percent : Double?
   color : String
   font_family : String
   image_url : String?

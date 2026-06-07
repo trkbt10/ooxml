@@ -26,6 +26,7 @@ fn render_up_down_bars(
   cat_count : Int,
   val_rev : Bool,
   cat_rev : Bool,
+  cat_cross_between? : String = "midCat",
 ) -> Array[@xml.Node] {
   let udb = match first_child_named(elem, "upDownBars") {
     Some(e) => e
@@ -86,7 +87,16 @@ fn render_up_down_bars(
     let last = last_vals[i]
     // §21.2.2.170 — honour catAx/valAx orientation flips so the bars
     // sit under the (reversed) line markers.
-    let cx = px + category_index(i, cat_count, cat_rev).to_double() * step
+    let coord = if cat_rev {
+      (cat_count - 1).to_double() - i.to_double()
+    } else {
+      i.to_double()
+    }
+    let cx = if cat_cross_between == "between" {
+      px + (coord + 0.5) * step
+    } else {
+      px + coord * step
+    }
     let y_first = value_axis_y(first, max_v, py, ph, val_rev)
     let y_last = value_axis_y(last, max_v, py, ph, val_rev)
     let top = if y_first < y_last { y_first } else { y_last }
@@ -129,6 +139,7 @@ fn render_line_chart(
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
   disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
+  show_dlbls_over_max? : Bool = true,
 ) -> Array[@xml.Node] {
   let all_series : Array[(Array[String], Array[Double?])] = []
   let ser_elems : Array[@xml.Element] = []
@@ -136,7 +147,7 @@ fn render_line_chart(
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
-          let labels = read_cat_labels(se)
+          let labels = read_cat_axis_labels(se, axes)
           let values = read_val_number_slots(se)
           if values.length() > 0 {
             ser_elems.push(se)
@@ -150,6 +161,11 @@ fn render_line_chart(
     return []
   }
   let (labels, _) = all_series[0]
+  let cat_serials = if ser_elems.length() > 0 {
+    read_cat_number_slots(ser_elems[0])
+  } else {
+    []
+  }
   let mut data_max = 0.0
   let mut n = 0
   for s in all_series {
@@ -167,8 +183,37 @@ fn render_line_chart(
   // §21.2.2.170 CT_Scaling / orientation — maxMin reverses the axis.
   let val_rev = axes.val_reversed()
   let cat_rev = axes.cat_reversed()
+  let cat_cross = axes.val_cross_between()
+  let value_axis_x = category_axis_cross_position(
+    px,
+    pw,
+    n,
+    cat_rev,
+    cat_cross,
+    axes.cat_crosses(),
+    axes.cat_crosses_at(),
+  )
+  let category_axis_y = value_axis_cross_y(
+    py,
+    ph,
+    0.0,
+    max_v,
+    val_rev,
+    axes.val_y_crosses(),
+    axes.val_y_crosses_at(),
+  )
   let nodes : Array[@xml.Node] = []
-  nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
+  nodes.push(
+    plot_axes_rect(
+      px,
+      py,
+      pw,
+      ph,
+      style=Some(style),
+      vertical_axis_x=Some(value_axis_x),
+      horizontal_axis_y=Some(category_axis_y),
+    ),
+  )
   if !axes.val_deleted() {
     for
       n2 in y_axis_ticks(
@@ -181,41 +226,53 @@ fn render_line_chart(
         axes.val_major(),
         style=Some(style),
         draw_minor_gridlines=axes.val_minor_gridlines(),
+        major_gridlines_element=axes.val_major_gridlines_element(),
+        minor_gridlines_element=axes.val_minor_gridlines_element(),
+        ctx=Some(ctx),
+        defs=Some(defs),
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        major_tick_mark=axes.val_major_tick_mark(),
+        minor_tick_mark=axes.val_minor_tick_mark(),
+        major_unit=axes.val_y_major_unit(),
+        minor_unit=axes.val_y_minor_unit(),
         reversed=val_rev,
+        axis_x=Some(value_axis_x),
+        display_unit_factor=axes.val_y_disp_unit_factor(),
       ) {
       nodes.push(n2)
     }
   }
-  if !axes.cat_deleted() && n > 0 {
-    let axis_color = style.axis_color
-    let major_half = fh * 0.0121
-    let tick_stroke = format_double((if pw < ph { pw } else { ph }) * 0.004)
-    let xstep = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
-    let mut i = 0
-    while i < n {
-      let x = px + i.to_double() * xstep
-      nodes.push(
-        axis_tick_v_line(
-          py + ph - major_half,
-          py + ph + major_half,
-          x,
-          axis_color,
-          tick_stroke,
-        ),
-      )
-      i = i + 1
+  if !axes.cat_deleted() {
+    for
+      tick in date_axis_ticks_bottom(
+        px,
+        py,
+        pw,
+        ph,
+        fh,
+        n,
+        axes,
+        cat_serials,
+        major_tick_mark=axes.cat_major_tick_mark(),
+        minor_tick_mark=axes.cat_minor_tick_mark(),
+        cross_between=cat_cross,
+        axis_y=Some(category_axis_y),
+        tick_mark_skip=axes.cat_tick_mark_skip(),
+      ) {
+      nodes.push(tick)
     }
   }
-  let step = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
+  let step = category_axis_slot_span_for_cross(pw, n, cat_cross)
   // §21.2.2.170 — single source of truth for the line chart's
   // category→x and value→y pixel mapping, both honouring the axis
   // orientation flips.  catAx maxMin reverses the category index so
   // category 0 plots at the right; valAx maxMin flips the value axis.
   let cat_x = fn(i : Int) -> Double {
-    px + category_index(i, n, cat_rev).to_double() * step
+    date_axis_position_for_index(
+      px, pw, n, i, cat_rev, cat_cross, axes, cat_serials,
+    )
   }
   let val_y = fn(v : Double) -> Double {
     value_axis_y(v, max_v, py, ph, val_rev)
@@ -240,7 +297,18 @@ fn render_line_chart(
     }
     for
       nd in render_up_down_bars(
-        elem, up_down_series, px, py, ph, step, max_v, ctx, n, val_rev, cat_rev,
+        elem,
+        up_down_series,
+        px,
+        py,
+        ph,
+        step,
+        max_v,
+        ctx,
+        n,
+        val_rev,
+        cat_rev,
+        cat_cross_between=cat_cross,
       ) {
       nodes.push(nd)
     }
@@ -316,13 +384,19 @@ fn render_line_chart(
         )
       }
     }
-    let default_r = h * 0.008
-    let (marker_sym, marker_r) = read_marker_config(ser_elems[si], default_r)
-    for point in chart_rendered_points(values, disp_blanks_as) {
-      let (i, v) = point
-      nodes.push(
-        render_marker(cat_x(i), val_y(v), marker_r, marker_sym, series_color),
-      )
+    let draw_markers = match first_child_named(elem, "marker") {
+      Some(marker) => chart_bool_default_true(marker)
+      None => true
+    }
+    if draw_markers {
+      let default_r = h * 0.008
+      let (marker_sym, marker_r) = read_marker_config(ser_elems[si], default_r)
+      for point in chart_rendered_points(values, disp_blanks_as) {
+        let (i, v) = point
+        nodes.push(
+          render_marker(cat_x(i), val_y(v), marker_r, marker_sym, series_color),
+        )
+      }
     }
     // §21.2.2.211 trendline — linear regression overlay.
     match read_trendline(ser_elems[si]) {
@@ -343,6 +417,7 @@ fn render_line_chart(
               h * 0.003,
               val_rev~,
               cat_rev~,
+              cat_cross_between=cat_cross,
             ) {
             nodes.push(tn)
           }
@@ -373,26 +448,25 @@ fn render_line_chart(
       None => ()
     }
   }
-  if !axes.cat_deleted() {
+  if !axes.cat_deleted() && axes.cat_tick_lbl_pos() != "none" {
+    let label_side = axes.cat_tick_lbl_pos()
+    let label_offset = category_horizontal_label_offset(fh, axes)
+    let anchor = category_label_anchor(axes)
     for i, label in labels {
       if i >= n {
         break
       }
+      if !date_axis_label_should_render(axes, cat_serials, i) {
+        continue
+      }
       // §21.2.2.170 — category labels track the (possibly reversed)
       // category position so labels sit under their data points.
       let bx = cat_x(i)
-      let by = py + ph + fh * 0.018
+      let (by, baseline) = category_horizontal_label_y(
+        py, category_axis_y, label_side, label_offset,
+      )
       nodes.push(
-        chart_text(
-          label,
-          bx,
-          by,
-          w,
-          h,
-          anchor="middle",
-          baseline="hanging",
-          style=Some(style),
-        ),
+        chart_text(label, bx, by, w, h, anchor~, baseline~, style=Some(style)),
       )
     }
   }
@@ -407,16 +481,36 @@ fn render_line_chart(
           Some(nm) => nm
           None => ""
         }
+        let value_num_fmt = read_val_number_format(ser_elems[si])
         let total = sum_positive_slots(values, disp_blanks_as)
-        let points : Array[(Double, Double, Double, String)] = []
+        let points : Array[DataLabelPoint] = []
         for point in chart_rendered_points(values, disp_blanks_as) {
           let (i, v) = point
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
-          points.push((cat_x(i), val_y(v), v, cat_name))
+          points.push({
+            idx: i,
+            x: cat_x(i),
+            y: val_y(v),
+            value: v,
+            cat_name,
+            bubble_size: None,
+          })
         }
+        let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
         for
           nd in render_data_labels(
-            cfg, points, ser_name, total, w, h, label_offset, style,
+            cfg,
+            points,
+            ser_name,
+            total,
+            w,
+            h,
+            label_offset,
+            style,
+            legend_key_color=Some(series_color),
+            value_num_fmt~,
+            show_over_max=show_dlbls_over_max,
+            max_value=axes.val_y_scaling_max(),
           ) {
           nodes.push(nd)
         }

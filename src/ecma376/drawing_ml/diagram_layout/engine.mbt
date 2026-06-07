@@ -54,6 +54,7 @@ pub fn DiagramLayoutEngine::apply(
       depth: 0,
       results,
       node_bounds_by_name: named,
+      layout_vars: point_layout_vars(data_model, root_id),
     }
     walk_layout_node(definition.root, bounds, context)
     final_results = context.results
@@ -117,8 +118,19 @@ pub fn walk_layout_node(
   // recurse, and earlier-document-order siblings are registered
   // before later ones.
   context.node_bounds_by_name[node.name] = inner
-  let effective_children = collect_effective_children(node.children, context)
-  apply_pres_of(node, inner, context)
+  let scoped_context = {
+    data_model: context.data_model,
+    context_id: context.context_id,
+    depth: context.depth,
+    results: context.results,
+    node_bounds_by_name: context.node_bounds_by_name,
+    layout_vars: merge_layout_vars(context.layout_vars, node.layout_vars),
+  }
+  let effective_children = collect_effective_children(
+    node.children,
+    scoped_context,
+  )
+  apply_pres_of(node, inner, scoped_context)
   let alg_kind = match node.algorithm {
     Some(alg) => effective_algorithm(alg.kind)
     None => AlgLin
@@ -137,17 +149,11 @@ pub fn walk_layout_node(
 }
 
 ///|
-/// Resolve the dispatched algorithm: supported algorithms (including
-/// `composite`, which has a faithful constraint-driven pass) are
-/// returned unchanged; the remaining unsupported types (`conn`,
-/// `sp`, `tx`) fall back to `lin` per Requirement 13 so the engine
-/// always produces non-empty bounds for downstream renderers.
+/// Resolve the dispatched algorithm. All canonical §21.4.7.1
+/// algorithm tokens have explicit dispatch arms, so the engine keeps
+/// the authored kind instead of substituting another algorithm.
 pub fn effective_algorithm(kind : AlgorithmType) -> AlgorithmType {
-  if kind.is_supported() {
-    kind
-  } else {
-    AlgLin
-  }
+  kind
 }
 
 ///|
@@ -201,25 +207,16 @@ pub fn dispatch_algorithm(
       let per_child = layout_composite_with_algorithm(inner, algorithm, n)
       apply_each_child(children, per_child, constraints)
     }
-    // §21.4.7.1 AlgorithmType — closed-10 enum. The remaining three
-    // algorithms (Conn, Sp, Tx) have no dedicated pass yet; they are
-    // coerced to `lin` by `effective_algorithm` BEFORE dispatch (see
-    // Requirement 13), so these arms are unreachable in practice and
-    // exist only to keep the match exhaustive. In canonical layouts
-    // these are leaf nodes (connector / spacer / text), so the
-    // child-distribution they would request never runs; the node's
-    // own bounds come from its self-constraints in `walk_layout_node`.
-    AlgConn => {
-      let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child, constraints)
-    }
-    AlgSp => {
-      let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child, constraints)
-    }
-    AlgTx => {
-      let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child, constraints)
+    // §21.4.7.1 conn / sp / tx are connector, spacing, and text
+    // algorithms. They do not define automatic child distribution in
+    // this geometry engine. The carrying layoutNode's own constraints
+    // and `presOf` have already been applied by `walk_layout_node`, so
+    // the explicit behaviour here is to leave children unexpanded.
+    AlgConn | AlgSp | AlgTx => {
+      let _ = algorithm
+      let _ = constraints
+      let _ = children
+      ()
     }
   }
 }
@@ -383,17 +380,17 @@ pub fn evaluate_choose(
 
 ///|
 /// Evaluate a single `if` branch predicate against the current
-/// context. The LHS is the result of the `func` applied to the
-/// axis-selected set; the RHS is the literal `val` parsed as an
-/// integer. `FnVar` always evaluates to `false` because variable
-/// resolution is out of scope (see Requirements §"Out of scope").
+/// context. Non-variable functions use the existing integer
+/// cardinality / position path; `FnVar` resolves a layout variable
+/// from the current layout-node scope and compares it with
+/// `if/@val` using the spec's `ST_FunctionValue` lexical union.
 fn evaluate_predicate(branch : ChooseBranch, context : EvalContext) -> Bool {
   let func = match branch.func {
     Some(value) => value
     None => return false
   }
   if func is FnVar {
-    return false
+    return evaluate_var_predicate(branch, context)
   }
   let lhs = evaluate_function(func, branch.axis, branch.pt_type, context)
   let rhs = match branch.val {
@@ -410,6 +407,63 @@ fn evaluate_predicate(branch : ChooseBranch, context : EvalContext) -> Bool {
     None => OpEqu
   }
   apply_op(op, lhs, rhs)
+}
+
+///|
+/// §21.4.7.33 var — compare a scoped layout variable (`varLst`)
+/// with the branch's `@val`. Integer and boolean values use the
+/// same numeric operator table as `cnt` / `pos`; enum values support
+/// equality and inequality through `ST_FunctionValue`.
+fn evaluate_var_predicate(branch : ChooseBranch, context : EvalContext) -> Bool {
+  let arg = match branch.arg {
+    Some(raw) =>
+      try @domain.ST_FunctionArgument::parse(raw) catch {
+        _ => return false
+      } noraise {
+        value => value.to_string()
+      }
+    None => return false
+  }
+  let lhs_lex = match layout_var_lookup(context.layout_vars, arg) {
+    Some(value) => value
+    None => return false
+  }
+  let rhs_lex = match branch.val {
+    Some(value) => value
+    None => "0"
+  }
+  let lhs = try @domain.ST_FunctionValue::parse(lhs_lex) catch {
+    _ => return false
+  } noraise {
+    value => value
+  }
+  let rhs = try @domain.ST_FunctionValue::parse(rhs_lex) catch {
+    _ => return false
+  } noraise {
+    value => value
+  }
+  let op = match branch.op {
+    Some(value) => value
+    None => OpEqu
+  }
+  match (function_value_as_int(lhs), function_value_as_int(rhs)) {
+    (Some(left), Some(right)) => apply_op(op, left, right)
+    _ =>
+      match op {
+        OpEqu => lhs == rhs
+        OpNeq => lhs != rhs
+        _ => false
+      }
+  }
+}
+
+///|
+fn function_value_as_int(value : @domain.ST_FunctionValue) -> Int? {
+  match value {
+    @domain.FunctionValueInt(v) => Some(v)
+    @domain.FunctionValueBool(v) => if v { Some(1) } else { Some(0) }
+    _ => None
+  }
 }
 
 ///|
@@ -479,6 +533,7 @@ pub fn evaluate_for_each(
   let selected = axis_select(spec.axis, spec.pt_type, context)
   let sliced = slice_selection(selected, spec)
   for point in sliced {
+    let scoped_vars = merge_layout_vars(context.layout_vars, point.layout_vars)
     let iteration_context = {
       data_model: context.data_model,
       context_id: point.id,
@@ -488,6 +543,7 @@ pub fn evaluate_for_each(
       // forEach iteration can resolve a `refForName` against a
       // named layoutNode that an earlier iteration walked.
       node_bounds_by_name: context.node_bounds_by_name,
+      layout_vars: scoped_vars,
     }
     // Each iteration expands the body once against its own
     // context so nested `LcNode` / `LcChoose` / `LcForEach`
@@ -522,6 +578,67 @@ fn slice_selection(
     i = i + step
   }
   result
+}
+
+///|
+/// Merge inherited layout variables with the current layoutNode's
+/// `varLst`, with the current node overriding an inherited key.
+fn merge_layout_vars(
+  inherited : Array[(String, String)],
+  local_vars : Array[(String, String)],
+) -> Array[(String, String)] {
+  if local_vars.length() == 0 {
+    return inherited
+  }
+  let result : Array[(String, String)] = []
+  for entry in inherited {
+    let (key, _) = entry
+    if !layout_var_has(local_vars, key) {
+      result.push(entry)
+    }
+  }
+  for entry in local_vars {
+    result.push(entry)
+  }
+  result
+}
+
+///|
+fn layout_var_has(vars : Array[(String, String)], key : String) -> Bool {
+  for entry in vars {
+    let (entry_key, _) = entry
+    if entry_key == key {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn layout_var_lookup(vars : Array[(String, String)], key : String) -> String? {
+  let mut i = vars.length()
+  while i > 0 {
+    i = i - 1
+    let entry = vars[i]
+    let (entry_key, entry_value) = entry
+    if entry_key == key {
+      return Some(entry_value)
+    }
+  }
+  None
+}
+
+///|
+fn point_layout_vars(
+  data_model : DataModel,
+  point_id : String,
+) -> Array[(String, String)] {
+  for point in data_model.points {
+    if point.id == point_id {
+      return point.layout_vars
+    }
+  }
+  []
 }
 
 ///|
@@ -940,6 +1057,14 @@ pub fn apply_pres_of(
       }
     None => @preset_geometry.ShapeRect
   }
+  let hide_geom = match node.shape {
+    Some(s) => s.hide_geom
+    None => false
+  }
+  let adjustments = match node.shape {
+    Some(s) => s.adjustments
+    None => []
+  }
   let targets = match node.pres_of {
     Some(spec) =>
       axis_select(spec.axis, spec.pt_type, context) |> slice_pres_of(spec)
@@ -967,6 +1092,8 @@ pub fn apply_pres_of(
       point_id: target.id,
       bounds,
       shape,
+      hide_geom,
+      adjustments,
       style_lbl: node.style_lbl,
     })
   }

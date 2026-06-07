@@ -110,13 +110,10 @@ test "§21.4.7.1 AlgorithmType::is_supported flags canonical layouts" {
   assert_true(AlgHierRoot.is_supported())
   assert_true(AlgHierChild.is_supported())
   assert_true(AlgPyra.is_supported())
-  // composite has a faithful constraint-driven pass (§21.4.7.1).
   assert_true(AlgComposite.is_supported())
-  // The remaining out-of-scope algorithms fall back to lin per
-  // Requirement 13.
-  assert_false(AlgConn.is_supported())
-  assert_false(AlgSp.is_supported())
-  assert_false(AlgTx.is_supported())
+  assert_true(AlgConn.is_supported())
+  assert_true(AlgSp.is_supported())
+  assert_true(AlgTx.is_supported())
 }
 
 ///|
@@ -127,6 +124,56 @@ test "§21.4.2.27 shape delegates @type validation to ST_ShapeType" {
   assert_true(output.preset is None)
   let bad = try? decode_shape(parse_root("<shape type=\"notARealShape\"/>"))
   assert_true(bad is Err(_))
+}
+
+///|
+test "§21.4.2.27 shape adjLst reaches preset geometry adjustments" {
+  let xml = "<layoutDef uniqueId=\"urn:test:shape-adj\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<constrLst>" +
+    "<constr type=\"w\" val=\"600\"/>" +
+    "<constr type=\"h\" val=\"300\"/>" +
+    "</constrLst>" +
+    "<shape type=\"parallelogram\">" +
+    "<adjLst><adj idx=\"1\" val=\"10000\"/></adjLst>" +
+    "</shape>" +
+    "<presOf axis=\"ch\" ptType=\"node\"/>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(xml)
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, flat_data_model(1), canvas())
+  @debug.assert_eq(result.length(), 1)
+  let node = result[0]
+  @debug.assert_eq(node.adjustments.length(), 2)
+  @debug.assert_eq(node.adjustments[0].name, "adj")
+  @debug.assert_eq(node.adjustments[0].value, Some(10000))
+  @debug.assert_eq(node.adjustments[1].name, "adj1")
+  @debug.assert_eq(node.adjustments[1].value, Some(10000))
+}
+
+///|
+test "§21.4.2.25 ruleLst feeds the geometric constraint solver" {
+  let xml = "<layoutDef uniqueId=\"urn:test:rules\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<ruleLst>" +
+    "<rule type=\"w\" val=\"600\"/>" +
+    "<rule type=\"h\" val=\"300\"/>" +
+    "</ruleLst>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"ch\" ptType=\"node\"/>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(xml)
+  @debug.assert_eq(def.root.constraints.length(), 2)
+  assert_true(definition_has_geometric_constraints(def))
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, flat_data_model(1), canvas())
+  @debug.assert_eq(result.length(), 1)
+  @debug.assert_eq(result[0].bounds.width, 600.0)
+  @debug.assert_eq(result[0].bounds.height, 300.0)
 }
 
 ///|
@@ -429,6 +476,129 @@ test "§21.4.2.6 choose / if cnt-bucket selects matching branch" {
 }
 
 ///|
+test "§21.4.2.6 choose / if var resolves layoutNode varLst enum value" {
+  let xml = "<layoutDef uniqueId=\"urn:test\">" +
+    "<layoutNode name=\"root\">" +
+    "<varLst><dir val=\"rev\"/></varLst>" +
+    "<choose name=\"directionSwitch\">" +
+    "<if name=\"reverse\" func=\"var\" arg=\"dir\" op=\"equ\" val=\"rev\">" +
+    "<layoutNode name=\"revWrap\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"node\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"ellipse\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</if>" +
+    "<else name=\"normal\">" +
+    "<layoutNode name=\"normalWrap\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"node\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</else>" +
+    "</choose>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(xml)
+  @debug.assert_eq(def.root.layout_vars.length(), 1)
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, flat_data_model(1), canvas())
+  @debug.assert_eq(result.length(), 1)
+  assert_true(result[0].shape is @preset_geometry.ShapeEllipse)
+}
+
+///|
+test "§21.4.5.4 presLayoutVars resolves point-scoped var predicate" {
+  let layout_xml = "<layoutDef uniqueId=\"urn:test:pres-layout-vars\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<choose name=\"pointDirection\">" +
+    "<if name=\"reverse\" func=\"var\" arg=\"dir\" op=\"equ\" val=\"rev\">" +
+    "<layoutNode name=\"revNode\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"ellipse\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</if>" +
+    "<else name=\"normal\">" +
+    "<layoutNode name=\"normalNode\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</else>" +
+    "</choose>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let dm_xml = "<dataModel><ptLst>" +
+    "<pt modelId=\"0\" type=\"doc\"/>" +
+    "<pt modelId=\"1\" type=\"node\">" +
+    "<prSet><presLayoutVars><dir val=\"rev\"/></presLayoutVars></prSet>" +
+    "</pt>" +
+    "</ptLst><cxnLst>" +
+    "<cxn modelId=\"101\" srcId=\"0\" destId=\"1\" srcOrd=\"0\" destOrd=\"0\" type=\"parOf\"/>" +
+    "</cxnLst></dataModel>"
+  let def = definition(layout_xml)
+  let dm = data_model(dm_xml)
+  @debug.assert_eq(dm.points[1].layout_vars.length(), 1)
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, dm, canvas())
+  @debug.assert_eq(result.length(), 1)
+  assert_true(result[0].shape is @preset_geometry.ShapeEllipse)
+}
+
+///|
+test "§21.4.2.6 choose / if var applies numeric operators to chMax" {
+  let xml = "<layoutDef uniqueId=\"urn:test\">" +
+    "<layoutNode name=\"root\">" +
+    "<varLst><chMax val=\"4\"/></varLst>" +
+    "<choose name=\"childMaxSwitch\">" +
+    "<if name=\"large\" func=\"var\" arg=\"chMax\" op=\"gt\" val=\"2\">" +
+    "<layoutNode name=\"largeWrap\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"node\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"triangle\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</if>" +
+    "<else name=\"small\">" +
+    "<layoutNode name=\"smallWrap\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"node\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</else>" +
+    "</choose>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(xml)
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, flat_data_model(1), canvas())
+  @debug.assert_eq(result.length(), 1)
+  assert_true(result[0].shape is @preset_geometry.ShapeTriangle)
+}
+
+///|
 test "§21.4.2.14 forEach iterates over axis=ch children" {
   let engine = DiagramLayoutEngine::new()
   let def = layout_for("lin", "rect")
@@ -441,13 +611,35 @@ test "§21.4.2.14 forEach iterates over axis=ch children" {
 }
 
 ///|
-test "§21.4.7.1 unknown algorithm falls back to lin" {
-  // `sp` is a no-op in spec; the engine falls back to lin so the
-  // children still receive bounds rather than disappearing.
+test "§21.4.7.1 sp algorithm does not distribute child layout nodes" {
+  // `sp` is a spacing/no-op algorithm in the layout grammar. It must
+  // not be treated as `lin`; a parent `sp` therefore does not assign
+  // linear child slots.
   let engine = DiagramLayoutEngine::new()
   let def = layout_for("sp", "rect")
   let dm = flat_data_model(3)
   let result = engine.apply(def, dm, canvas())
+  @debug.assert_eq(result.length(), 0)
+}
+
+///|
+test "§21.4.7.1 sp leaf still emits its own presOf bounds" {
+  let engine = DiagramLayoutEngine::new()
+  let def = definition(
+    "<layoutDef uniqueId=\"urn:test:sp-leaf\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"leaf\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutDef>",
+  )
+  let result = engine.apply(def, flat_data_model(3), canvas())
   @debug.assert_eq(result.length(), 3)
   let unit = 1000.0 / 3.0
   for i in 0..<3 {

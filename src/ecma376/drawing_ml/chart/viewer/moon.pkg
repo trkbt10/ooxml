@@ -14,6 +14,8 @@ import {
   "moonbitlang/core/string",
   "trkbt10/ooxml/ecma376/drawing_ml/chart",
   "trkbt10/ooxml/ecma376/drawing_ml/paint",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
+  "trkbt10/ooxml/util/color",
   "trkbt10/ooxml/util/glyph",
   "trkbt10/ooxml/util/markup",
   "trkbt10/ooxml/xml",

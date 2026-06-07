@@ -131,6 +131,44 @@ fn c_tx_pr(text : String) -> @xml.Element {
 }
 
 ///|
+/// Chart-space `<c:txPr>` whose DrawingML body carries the default run
+/// properties the chart renderer consumes for title / axis / label text.
+fn c_tx_pr_defaults(
+  child : @xml.Element,
+  hex : String,
+  typeface : String,
+) -> @xml.Element {
+  catalog_chart_force_children(child, [
+    Element(xe(NS_A, "bodyPr", [], [])),
+    Element(xe(NS_A, "lstStyle", [], [])),
+    Element(
+      xe(NS_A, "p", [], [
+        Element(
+          xe(NS_A, "pPr", [], [
+            Element(
+              xe(NS_A, "defRPr", [], [
+                Element(
+                  xe(NS_A, "solidFill", [], [
+                    Element(xe(NS_A, "srgbClr", [xa("val", hex)], [])),
+                  ]),
+                ),
+                Element(xe(NS_A, "latin", [xa("typeface", typeface)], [])),
+              ]),
+            ),
+          ]),
+        ),
+        Element(
+          xe(NS_A, "r", [], [
+            Element(xe(NS_A, "rPr", [xa("lang", "en-US")], [])),
+            Element(xe(NS_A, "t", [], [Text("Chart defaults")])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
 /// Chart-side shape properties with a solid DrawingML fill.
 fn c_sp_pr_solid(hex : String) -> @xml.Element {
   c_elem("spPr", [], [
@@ -469,6 +507,7 @@ fn c_axes_rich() -> Array[@xml.Element] {
     Element(c_val("auto", "1")),
     Element(c_val("lblAlgn", "ctr")),
     Element(c_val("lblOffset", "100%")),
+    Element(c_val("tickMarkSkip", "2")),
     Element(c_val("noMultiLvlLbl", "0")),
   ])
   let val_ax = c_elem("valAx", [], [
@@ -1207,6 +1246,4100 @@ fn doughnut_chart_payload() -> @xml.Element {
     Element(ser),
     Element(c_val("firstSliceAng", "0")),
     Element(c_val("holeSize", "50")),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.92 `<c:leaderLines>`.  Leader lines are
+/// consumed only by pie/doughnut external data labels, so the generic
+/// chartSpace ancestry can parse without exercising the render path.
+fn catalog_chart_leader_lines_root(leader_lines : @xml.Element) -> @xml.Element {
+  let ns_c = leader_lines.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Mix")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C", "D"]))])),
+    Element(ce("val", [], [Element(num_lit(["35", "25", "20", "20"]))])),
+  ])
+  let dlbls = ce("dLbls", [], [
+    Element(cv("dLblPos", "outEnd")),
+    Element(cv("showVal", "1")),
+    Element(leader_lines),
+  ])
+  let pie_chart = ce("pieChart", [], [
+    Element(cv("varyColors", "1")),
+    Element(ser),
+    Element(dlbls),
+    Element(cv("firstSliceAng", "0")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(pie_chart),
+  ])
+  let chart = ce("chart", [], [
+    Element(plot_area),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  ce("chartSpace", [], [Element(chart)])
+}
+
+///|
+fn catalog_chart_marker_force_val(
+  element : @xml.Element,
+  value : String,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw = false
+  for attr in element.attributes {
+    if attr.name.local_name == "val" {
+      saw = true
+      attrs.push({ name: attr.name, value })
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw {
+    attrs.push(xa("val", value))
+  }
+  { name: element.name, attributes: attrs, children: element.children }
+}
+
+///|
+fn catalog_chart_force_attr(
+  element : @xml.Element,
+  attr_name : String,
+  value : String,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw = false
+  for attr in element.attributes {
+    if attr.name.local_name == attr_name {
+      saw = true
+      attrs.push({ name: attr.name, value })
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw {
+    attrs.push(xa(attr_name, value))
+  }
+  { name: element.name, attributes: attrs, children: element.children }
+}
+
+///|
+fn catalog_chart_force_children(
+  element : @xml.Element,
+  children : Array[@xml.Node],
+) -> @xml.Element {
+  { name: element.name, attributes: element.attributes, children }
+}
+
+///|
+/// Catalog host for §21.2.2.227 `<c:varyColors>`. The target is placed
+/// on a single-series clustered bar chart, where the renderer consumes it
+/// as point-by-point accent palette selection. Pruning the target returns
+/// to one resolved series fill for every bar.
+fn catalog_chart_vary_colors_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let bar_chart = ce("barChart", [], [
+    Element(cv("barDir", "col")),
+    Element(cv("grouping", "clustered")),
+    Element(catalog_chart_marker_force_val(child, "1")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(bar_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Shared catalog host for §21.2.2.103 `<c:marker>` and its
+/// `<c:symbol>` / `<c:size>` children.  Scatter series consume marker
+/// glyphs directly; using a non-default symbol and size makes pruning
+/// the target change the rendered SVG without adding debug paint.
+fn catalog_chart_marker_scatter_root(
+  ns_c : String,
+  marker : @xml.Element,
+) -> @xml.Element {
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Pts")]))])),
+    Element(ce("xVal", [], [Element(num_lit(["1", "2", "3"]))])),
+    Element(ce("yVal", [], [Element(num_lit(["10", "20", "30"]))])),
+    Element(marker),
+  ])
+  let scatter_chart = ce("scatterChart", [], [
+    Element(cv("scatterStyle", "marker")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let x_axis = ce("valAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let y_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "l")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(scatter_chart),
+    Element(x_axis),
+    Element(y_axis),
+  ])
+  let chart = ce("chart", [], [
+    Element(plot_area),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  ce("chartSpace", [], [Element(chart)])
+}
+
+///|
+fn catalog_chart_marker_root(marker : @xml.Element) -> @xml.Element {
+  let ns_c = marker.name.ns.unwrap_or(NS_C)
+  let children : Array[@xml.Node] = [
+    Element(xep("c", ns_c, "symbol", [xa("val", "x")], [])),
+    Element(xep("c", ns_c, "size", [xa("val", "12")], [])),
+  ]
+  let marker : @xml.Element = {
+    name: marker.name,
+    attributes: marker.attributes,
+    children,
+  }
+  catalog_chart_marker_scatter_root(ns_c, marker)
+}
+
+///|
+fn catalog_chart_marker_child_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let marker_kids : Array[@xml.Node] = []
+  match child.name.local_name {
+    "symbol" => {
+      marker_kids.push(Element(catalog_chart_marker_force_val(child, "x")))
+      marker_kids.push(Element(xep("c", ns_c, "size", [xa("val", "12")], [])))
+    }
+    "size" => {
+      marker_kids.push(Element(xep("c", ns_c, "symbol", [xa("val", "x")], [])))
+      marker_kids.push(Element(catalog_chart_marker_force_val(child, "12")))
+    }
+    _ => marker_kids.push(Element(child))
+  }
+  let marker = xep("c", ns_c, "marker", [], marker_kids)
+  catalog_chart_marker_scatter_root(ns_c, marker)
+}
+
+///|
+/// Host for §21.2.2.102 `<c:marker>` (CT_Boolean) on line charts.
+/// `val="0"` is intentionally visible: pruning the target restores the
+/// renderer's default marker glyphs.
+fn catalog_chart_line_marker_flag_root(marker : @xml.Element) -> @xml.Element {
+  let ns_c = marker.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Trend")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(cv("varyColors", "0")),
+    Element(ser),
+    Element(catalog_chart_marker_force_val(marker, "0")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "l")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(cat_axis),
+    Element(val_axis),
+  ])
+  let chart = ce("chart", [], [
+    Element(plot_area),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  ce("chartSpace", [], [Element(chart)])
+}
+
+///|
+/// Host for §21.2.2.181 `<c:scatterStyle>`.  `val="none"` suppresses
+/// both scatter lines and point markers; pruning restores the default
+/// marker style.
+fn catalog_chart_scatter_style_root(style : @xml.Element) -> @xml.Element {
+  let ns_c = style.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Pts")]))])),
+    Element(ce("xVal", [], [Element(num_lit(["1", "2", "3"]))])),
+    Element(ce("yVal", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let scatter_chart = ce("scatterChart", [], [
+    Element(catalog_chart_marker_force_val(style, "none")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let x_axis = ce("valAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let y_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "l")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(scatter_chart),
+    Element(x_axis),
+    Element(y_axis),
+  ])
+  let chart = ce("chart", [], [
+    Element(plot_area),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  ce("chartSpace", [], [Element(chart)])
+}
+
+///|
+/// Host for §21.2.2.153 `<c:radarStyle>`.  `standard` draws the
+/// series polygon without marker circles; pruning restores the default
+/// marker style.
+fn catalog_chart_radar_style_root(style : @xml.Element) -> @xml.Element {
+  let ns_c = style.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Radar")]))])),
+    Element(ce("cat", [], [Element(str_lit(["N", "E", "S", "W"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30", "15"]))])),
+  ])
+  let radar_chart = ce("radarChart", [], [
+    Element(catalog_chart_marker_force_val(style, "standard")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(cv("axPos", "b")),
+    Element(cv("crossAx", "222222222")),
+  ])
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(cv("axPos", "l")),
+    Element(cv("crossAx", "111111111")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(radar_chart),
+    Element(cat_axis),
+    Element(val_axis),
+  ])
+  let chart = ce("chart", [], [
+    Element(plot_area),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  ce("chartSpace", [], [Element(chart)])
+}
+
+///|
+fn catalog_chart_of_pie_host(
+  ns_c : String,
+  option_kids : Array[@xml.Node],
+) -> @xml.Element {
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("OfPie")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C", "D", "E"]))])),
+    Element(ce("val", [], [Element(num_lit(["40", "30", "20", "5", "5"]))])),
+  ])
+  let kids : Array[@xml.Node] = []
+  let mut inserted_ser = false
+  for opt in option_kids {
+    match opt {
+      Element(e) =>
+        if e.name.local_name == "ser" {
+          kids.push(Element(e))
+          inserted_ser = true
+        } else {
+          kids.push(Element(e))
+        }
+      _ => kids.push(opt)
+    }
+  }
+  if !inserted_ser {
+    let with_ser : Array[@xml.Node] = []
+    let mut ser_done = false
+    for opt in kids {
+      match opt {
+        Element(e) =>
+          if !ser_done &&
+            (
+              e.name.local_name == "splitType" ||
+              e.name.local_name == "splitPos" ||
+              e.name.local_name == "custSplit" ||
+              e.name.local_name == "secondPieSize" ||
+              e.name.local_name == "serLines"
+            ) {
+            with_ser.push(Element(ser))
+            with_ser.push(Element(e))
+            ser_done = true
+          } else {
+            with_ser.push(Element(e))
+          }
+        _ => with_ser.push(opt)
+      }
+    }
+    if !ser_done {
+      with_ser.push(Element(ser))
+    }
+    kids.clear()
+    for opt in with_ser {
+      kids.push(opt)
+    }
+  }
+  let of_pie_chart = ce("ofPieChart", [], kids)
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(of_pie_chart),
+  ])
+  let chart = ce("chart", [], [
+    Element(plot_area),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  ce("chartSpace", [], [Element(chart)])
+}
+
+///|
+fn catalog_chart_of_pie_child_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    xep("c", ns_c, tag, [xa("val", value)], [])
+  }
+  match child.name.local_name {
+    "ofPieType" =>
+      catalog_chart_of_pie_host(ns_c, [
+        Element(catalog_chart_marker_force_val(child, "bar")),
+        Element(cv("varyColors", "1")),
+        Element(cv("splitType", "pos")),
+        Element(cv("splitPos", "2")),
+      ])
+    "splitType" =>
+      catalog_chart_of_pie_host(ns_c, [
+        Element(cv("ofPieType", "pie")),
+        Element(cv("varyColors", "1")),
+        Element(catalog_chart_marker_force_val(child, "cust")),
+        Element(
+          xep("c", ns_c, "custSplit", [], [
+            Element(cv("secondPiePt", "0")),
+            Element(cv("secondPiePt", "4")),
+          ]),
+        ),
+      ])
+    "splitPos" =>
+      catalog_chart_of_pie_host(ns_c, [
+        Element(cv("ofPieType", "pie")),
+        Element(cv("varyColors", "1")),
+        Element(cv("splitType", "pos")),
+        Element(catalog_chart_marker_force_val(child, "2")),
+      ])
+    "custSplit" => {
+      let cust_split : @xml.Element = {
+        name: child.name,
+        attributes: child.attributes,
+        children: [
+          Element(cv("secondPiePt", "0")),
+          Element(cv("secondPiePt", "4")),
+        ],
+      }
+      catalog_chart_of_pie_host(ns_c, [
+        Element(cv("ofPieType", "pie")),
+        Element(cv("varyColors", "1")),
+        Element(cv("splitType", "cust")),
+        Element(cust_split),
+      ])
+    }
+    "secondPiePt" => {
+      let target = catalog_chart_marker_force_val(child, "0")
+      catalog_chart_of_pie_host(ns_c, [
+        Element(cv("ofPieType", "pie")),
+        Element(cv("varyColors", "1")),
+        Element(cv("splitType", "cust")),
+        Element(
+          xep("c", ns_c, "custSplit", [], [
+            Element(target),
+            Element(cv("secondPiePt", "4")),
+          ]),
+        ),
+      ])
+    }
+    _ => catalog_chart_of_pie_host(ns_c, [Element(child)])
+  }
+}
+
+///|
+fn catalog_chart_bubble_option_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let target = match child.name.local_name {
+    "bubble3D" => catalog_chart_marker_force_val(child, "1")
+    "bubbleScale" => catalog_chart_marker_force_val(child, "200")
+    "showNegBubbles" => catalog_chart_marker_force_val(child, "0")
+    "sizeRepresents" => catalog_chart_marker_force_val(child, "w")
+    _ => child
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Bubble")]))])),
+    Element(ce("xVal", [], [Element(num_lit(["1", "2", "3"]))])),
+    Element(ce("yVal", [], [Element(num_lit(["10", "20", "30"]))])),
+    Element(ce("bubbleSize", [], [Element(num_lit(["-9", "4", "9"]))])),
+  ])
+  let kids : Array[@xml.Node] = [Element(cv("varyColors", "0")), Element(ser)]
+  match child.name.local_name {
+    "bubble3D" => kids.push(Element(target))
+    "bubbleScale" => kids.push(Element(target))
+    "showNegBubbles" => kids.push(Element(target))
+    "sizeRepresents" => kids.push(Element(target))
+    _ => kids.push(Element(target))
+  }
+  kids.push(Element(cv("axId", "111111111")))
+  kids.push(Element(cv("axId", "222222222")))
+  let bubble_chart = ce("bubbleChart", [], kids)
+  let x_axis = ce("valAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let y_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "l")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(bubble_chart),
+    Element(x_axis),
+    Element(y_axis),
+  ])
+  let chart = ce("chart", [], [
+    Element(plot_area),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  ce("chartSpace", [], [Element(chart)])
+}
+
+///|
+fn catalog_chart_data_label_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let line_ser = fn() -> @xml.Element {
+    ce("ser", [], [
+      Element(cv("idx", "0")),
+      Element(cv("order", "0")),
+      Element(ce("tx", [], [Element(ce("v", [], [Text("Series A")]))])),
+      Element(ce("cat", [], [Element(str_lit(["Alpha", "Beta", "Gamma"]))])),
+      Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+    ])
+  }
+  let bubble_ser = fn() -> @xml.Element {
+    ce("ser", [], [
+      Element(cv("idx", "0")),
+      Element(cv("order", "0")),
+      Element(ce("tx", [], [Element(ce("v", [], [Text("Bubbles")]))])),
+      Element(ce("xVal", [], [Element(num_lit(["1", "2", "3"]))])),
+      Element(ce("yVal", [], [Element(num_lit(["10", "20", "30"]))])),
+      Element(ce("bubbleSize", [], [Element(num_lit(["7", "11", "13"]))])),
+    ])
+  }
+  let pie_ser = fn() -> @xml.Element {
+    ce("ser", [], [
+      Element(cv("idx", "0")),
+      Element(cv("order", "0")),
+      Element(ce("tx", [], [Element(ce("v", [], [Text("Mix")]))])),
+      Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+      Element(ce("val", [], [Element(num_lit(["30", "50", "20"]))])),
+    ])
+  }
+  let cat_val_axes = fn() -> Array[@xml.Node] {
+    [
+      Element(
+        ce("catAx", [], [
+          Element(cv("axId", "111111111")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "b")),
+          Element(cv("crossAx", "222222222")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+      Element(
+        ce("valAx", [], [
+          Element(cv("axId", "222222222")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "l")),
+          Element(cv("crossAx", "111111111")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+    ]
+  }
+  let value_axes = fn() -> Array[@xml.Node] {
+    [
+      Element(
+        ce("valAx", [], [
+          Element(cv("axId", "111111111")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "b")),
+          Element(cv("crossAx", "222222222")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+      Element(
+        ce("valAx", [], [
+          Element(cv("axId", "222222222")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "l")),
+          Element(cv("crossAx", "111111111")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+    ]
+  }
+  let line_root = fn(dlbls : @xml.Element) -> @xml.Element {
+    let chart_type = ce("lineChart", [], [
+      Element(cv("grouping", "standard")),
+      Element(line_ser()),
+      Element(dlbls),
+      Element(cv("marker", "1")),
+      Element(cv("axId", "111111111")),
+      Element(cv("axId", "222222222")),
+    ])
+    let plot_area = ce("plotArea", [], [
+      Element(ce("layout", [], [])),
+      Element(chart_type),
+    ])
+    for axis in cat_val_axes() {
+      plot_area.children.push(axis)
+    }
+    ce("chartSpace", [], [
+      Element(
+        ce("chart", [], [
+          Element(plot_area),
+          Element(cv("plotVisOnly", "1")),
+          Element(cv("dispBlanksAs", "gap")),
+        ]),
+      ),
+    ])
+  }
+  let bubble_root = fn(dlbls : @xml.Element) -> @xml.Element {
+    let chart_type = ce("bubbleChart", [], [
+      Element(bubble_ser()),
+      Element(dlbls),
+      Element(cv("bubbleScale", "100")),
+      Element(cv("showNegBubbles", "1")),
+      Element(cv("sizeRepresents", "area")),
+      Element(cv("axId", "111111111")),
+      Element(cv("axId", "222222222")),
+    ])
+    let plot_area = ce("plotArea", [], [
+      Element(ce("layout", [], [])),
+      Element(chart_type),
+    ])
+    for axis in value_axes() {
+      plot_area.children.push(axis)
+    }
+    ce("chartSpace", [], [
+      Element(
+        ce("chart", [], [
+          Element(plot_area),
+          Element(cv("plotVisOnly", "1")),
+          Element(cv("dispBlanksAs", "gap")),
+        ]),
+      ),
+    ])
+  }
+  let pie_root = fn(dlbls : @xml.Element) -> @xml.Element {
+    let chart_type = ce("pieChart", [], [
+      Element(cv("varyColors", "1")),
+      Element(pie_ser()),
+      Element(dlbls),
+      Element(cv("firstSliceAng", "0")),
+    ])
+    let plot_area = ce("plotArea", [], [
+      Element(ce("layout", [], [])),
+      Element(chart_type),
+    ])
+    ce("chartSpace", [], [
+      Element(
+        ce("chart", [], [
+          Element(plot_area),
+          Element(cv("plotVisOnly", "1")),
+          Element(cv("dispBlanksAs", "gap")),
+        ]),
+      ),
+    ])
+  }
+  match child.name.local_name {
+    "dLbls" => {
+      let dlbls = catalog_chart_force_children(child, [
+        Element(cv("showVal", "1")),
+        Element(cv("showCatName", "1")),
+      ])
+      line_root(dlbls)
+    }
+    "dLbl" => {
+      let dlbl = catalog_chart_force_children(child, [
+        Element(cv("idx", "1")),
+        Element(cv("showSerName", "1")),
+      ])
+      line_root(ce("dLbls", [], [Element(dlbl)]))
+    }
+    "numFmt" => {
+      let fmt = catalog_chart_force_attr(
+        catalog_chart_force_attr(child, "formatCode", "0.00"),
+        "sourceLinked",
+        "0",
+      )
+      line_root(ce("dLbls", [], [Element(fmt), Element(cv("showVal", "1"))]))
+    }
+    "dLblPos" => {
+      let pos = catalog_chart_marker_force_val(child, "outEnd")
+      pie_root(
+        ce("dLbls", [], [
+          Element(cv("showVal", "1")),
+          Element(pos),
+          Element(ce("leaderLines", [], [])),
+        ]),
+      )
+    }
+    "showLeaderLines" => {
+      let show = catalog_chart_marker_force_val(child, "0")
+      pie_root(
+        ce("dLbls", [], [
+          Element(cv("showVal", "1")),
+          Element(cv("dLblPos", "outEnd")),
+          Element(show),
+          Element(ce("leaderLines", [], [])),
+        ]),
+      )
+    }
+    "showCatName" => {
+      let show = catalog_chart_marker_force_val(child, "1")
+      line_root(ce("dLbls", [], [Element(show)]))
+    }
+    "showBubbleSize" => {
+      let show = catalog_chart_marker_force_val(child, "1")
+      bubble_root(ce("dLbls", [], [Element(show)]))
+    }
+    "showLegendKey" => {
+      let show = catalog_chart_marker_force_val(child, "1")
+      line_root(ce("dLbls", [], [Element(cv("showVal", "1")), Element(show)]))
+    }
+    "showVal" | "showSerName" | "showPercent" => {
+      let show = catalog_chart_marker_force_val(child, "1")
+      pie_root(ce("dLbls", [], [Element(show)]))
+    }
+    "separator" => {
+      let sep = if child.children.length() == 0 {
+        catalog_chart_force_children(child, [Text(" / ")])
+      } else {
+        child
+      }
+      pie_root(
+        ce("dLbls", [], [
+          Element(cv("showVal", "1")),
+          Element(cv("showPercent", "1")),
+          Element(sep),
+        ]),
+      )
+    }
+    _ =>
+      line_root(ce("dLbls", [], [Element(child), Element(cv("showVal", "1"))]))
+  }
+}
+
+///|
+/// Shared catalog host for §21.2.2.54 `<c:dTable>` and its border/key
+/// flags.  The chart renderer consumes this only under `<c:plotArea>`, so
+/// the host builds a minimal line chart with axes and places the target in
+/// the data-table branch.
+fn catalog_chart_data_table_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_cache = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strCache", [], kids)
+  }
+  let num_cache = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numCache", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(
+      ce("tx", [], [
+        Element(
+          ce("strRef", [], [
+            Element(ce("f", [], [Text("Sheet1!$A$1")])),
+            Element(str_cache(["Data Table"])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      ce("cat", [], [
+        Element(
+          ce("strRef", [], [
+            Element(ce("f", [], [Text("Sheet1!$A$2:$A$4")])),
+            Element(str_cache(["Alpha", "Beta", "Gamma"])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      ce("val", [], [
+        Element(
+          ce("numRef", [], [
+            Element(ce("f", [], [Text("Sheet1!$B$2:$B$4")])),
+            Element(num_cache(["10", "20", "30"])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let dtable = match child.name.local_name {
+    "dTable" =>
+      catalog_chart_force_children(child, [
+        Element(cv("showHorzBorder", "0")),
+        Element(cv("showVertBorder", "0")),
+        Element(cv("showOutline", "0")),
+        Element(cv("showKeys", "1")),
+      ])
+    "showHorzBorder" | "showVertBorder" | "showOutline" =>
+      ce("dTable", [], [
+        Element(catalog_chart_marker_force_val(child, "0")),
+        Element(cv("showKeys", "1")),
+      ])
+    "showKeys" =>
+      ce("dTable", [], [Element(catalog_chart_marker_force_val(child, "1"))])
+    _ => ce("dTable", [], [Element(child)])
+  }
+  let chart_type = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(chart_type),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+    Element(dtable),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Shared catalog host for chart data-source/cache elements.  These
+/// elements are only "rendered" when they are placed on a consumed chart
+/// path: series text, category labels, numeric values, bubble geometry, or
+/// chart title text.  External formulas (`c:f`) are intentionally excluded
+/// from this host because the renderer consumes cached OOXML values and does
+/// not evaluate workbook references yet.
+fn catalog_chart_data_source_root(
+  child : @xml.Element,
+  type_local : String,
+) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_pt = fn(idx : String, value : String) -> @xml.Element {
+    ce("pt", [xa("idx", idx)], [Element(ce("v", [], [Text(value)]))])
+  }
+  let str_pt = fn(idx : String, value : String) -> @xml.Element {
+    ce("pt", [xa("idx", idx)], [Element(ce("v", [], [Text(value)]))])
+  }
+  let num_lit = fn(values : Array[String], fmt : String) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text(fmt)])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(Element(num_pt(i.to_string(), v)))
+    }
+    ce("numLit", [], kids)
+  }
+  let str_cache = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(Element(str_pt(i.to_string(), v)))
+    }
+    ce("strCache", [], kids)
+  }
+  let num_ref = fn(cache : @xml.Element) -> @xml.Element {
+    ce("numRef", [], [
+      Element(ce("f", [], [Text("Sheet1!$B$2:$B$4")])),
+      Element(cache),
+    ])
+  }
+  let str_ref = fn(cache : @xml.Element) -> @xml.Element {
+    ce("strRef", [], [
+      Element(ce("f", [], [Text("Sheet1!$A$2:$A$4")])),
+      Element(cache),
+    ])
+  }
+  let multi_lvl_cache = fn() -> @xml.Element {
+    ce("multiLvlStrCache", [], [
+      Element(cv("ptCount", "3")),
+      Element(
+        ce("lvl", [], [
+          Element(str_pt("0", "North")),
+          Element(str_pt("1", "North")),
+          Element(str_pt("2", "South")),
+        ]),
+      ),
+      Element(
+        ce("lvl", [], [
+          Element(str_pt("0", "Q1")),
+          Element(str_pt("1", "Q2")),
+          Element(str_pt("2", "Q3")),
+        ]),
+      ),
+    ])
+  }
+  let multi_lvl_ref = fn(cache : @xml.Element) -> @xml.Element {
+    ce("multiLvlStrRef", [], [
+      Element(ce("f", [], [Text("Sheet1!$A$2:$B$4")])),
+      Element(cache),
+    ])
+  }
+  let line_ser = fn(
+    tx : @xml.Element,
+    cat : @xml.Element,
+    val : @xml.Element,
+  ) -> @xml.Element {
+    ce("ser", [], [
+      Element(cv("idx", "0")),
+      Element(cv("order", "0")),
+      Element(tx),
+      Element(cat),
+      Element(val),
+    ])
+  }
+  let cat_val_axes = fn() -> Array[@xml.Node] {
+    [
+      Element(
+        ce("catAx", [], [
+          Element(cv("axId", "111111111")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "b")),
+          Element(cv("crossAx", "222222222")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+      Element(
+        ce("valAx", [], [
+          Element(cv("axId", "222222222")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "l")),
+          Element(cv("crossAx", "111111111")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+    ]
+  }
+  let value_axes = fn() -> Array[@xml.Node] {
+    [
+      Element(
+        ce("valAx", [], [
+          Element(cv("axId", "111111111")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "b")),
+          Element(cv("crossAx", "222222222")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+      Element(
+        ce("valAx", [], [
+          Element(cv("axId", "222222222")),
+          Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+          Element(cv("axPos", "l")),
+          Element(cv("crossAx", "111111111")),
+          Element(cv("crosses", "autoZero")),
+        ]),
+      ),
+    ]
+  }
+  let line_root = fn(
+    ser : @xml.Element,
+    title : @xml.Element?,
+  ) -> @xml.Element {
+    let chart_type = ce("lineChart", [], [
+      Element(cv("grouping", "standard")),
+      Element(ser),
+      Element(
+        ce("dLbls", [], [
+          Element(cv("showVal", "1")),
+          Element(cv("showCatName", "1")),
+          Element(cv("showSerName", "1")),
+        ]),
+      ),
+      Element(cv("marker", "1")),
+      Element(cv("axId", "111111111")),
+      Element(cv("axId", "222222222")),
+    ])
+    let plot_area = ce("plotArea", [], [
+      Element(ce("layout", [], [])),
+      Element(chart_type),
+    ])
+    for axis in cat_val_axes() {
+      plot_area.children.push(axis)
+    }
+    let chart_kids : Array[@xml.Node] = []
+    match title {
+      Some(t) => chart_kids.push(Element(t))
+      None => ()
+    }
+    chart_kids.push(Element(plot_area))
+    chart_kids.push(Element(cv("plotVisOnly", "1")))
+    chart_kids.push(Element(cv("dispBlanksAs", "gap")))
+    ce("chartSpace", [], [Element(ce("chart", [], chart_kids))])
+  }
+  let bubble_root = fn(ser : @xml.Element) -> @xml.Element {
+    let chart_type = ce("bubbleChart", [], [
+      Element(ser),
+      Element(
+        ce("dLbls", [], [
+          Element(cv("showVal", "1")),
+          Element(cv("showBubbleSize", "1")),
+        ]),
+      ),
+      Element(cv("bubbleScale", "100")),
+      Element(cv("showNegBubbles", "1")),
+      Element(cv("sizeRepresents", "area")),
+      Element(cv("axId", "111111111")),
+      Element(cv("axId", "222222222")),
+    ])
+    let plot_area = ce("plotArea", [], [
+      Element(ce("layout", [], [])),
+      Element(chart_type),
+    ])
+    for axis in value_axes() {
+      plot_area.children.push(axis)
+    }
+    ce("chartSpace", [], [
+      Element(
+        ce("chart", [], [
+          Element(plot_area),
+          Element(cv("plotVisOnly", "1")),
+          Element(cv("dispBlanksAs", "gap")),
+        ]),
+      ),
+    ])
+  }
+  let base_tx = ce("tx", [], [Element(str_ref(str_cache(["Series Source"])))])
+  let base_cat = ce("cat", [], [
+    Element(str_ref(str_cache(["Alpha", "Beta", "Gamma"]))),
+  ])
+  let base_val = ce("val", [], [Element(num_lit(["10", "20", "30"], "General"))])
+  let line_with = fn(cat : @xml.Element, val : @xml.Element) -> @xml.Element {
+    line_root(line_ser(base_tx, cat, val), None)
+  }
+  let line_with_tx = fn(tx : @xml.Element) -> @xml.Element {
+    line_root(line_ser(tx, base_cat, base_val), None)
+  }
+  let bubble_ser = fn(
+    x_val : @xml.Element,
+    bubble_size : @xml.Element,
+  ) -> @xml.Element {
+    ce("ser", [], [
+      Element(cv("idx", "0")),
+      Element(cv("order", "0")),
+      Element(base_tx),
+      Element(x_val),
+      Element(ce("yVal", [], [Element(num_lit(["10", "20", "30"], "General"))])),
+      Element(bubble_size),
+    ])
+  }
+  match child.name.local_name {
+    "formatCode" => {
+      let fmt = catalog_chart_force_children(child, [Text("0.00")])
+      let val = ce("val", [], [
+        Element(
+          ce("numLit", [], [
+            Element(fmt),
+            Element(cv("ptCount", "3")),
+            Element(num_pt("0", "10")),
+            Element(num_pt("1", "20")),
+            Element(num_pt("2", "30")),
+          ]),
+        ),
+      ])
+      line_with(base_cat, val)
+    }
+    "ptCount" => {
+      let pt_count = catalog_chart_marker_force_val(child, "2")
+      let val = ce("val", [], [
+        Element(
+          ce("numLit", [], [
+            Element(ce("formatCode", [], [Text("General")])),
+            Element(pt_count),
+            Element(num_pt("0", "10")),
+            Element(num_pt("1", "20")),
+            Element(num_pt("2", "30")),
+          ]),
+        ),
+      ])
+      line_with(base_cat, val)
+    }
+    "pt" => {
+      let pt = catalog_chart_force_children(
+        catalog_chart_force_attr(child, "idx", "1"),
+        [Element(ce("v", [], [Text("88")]))],
+      )
+      let val = ce("val", [], [
+        Element(
+          ce("numLit", [], [
+            Element(ce("formatCode", [], [Text("General")])),
+            Element(cv("ptCount", "3")),
+            Element(num_pt("0", "10")),
+            Element(pt),
+            Element(num_pt("2", "30")),
+          ]),
+        ),
+      ])
+      line_with(base_cat, val)
+    }
+    "numCache" => {
+      let cache = catalog_chart_force_children(child, [
+        Element(ce("formatCode", [], [Text("0.00")])),
+        Element(cv("ptCount", "3")),
+        Element(num_pt("0", "10")),
+        Element(num_pt("1", "20")),
+        Element(num_pt("2", "30")),
+      ])
+      line_with(base_cat, ce("val", [], [Element(num_ref(cache))]))
+    }
+    "strRef" => {
+      let sr = catalog_chart_force_children(child, [
+        Element(ce("f", [], [Text("Sheet1!$A$2:$A$4")])),
+        Element(str_cache(["North", "Central", "South"])),
+      ])
+      line_with(ce("cat", [], [Element(sr)]), base_val)
+    }
+    "strCache" => {
+      let sc = catalog_chart_force_children(child, [
+        Element(cv("ptCount", "3")),
+        Element(str_pt("0", "North")),
+        Element(str_pt("1", "Central")),
+        Element(str_pt("2", "South")),
+      ])
+      line_with(ce("cat", [], [Element(str_ref(sc))]), base_val)
+    }
+    "strLit" => {
+      let sl = catalog_chart_force_children(child, [
+        Element(cv("ptCount", "3")),
+        Element(str_pt("0", "North")),
+        Element(str_pt("1", "Central")),
+        Element(str_pt("2", "South")),
+      ])
+      line_with(ce("cat", [], [Element(sl)]), base_val)
+    }
+    "multiLvlStrRef" => {
+      let mr = catalog_chart_force_children(child, [
+        Element(ce("f", [], [Text("Sheet1!$A$2:$B$4")])),
+        Element(multi_lvl_cache()),
+      ])
+      line_with(ce("cat", [], [Element(mr)]), base_val)
+    }
+    "multiLvlStrCache" => {
+      let mc = catalog_chart_force_children(child, [
+        Element(cv("ptCount", "3")),
+        Element(
+          ce("lvl", [], [
+            Element(str_pt("0", "North")),
+            Element(str_pt("1", "North")),
+            Element(str_pt("2", "South")),
+          ]),
+        ),
+      ])
+      line_with(ce("cat", [], [Element(multi_lvl_ref(mc))]), base_val)
+    }
+    "lvl" => {
+      let lvl = catalog_chart_force_children(child, [
+        Element(str_pt("0", "North")),
+        Element(str_pt("1", "North")),
+        Element(str_pt("2", "South")),
+      ])
+      let mc = ce("multiLvlStrCache", [], [
+        Element(cv("ptCount", "3")),
+        Element(lvl),
+        Element(
+          ce("lvl", [], [
+            Element(str_pt("0", "Q1")),
+            Element(str_pt("1", "Q2")),
+            Element(str_pt("2", "Q3")),
+          ]),
+        ),
+      ])
+      line_with(ce("cat", [], [Element(multi_lvl_ref(mc))]), base_val)
+    }
+    "xVal" => {
+      let xv = catalog_chart_force_children(child, [
+        Element(num_lit(["1", "2", "3"], "General")),
+      ])
+      let bs = ce("bubbleSize", [], [Element(num_lit(["4", "9", "16"], "0.00"))])
+      bubble_root(bubble_ser(xv, bs))
+    }
+    "bubbleSize" => {
+      let bs = catalog_chart_force_children(child, [
+        Element(num_lit(["4", "9", "16"], "0.00")),
+      ])
+      let xv = ce("xVal", [], [Element(num_lit(["1", "2", "3"], "General"))])
+      bubble_root(bubble_ser(xv, bs))
+    }
+    "tx" =>
+      if type_local == "CT_Tx" {
+        let tx = catalog_chart_force_children(child, [
+          Element(ce("rich", [], c_text_body("Chart Source Title"))),
+        ])
+        line_root(
+          line_ser(base_tx, base_cat, base_val),
+          Some(ce("title", [], [Element(tx)])),
+        )
+      } else {
+        let tx = catalog_chart_force_children(child, [
+          Element(str_ref(str_cache(["Series Source"]))),
+        ])
+        line_with_tx(tx)
+      }
+    "rich" => {
+      let rich = catalog_chart_force_children(
+        child,
+        c_text_body("Rich Source Title"),
+      )
+      let tx = ce("tx", [], [Element(rich)])
+      line_root(
+        line_ser(base_tx, base_cat, base_val),
+        Some(ce("title", [], [Element(tx)])),
+      )
+    }
+    _ => line_with(base_cat, base_val)
+  }
+}
+
+///|
+/// Catalog host for chart-space `<c:txPr>`. The target carries the
+/// DrawingML default run properties consumed by `read_chart_style_defaults`;
+/// pruning it returns title / axis / data-label text to theme/default
+/// styling, giving a real visible diff without drawing debug marks.
+fn catalog_chart_tx_pr_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_pt = fn(idx : String, value : String) -> @xml.Element {
+    ce("pt", [xa("idx", idx)], [Element(ce("v", [], [Text(value)]))])
+  }
+  let num_pt = fn(idx : String, value : String) -> @xml.Element {
+    ce("pt", [xa("idx", idx)], [Element(ce("v", [], [Text(value)]))])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(Element(str_pt(i.to_string(), v)))
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(Element(num_pt(i.to_string(), v)))
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Styled Series")]))])),
+    Element(ce("cat", [], [Element(str_lit(["North", "Central", "South"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "25", "18"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(
+      ce("dLbls", [], [
+        Element(cv("showVal", "1")),
+        Element(cv("showCatName", "1")),
+      ]),
+    ),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+  ])
+  let title = ce("title", [], [
+    Element(ce("tx", [], [Element(c_rich_text("Styled Chart"))])),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(title),
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+    Element(c_tx_pr_defaults(child, "C00000", "Catalog Chart Face")),
+  ])
+}
+
+///|
+/// Catalog host for chart-space `<c:clrMapOvr>`. The target remaps
+/// `accent1` to `accent2`; the chart's default first-series colour is
+/// resolved through that same paint context, so pruning the target
+/// returns the series stroke/fill to `accent1`.
+fn catalog_chart_color_map_override_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let target_attrs : Array[@xml.Attribute] = []
+  let mut saw_bg1 = false
+  let mut saw_tx1 = false
+  let mut saw_bg2 = false
+  let mut saw_tx2 = false
+  let mut saw_accent1 = false
+  let mut saw_accent2 = false
+  let mut saw_accent3 = false
+  let mut saw_accent4 = false
+  let mut saw_accent5 = false
+  let mut saw_accent6 = false
+  let mut saw_hlink = false
+  let mut saw_fol_hlink = false
+  for attr in child.attributes {
+    match attr.name.local_name {
+      "bg1" => {
+        saw_bg1 = true
+        target_attrs.push({ name: attr.name, value: "lt1" })
+      }
+      "tx1" => {
+        saw_tx1 = true
+        target_attrs.push({ name: attr.name, value: "dk1" })
+      }
+      "bg2" => {
+        saw_bg2 = true
+        target_attrs.push({ name: attr.name, value: "lt2" })
+      }
+      "tx2" => {
+        saw_tx2 = true
+        target_attrs.push({ name: attr.name, value: "dk2" })
+      }
+      "accent1" => {
+        saw_accent1 = true
+        target_attrs.push({ name: attr.name, value: "accent2" })
+      }
+      "accent2" => {
+        saw_accent2 = true
+        target_attrs.push({ name: attr.name, value: "accent2" })
+      }
+      "accent3" => {
+        saw_accent3 = true
+        target_attrs.push({ name: attr.name, value: "accent3" })
+      }
+      "accent4" => {
+        saw_accent4 = true
+        target_attrs.push({ name: attr.name, value: "accent4" })
+      }
+      "accent5" => {
+        saw_accent5 = true
+        target_attrs.push({ name: attr.name, value: "accent5" })
+      }
+      "accent6" => {
+        saw_accent6 = true
+        target_attrs.push({ name: attr.name, value: "accent6" })
+      }
+      "hlink" => {
+        saw_hlink = true
+        target_attrs.push({ name: attr.name, value: "hlink" })
+      }
+      "folHlink" => {
+        saw_fol_hlink = true
+        target_attrs.push({ name: attr.name, value: "folHlink" })
+      }
+      _ => target_attrs.push(attr)
+    }
+  }
+  if !saw_bg1 {
+    target_attrs.push(xa("bg1", "lt1"))
+  }
+  if !saw_tx1 {
+    target_attrs.push(xa("tx1", "dk1"))
+  }
+  if !saw_bg2 {
+    target_attrs.push(xa("bg2", "lt2"))
+  }
+  if !saw_tx2 {
+    target_attrs.push(xa("tx2", "dk2"))
+  }
+  if !saw_accent1 {
+    target_attrs.push(xa("accent1", "accent2"))
+  }
+  if !saw_accent2 {
+    target_attrs.push(xa("accent2", "accent2"))
+  }
+  if !saw_accent3 {
+    target_attrs.push(xa("accent3", "accent3"))
+  }
+  if !saw_accent4 {
+    target_attrs.push(xa("accent4", "accent4"))
+  }
+  if !saw_accent5 {
+    target_attrs.push(xa("accent5", "accent5"))
+  }
+  if !saw_accent6 {
+    target_attrs.push(xa("accent6", "accent6"))
+  }
+  if !saw_hlink {
+    target_attrs.push(xa("hlink", "hlink"))
+  }
+  if !saw_fol_hlink {
+    target_attrs.push(xa("folHlink", "folHlink"))
+  }
+  let target : @xml.Element = {
+    name: child.name,
+    attributes: target_attrs,
+    children: child.children,
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "30", "20"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(target),
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for trendline options that are consumed by the chart
+/// renderer.  The target is placed under a line-series `<c:trendline>`
+/// so pruning it changes the fitted polyline or the equation label.
+fn catalog_chart_trendline_option_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let trendline = match child.name.local_name {
+    "trendline" =>
+      catalog_chart_force_children(child, [
+        Element(cv("trendlineType", "poly")),
+        Element(cv("order", "3")),
+        Element(cv("dispEq", "1")),
+      ])
+    "trendlineType" =>
+      ce("trendline", [], [
+        Element(catalog_chart_marker_force_val(child, "movingAvg")),
+        Element(cv("period", "3")),
+      ])
+    "order" =>
+      ce("trendline", [], [
+        Element(cv("trendlineType", "poly")),
+        Element(catalog_chart_marker_force_val(child, "3")),
+      ])
+    "period" =>
+      ce("trendline", [], [
+        Element(cv("trendlineType", "movingAvg")),
+        Element(catalog_chart_marker_force_val(child, "3")),
+      ])
+    "forward" =>
+      ce("trendline", [], [
+        Element(cv("trendlineType", "linear")),
+        Element(catalog_chart_marker_force_val(child, "1.5")),
+      ])
+    "backward" =>
+      ce("trendline", [], [
+        Element(cv("trendlineType", "linear")),
+        Element(catalog_chart_marker_force_val(child, "0.5")),
+      ])
+    "intercept" =>
+      ce("trendline", [], [
+        Element(cv("trendlineType", "linear")),
+        Element(catalog_chart_marker_force_val(child, "0")),
+      ])
+    "dispEq" | "dispRSqr" =>
+      ce("trendline", [], [
+        Element(cv("trendlineType", "poly")),
+        Element(cv("order", "3")),
+        Element(catalog_chart_marker_force_val(child, "1")),
+      ])
+    _ => ce("trendline", [], [Element(child)])
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Trendline")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C", "D", "E"]))])),
+    Element(ce("val", [], [Element(num_lit(["4", "9", "15", "25", "38"]))])),
+    Element(trendline),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for CT_ErrBars and its consumed children.  The chart
+/// renderer reads direction, bar type, value type, noEndCap, plus,
+/// minus, and val from this exact series branch.
+fn catalog_chart_error_bars_option_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let custom_source = fn(values : Array[String]) -> @xml.Element {
+    ce("numLit", [], num_lit(values).children)
+  }
+  let err_bars = match child.name.local_name {
+    "errBars" =>
+      catalog_chart_force_children(child, [
+        Element(cv("errDir", "y")),
+        Element(cv("errBarType", "plus")),
+        Element(cv("errValType", "fixedVal")),
+        Element(cv("val", "8")),
+      ])
+    "errDir" =>
+      ce("errBars", [], [
+        Element(catalog_chart_marker_force_val(child, "x")),
+        Element(cv("errBarType", "both")),
+        Element(cv("errValType", "fixedVal")),
+        Element(cv("val", "8")),
+      ])
+    "errBarType" =>
+      ce("errBars", [], [
+        Element(cv("errDir", "y")),
+        Element(catalog_chart_marker_force_val(child, "plus")),
+        Element(cv("errValType", "fixedVal")),
+        Element(cv("val", "8")),
+      ])
+    "errValType" =>
+      ce("errBars", [], [
+        Element(cv("errDir", "y")),
+        Element(cv("errBarType", "both")),
+        Element(catalog_chart_marker_force_val(child, "percentage")),
+        Element(cv("val", "40")),
+      ])
+    "noEndCap" =>
+      ce("errBars", [], [
+        Element(cv("errDir", "y")),
+        Element(cv("errBarType", "both")),
+        Element(cv("errValType", "fixedVal")),
+        Element(catalog_chart_marker_force_val(child, "1")),
+        Element(cv("val", "8")),
+      ])
+    "plus" =>
+      ce("errBars", [], [
+        Element(cv("errDir", "y")),
+        Element(cv("errBarType", "both")),
+        Element(cv("errValType", "cust")),
+        Element(
+          catalog_chart_force_children(child, [
+            Element(custom_source(["8", "4", "12"])),
+          ]),
+        ),
+        Element(cv("val", "3")),
+      ])
+    "minus" =>
+      ce("errBars", [], [
+        Element(cv("errDir", "y")),
+        Element(cv("errBarType", "both")),
+        Element(cv("errValType", "cust")),
+        Element(
+          catalog_chart_force_children(child, [
+            Element(custom_source(["5", "9", "4"])),
+          ]),
+        ),
+        Element(cv("val", "3")),
+      ])
+    "val" =>
+      ce("errBars", [], [
+        Element(cv("errDir", "y")),
+        Element(cv("errBarType", "both")),
+        Element(cv("errValType", "fixedVal")),
+        Element(catalog_chart_marker_force_val(child, "8")),
+      ])
+    _ => ce("errBars", [], [Element(child)])
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Error bars")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+    Element(err_bars),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for CT_UpDownBars and its consumed children.  The
+/// target sits in the canonical lineChart position after `ser*` and
+/// before marker/axId, where `render_up_down_bars` reads it.
+fn catalog_chart_up_down_bars_option_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let sp_pr_solid = fn(hex : String) -> @xml.Element {
+    ce("spPr", [], [
+      Element(
+        xe(NS_A, "solidFill", [], [
+          Element(xe(NS_A, "srgbClr", [xa("val", hex)], [])),
+        ]),
+      ),
+    ])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let up_bars = match child.name.local_name {
+    "upBars" =>
+      catalog_chart_force_children(child, [Element(sp_pr_solid("00B050"))])
+    _ => ce("upBars", [], [Element(sp_pr_solid("00B050"))])
+  }
+  let down_bars = match child.name.local_name {
+    "downBars" =>
+      catalog_chart_force_children(child, [Element(sp_pr_solid("C00000"))])
+    _ => ce("downBars", [], [Element(sp_pr_solid("C00000"))])
+  }
+  let gap_width = match child.name.local_name {
+    "gapWidth" => catalog_chart_marker_force_val(child, "25%")
+    _ => cv("gapWidth", "25%")
+  }
+  let up_down_bars = match child.name.local_name {
+    "upDownBars" =>
+      catalog_chart_force_children(child, [
+        Element(gap_width),
+        Element(up_bars),
+        Element(down_bars),
+      ])
+    "gapWidth" | "upBars" | "downBars" =>
+      ce("upDownBars", [], [
+        Element(gap_width),
+        Element(up_bars),
+        Element(down_bars),
+      ])
+    _ => ce("upDownBars", [], [Element(child)])
+  }
+  let ser = fn(
+    idx : String,
+    name : String,
+    values : Array[String],
+  ) -> @xml.Element {
+    ce("ser", [], [
+      Element(cv("idx", idx)),
+      Element(cv("order", idx)),
+      Element(ce("tx", [], [Element(ce("v", [], [Text(name)]))])),
+      Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+      Element(ce("val", [], [Element(num_lit(values))])),
+    ])
+  }
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser("0", "Open", ["10", "22", "18"])),
+    Element(ser("1", "Close", ["15", "16", "30"])),
+    Element(up_down_bars),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+        Element(cv("crosses", "autoZero")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for chart-level CT_Title.  The renderer consumes the
+/// title text directly under `<c:chart>/<c:title>`.
+fn catalog_chart_title_root(title : @xml.Element) -> @xml.Element {
+  let ns_c = title.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let rich = ce("rich", [], c_text_body("Catalog Chart Title"))
+  let target = catalog_chart_force_children(title, [
+    Element(ce("tx", [], [Element(rich)])),
+    Element(cv("overlay", "0")),
+  ])
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let bar_chart = ce("barChart", [], [
+    Element(cv("barDir", "col")),
+    Element(cv("grouping", "clustered")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(bar_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(target),
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.7 autoTitleDeleted. The renderer consumes
+/// this boolean while resolving chart title text; pruning the target
+/// restores the title strip and title text.
+fn catalog_chart_auto_title_deleted_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let title = ce("title", [], [
+    Element(ce("tx", [], [Element(c_rich_text("Deleted Title"))])),
+    Element(cv("overlay", "0")),
+  ])
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let bar_chart = ce("barChart", [], [
+    Element(cv("barDir", "col")),
+    Element(cv("grouping", "clustered")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(bar_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(title),
+        Element(catalog_chart_marker_force_val(child, "1")),
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.206 showDLblsOverMax. The fixture gives
+/// the value axis an explicit max below one data point; pruning the
+/// target returns the absent/default-false behaviour and suppresses
+/// that point's value label.
+fn catalog_chart_show_data_labels_over_max_root(
+  child : @xml.Element,
+) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["Low", "Over", "Mid"]))])),
+    Element(ce("val", [], [Element(num_lit(["20", "60", "30"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(
+      ce("dLbls", [], [
+        Element(cv("showVal", "1")),
+        Element(cv("showCatName", "0")),
+        Element(cv("showSerName", "0")),
+      ]),
+    ),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(
+          ce("scaling", [], [
+            Element(cv("max", "40")),
+            Element(cv("orientation", "minMax")),
+          ]),
+        ),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+        Element(catalog_chart_marker_force_val(child, "1")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.46 dispBlanksAs.  A sparse numeric cache
+/// makes `gap` visibly different from the default zero fill.
+fn catalog_chart_disp_blanks_root(disp : @xml.Element) -> @xml.Element {
+  let ns_c = disp.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let sparse_num_lit = fn() -> @xml.Element {
+    ce("numLit", [], [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", "3")),
+      Element(ce("pt", [xa("idx", "0")], [Element(ce("v", [], [Text("10")]))])),
+      Element(ce("pt", [xa("idx", "2")], [Element(ce("v", [], [Text("30")]))])),
+    ])
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(sparse_num_lit())])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(catalog_chart_marker_force_val(disp, "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.104 plotArea `<c:manualLayout>` and its
+/// layoutTarget / mode / coordinate children.  Values are deliberately
+/// chosen so pruning any target changes the rendered plot rectangle:
+/// `layoutTarget="outer"` plus `edge` modes resolves against the full
+/// chart frame, while missing modes fall back to factor semantics.
+fn catalog_chart_manual_layout_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let title_rich = fn(text : String) -> @xml.Element {
+    ce("rich", [], [
+      Element(xe(NS_A, "bodyPr", [], [])),
+      Element(xe(NS_A, "lstStyle", [], [])),
+      Element(
+        xe(NS_A, "p", [], [
+          Element(
+            xe(NS_A, "r", [], [
+              Element(xe(NS_A, "rPr", [xa("lang", "en-US")], [])),
+              Element(xe(NS_A, "t", [], [Text(text)])),
+            ]),
+          ),
+        ]),
+      ),
+    ])
+  }
+  let layout_child = fn(tag : String, value : String) -> @xml.Element {
+    if child.name.local_name == tag {
+      catalog_chart_marker_force_val(child, value)
+    } else {
+      cv(tag, value)
+    }
+  }
+  let manual_children : Array[@xml.Node] = [
+    Element(layout_child("layoutTarget", "outer")),
+    Element(layout_child("xMode", "edge")),
+    Element(layout_child("yMode", "edge")),
+    Element(layout_child("wMode", "edge")),
+    Element(layout_child("hMode", "edge")),
+    Element(layout_child("x", "0.12")),
+    Element(layout_child("y", "0.18")),
+    Element(layout_child("w", "0.76")),
+    Element(layout_child("h", "0.82")),
+  ]
+  let manual : @xml.Element = if child.name.local_name == "manualLayout" {
+    {
+      name: child.name,
+      attributes: child.attributes,
+      children: manual_children,
+    }
+  } else {
+    ce("manualLayout", [], manual_children)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Manual Layout")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C", "D"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30", "40"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "l")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [Element(manual)])),
+    Element(line_chart),
+    Element(cat_axis),
+    Element(val_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(
+          ce("title", [], [
+            Element(ce("tx", [], [Element(title_rich("Manual"))])),
+            Element(cv("overlay", "0")),
+          ]),
+        ),
+        Element(plot_area),
+        Element(
+          ce("legend", [], [
+            Element(cv("legendPos", "r")),
+            Element(cv("overlay", "0")),
+          ]),
+        ),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.170 `<c:min>` on a real value-axis scale.
+/// Scatter/bubble charts own two independent `<c:valAx>` elements, so
+/// placing the target on the horizontal axis makes pruning the minimum
+/// visibly change point coordinates instead of only parsing the axis.
+fn catalog_chart_value_axis_min_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("xVal", [], [Element(num_lit(["1", "2", "3", "4"]))])),
+    Element(ce("yVal", [], [Element(num_lit(["10", "20", "30", "40"]))])),
+  ])
+  let scatter_chart = ce("scatterChart", [], [
+    Element(cv("scatterStyle", "lineMarker")),
+    Element(cv("varyColors", "0")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let x_axis = ce("valAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(catalog_chart_marker_force_val(child, "1")),
+      ]),
+    ),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+    Element(cv("majorUnit", "1")),
+  ])
+  let y_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+    Element(cv("majorUnit", "10")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(scatter_chart),
+    Element(x_axis),
+    Element(y_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.14 `<c:axPos>` on a scatter chart's
+/// vertical value axis. Scatter/bubble charts have two `<c:valAx>`
+/// elements, and the renderer uses `axPos` as the source of truth for
+/// which one is the horizontal X scale and which one is the vertical
+/// Y scale. Pruning the target makes the second axis default to
+/// `b`, so its explicit Y scale no longer belongs to the vertical
+/// axis and point coordinates visibly change.
+fn catalog_chart_axis_position_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("xVal", [], [Element(num_lit(["1", "2", "3", "4"]))])),
+    Element(ce("yVal", [], [Element(num_lit(["10", "20", "30", "40"]))])),
+  ])
+  let scatter_chart = ce("scatterChart", [], [
+    Element(cv("scatterStyle", "lineMarker")),
+    Element(cv("varyColors", "0")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let x_axis = ce("valAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "4")),
+      ]),
+    ),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+    Element(cv("majorUnit", "1")),
+  ])
+  let y_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "40")),
+      ]),
+    ),
+    Element(catalog_chart_marker_force_val(child, "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+    Element(cv("majorUnit", "10")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(scatter_chart),
+    Element(x_axis),
+    Element(y_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.9 `<c:axId>` on a chart type.  The
+/// chart renderer filters plot-area axes through this chart-local
+/// reference list; pruning the target drops the value axis from the
+/// line chart's resolved axis set.
+fn catalog_chart_axis_id_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(catalog_chart_marker_force_val(child, "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "333333333")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "40")),
+      ]),
+    ),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(cat_axis),
+    Element(val_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.31 `<c:crossAx>`.  The target catAxis
+/// crosses an alternate value axis with a different scale.  Pruning
+/// the target returns the chart to the value axis named by the chart
+/// type's `<c:axId>` list.
+fn catalog_chart_axis_cross_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(catalog_chart_marker_force_val(child, "333333333")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let alt_val_axis = ce("valAx", [], [
+    Element(cv("axId", "333333333")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "400")),
+      ]),
+    ),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "40")),
+      ]),
+    ),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(cat_axis),
+    Element(alt_val_axis),
+    Element(val_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.6 `<c:auto>` (Automatic Category Axis).
+/// A category axis with numeric category data and `auto=true` follows
+/// the date-label path; pruning it leaves the same numeric cache as
+/// literal category labels.
+fn catalog_chart_axis_auto_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(num_lit(["45292", "45306", "45323"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+    Element(catalog_chart_marker_force_val(child, "1")),
+  ])
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "40")),
+      ]),
+    ),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(cat_axis),
+    Element(val_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for date-axis units and chartSpace date system. The
+/// renderer consumes these through `ChartAxesInfo` and
+/// `chart_space_date_system`; pruning the target changes date labels,
+/// tick buckets, or serial coordinates.
+fn catalog_chart_date_axis_unit_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let num_lit = fn(values : Array[String], fmt : String) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text(fmt)])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let serials = match child.name.local_name {
+    "minorTimeUnit" => ["45292", "45306", "45323"]
+    "date1904" => ["1", "32", "60"]
+    _ => ["45292", "45306", "45323"]
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(num_lit(serials, "m/d/yyyy"))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"], "General"))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let mut base_time_unit = cv("baseTimeUnit", "days")
+  let mut major_time_unit : @xml.Element? = None
+  let mut minor_time_unit : @xml.Element? = None
+  match child.name.local_name {
+    "baseTimeUnit" =>
+      base_time_unit = catalog_chart_marker_force_val(child, "months")
+    "majorTimeUnit" => {
+      base_time_unit = cv("baseTimeUnit", "months")
+      major_time_unit = Some(catalog_chart_marker_force_val(child, "years"))
+    }
+    "minorTimeUnit" => {
+      base_time_unit = cv("baseTimeUnit", "months")
+      major_time_unit = Some(cv("majorTimeUnit", "years"))
+      minor_time_unit = Some(catalog_chart_marker_force_val(child, "days"))
+    }
+    _ => ()
+  }
+  let date_axis_kids : Array[@xml.Node] = [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("minorTickMark", "in")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+    Element(base_time_unit),
+  ]
+  match major_time_unit {
+    Some(e) => date_axis_kids.push(Element(e))
+    None => ()
+  }
+  match minor_time_unit {
+    Some(e) => date_axis_kids.push(Element(e))
+    None => ()
+  }
+  let date_axis = ce("dateAx", [], date_axis_kids)
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "40")),
+      ]),
+    ),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let chart = ce("chart", [], [
+    Element(
+      ce("plotArea", [], [
+        Element(ce("layout", [], [])),
+        Element(line_chart),
+        Element(date_axis),
+        Element(val_axis),
+      ]),
+    ),
+    Element(cv("plotVisOnly", "1")),
+    Element(cv("dispBlanksAs", "gap")),
+  ])
+  let kids : Array[@xml.Node] = []
+  if child.name.local_name == "date1904" {
+    kids.push(Element(catalog_chart_marker_force_val(child, "1")))
+  }
+  kids.push(Element(chart))
+  ce("chartSpace", [], kids)
+}
+
+///|
+/// Catalog host for §21.2.2.119 noMultiLvlLbl. A multi-level category
+/// cache renders hierarchical labels by default; the target collapses
+/// labels to the final level.
+fn catalog_chart_no_multi_level_labels_root(
+  child : @xml.Element,
+) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_pt = fn(idx : String, value : String) -> @xml.Element {
+    ce("pt", [xa("idx", idx)], [Element(ce("v", [], [Text(value)]))])
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let multi_level = ce("multiLvlStrRef", [], [
+    Element(ce("f", [], [Text("Sheet1!$A$2:$B$4")])),
+    Element(
+      ce("multiLvlStrCache", [], [
+        Element(cv("ptCount", "3")),
+        Element(
+          ce("lvl", [], [
+            Element(str_pt("0", "North")),
+            Element(str_pt("1", "North")),
+            Element(str_pt("2", "South")),
+          ]),
+        ),
+        Element(
+          ce("lvl", [], [
+            Element(str_pt("0", "Q1")),
+            Element(str_pt("1", "Q2")),
+            Element(str_pt("2", "Q3")),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(multi_level)])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+    Element(catalog_chart_marker_force_val(child, "1")),
+  ])
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "40")),
+      ]),
+    ),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(
+          ce("plotArea", [], [
+            Element(ce("layout", [], [])),
+            Element(line_chart),
+            Element(cat_axis),
+            Element(val_axis),
+          ]),
+        ),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.99 / §21.2.2.105 value-axis gridlines.
+/// The renderer emits concrete SVG line elements only when the axis
+/// carries the corresponding CT_ChartLines child.
+fn catalog_chart_axis_gridlines_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let val_axis_kids : Array[@xml.Node] = [
+    Element(cv("axId", "222222222")),
+    Element(
+      ce("scaling", [], [
+        Element(cv("orientation", "minMax")),
+        Element(cv("max", "40")),
+      ]),
+    ),
+    Element(cv("axPos", "l")),
+    Element(cv("majorTickMark", "out")),
+    Element(cv("minorTickMark", "none")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+    Element(cv("majorUnit", "10")),
+    Element(cv("minorUnit", "5")),
+  ]
+  match child.name.local_name {
+    "majorGridlines" => val_axis_kids.insert(2, Element(child))
+    "minorGridlines" => val_axis_kids.insert(2, Element(child))
+    _ => val_axis_kids.insert(2, Element(child))
+  }
+  let val_axis = ce("valAx", [], val_axis_kids)
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(cat_axis),
+    Element(val_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for axis options already consumed by the chart axis
+/// renderer.  The target is placed on the axis kind where that option
+/// changes labels, tick marks, crossing, or scaling.
+fn catalog_chart_axis_option_root(child : @xml.Element) -> @xml.Element {
+  if child.name.local_name == "min" {
+    return catalog_chart_value_axis_min_root(child)
+  }
+  if child.name.local_name == "axPos" {
+    return catalog_chart_axis_position_root(child)
+  }
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let cat_major = match child.name.local_name {
+    "majorTickMark" => catalog_chart_marker_force_val(child, "none")
+    _ => cv("majorTickMark", "out")
+  }
+  let cat_minor = match child.name.local_name {
+    _ => cv("minorTickMark", "none")
+  }
+  let cat_tick_skip = match child.name.local_name {
+    "tickLblSkip" => catalog_chart_marker_force_val(child, "2")
+    _ => cv("tickLblSkip", "1")
+  }
+  let cat_mark_skip = match child.name.local_name {
+    "tickMarkSkip" => catalog_chart_marker_force_val(child, "2")
+    _ => cv("tickMarkSkip", "1")
+  }
+  let cat_lbl_algn = match child.name.local_name {
+    "lblAlgn" => catalog_chart_marker_force_val(child, "l")
+    _ => cv("lblAlgn", "ctr")
+  }
+  let cat_lbl_offset = match child.name.local_name {
+    "lblOffset" => catalog_chart_marker_force_val(child, "200")
+    _ => cv("lblOffset", "100")
+  }
+  let val_crosses = match child.name.local_name {
+    "crosses" => catalog_chart_marker_force_val(child, "max")
+    _ => cv("crosses", "autoZero")
+  }
+  let val_cross_between = match child.name.local_name {
+    "crossBetween" => catalog_chart_marker_force_val(child, "midCat")
+    _ => cv("crossBetween", "between")
+  }
+  let val_minor = match child.name.local_name {
+    "minorTickMark" => catalog_chart_marker_force_val(child, "none")
+    "minorUnit" => cv("minorTickMark", "in")
+    _ => cv("minorTickMark", "none")
+  }
+  let val_major_unit = match child.name.local_name {
+    "majorUnit" => catalog_chart_marker_force_val(child, "20")
+    _ => cv("majorUnit", "10")
+  }
+  let val_minor_unit = match child.name.local_name {
+    "minorUnit" => catalog_chart_marker_force_val(child, "20")
+    _ => cv("minorUnit", "5")
+  }
+  let val_scaling_kids : Array[@xml.Node] = [
+    Element(cv("orientation", "minMax")),
+  ]
+  if child.name.local_name == "min" {
+    val_scaling_kids.push(Element(catalog_chart_marker_force_val(child, "5")))
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C", "D"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30", "40"]))])),
+  ])
+  let line_chart = ce("lineChart", [], [
+    Element(cv("grouping", "standard")),
+    Element(ser),
+    Element(cv("marker", "1")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let cat_axis = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("axPos", "b")),
+    Element(cat_major),
+    Element(cat_minor),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+    Element(cat_lbl_algn),
+    Element(cat_lbl_offset),
+    Element(cat_tick_skip),
+    Element(cat_mark_skip),
+  ])
+  let val_ax_pos = match child.name.local_name {
+    "axPos" => catalog_chart_marker_force_val(child, "l")
+    _ => cv("axPos", "l")
+  }
+  let val_axis = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], val_scaling_kids)),
+    Element(val_ax_pos),
+    Element(cv("majorTickMark", "out")),
+    Element(val_minor),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(val_crosses),
+    Element(val_cross_between),
+    Element(val_major_unit),
+    Element(val_minor_unit),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(line_chart),
+    Element(cat_axis),
+    Element(val_axis),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for bar-series visual options consumed by
+/// render_bar_chart: grouping, overlap, invertIfNegative, and
+/// per-point dPt fill.
+fn catalog_chart_bar_series_option_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let sp_pr_solid = fn(hex : String) -> @xml.Element {
+    ce("spPr", [], [
+      Element(
+        xe(NS_A, "solidFill", [], [
+          Element(xe(NS_A, "srgbClr", [xa("val", hex)], [])),
+        ]),
+      ),
+    ])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let dpt = match child.name.local_name {
+    "dPt" =>
+      catalog_chart_force_children(child, [
+        Element(cv("idx", "1")),
+        Element(sp_pr_solid("FF0000")),
+      ])
+    _ =>
+      ce("dPt", [], [Element(cv("idx", "1")), Element(sp_pr_solid("FF0000"))])
+  }
+  let ser = fn(
+    idx : String,
+    values : Array[String],
+    with_dpt : Bool,
+  ) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("idx", idx)),
+      Element(cv("order", idx)),
+      Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+      Element(ce("val", [], [Element(num_lit(values))])),
+    ]
+    if child.name.local_name == "invertIfNegative" && idx == "0" {
+      kids.insert(2, Element(sp_pr_solid("112233")))
+      kids.insert(3, Element(catalog_chart_marker_force_val(child, "1")))
+    }
+    if with_dpt {
+      kids.insert(2, Element(dpt))
+    }
+    ce("ser", [], kids)
+  }
+  let grouping = match child.name.local_name {
+    "grouping" => catalog_chart_marker_force_val(child, "stacked")
+    _ => cv("grouping", "clustered")
+  }
+  let overlap = match child.name.local_name {
+    "overlap" => catalog_chart_marker_force_val(child, "100%")
+    _ => cv("overlap", "0%")
+  }
+  let first_values = match child.name.local_name {
+    "invertIfNegative" => ["10", "-5", "15"]
+    _ => ["10", "20", "30"]
+  }
+  let bar_chart = ce("barChart", [], [
+    Element(cv("barDir", "col")),
+    Element(grouping),
+    Element(ser("0", first_values, child.name.local_name == "dPt")),
+    Element(ser("1", ["8", "12", "16"], false)),
+    Element(cv("gapWidth", "150%")),
+    Element(overlap),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(bar_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.75 `<c:gapDepth>` on bar3DChart. The
+/// flattened bar3D renderer consumes it as in-cluster series spacing.
+fn catalog_chart_bar3d_gap_depth_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = fn(idx : String, values : Array[String]) -> @xml.Element {
+    ce("ser", [], [
+      Element(cv("idx", idx)),
+      Element(cv("order", idx)),
+      Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+      Element(ce("val", [], [Element(num_lit(values))])),
+    ])
+  }
+  let bar_chart = ce("bar3DChart", [], [
+    Element(cv("barDir", "col")),
+    Element(cv("grouping", "clustered")),
+    Element(ser("0", ["10", "20", "30"])),
+    Element(ser("1", ["15", "25", "35"])),
+    Element(catalog_chart_marker_force_val(child, "400%")),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(bar_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.128 `<c:order>` on chart series. The bar
+/// renderer sorts series by this value before plotting clustered bars.
+fn catalog_chart_bar_series_order_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser_a = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(catalog_chart_marker_force_val(child, "1")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["10", "20", "30"]))])),
+  ])
+  let ser_b = ce("ser", [], [
+    Element(cv("idx", "1")),
+    Element(cv("order", "0")),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C"]))])),
+    Element(ce("val", [], [Element(num_lit(["30", "20", "10"]))])),
+  ])
+  let bar_chart = ce("barChart", [], [
+    Element(cv("barDir", "col")),
+    Element(cv("grouping", "clustered")),
+    Element(ser_a),
+    Element(ser_b),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(bar_chart),
+    Element(
+      ce("catAx", [], [
+        Element(cv("axId", "111111111")),
+        Element(cv("axPos", "b")),
+        Element(cv("crossAx", "222222222")),
+      ]),
+    ),
+    Element(
+      ce("valAx", [], [
+        Element(cv("axId", "222222222")),
+        Element(cv("axPos", "l")),
+        Element(cv("crossAx", "111111111")),
+      ]),
+    ),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
   ])
 }
 
@@ -1957,6 +6090,240 @@ fn surface_chart_payload(tag : String) -> @xml.Element {
     Element(c_val("axId", "222222222")),
     Element(c_val("axId", "333333333")),
     Element(c_ext_lst()),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.223 `<c:wireframe>` on surface charts.
+/// The surface renderer consumes it as line-only area geometry; pruning
+/// the target restores the filled surface polygons.
+fn catalog_chart_surface_wireframe_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Surface")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C", "D"]))])),
+    Element(ce("val", [], [Element(num_lit(["5", "9", "7", "12"]))])),
+  ])
+  let surface_chart = ce("surfaceChart", [], [
+    Element(catalog_chart_marker_force_val(child, "1")),
+    Element(ser),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+    Element(cv("axId", "333333333")),
+  ])
+  let cat_ax = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("delete", "0")),
+    Element(cv("axPos", "b")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let val_ax = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("delete", "0")),
+    Element(cv("axPos", "l")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let ser_ax = ce("serAx", [], [
+    Element(cv("axId", "333333333")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("delete", "0")),
+    Element(cv("axPos", "r")),
+    Element(cv("tickLblPos", "none")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(surface_chart),
+    Element(cat_ax),
+    Element(val_ax),
+    Element(ser_ax),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog host for §21.2.2.15 `<c:bandFmt>` and §21.2.2.16
+/// `<c:bandFmts>`. Surface band paints resolve through chart spPr fill
+/// SoT; pruning the target removes the explicit band fill.
+fn catalog_chart_surface_band_format_root(child : @xml.Element) -> @xml.Element {
+  let ns_c = child.name.ns.unwrap_or(NS_C)
+  let ns_a = if ns_c == "http://purl.oclc.org/ooxml/drawingml/chart" {
+    "http://purl.oclc.org/ooxml/drawingml/main"
+  } else {
+    NS_A
+  }
+  let ce = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("c", ns_c, tag, attrs, kids)
+  }
+  let ae = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    kids : Array[@xml.Node],
+  ) -> @xml.Element {
+    xep("a", ns_a, tag, attrs, kids)
+  }
+  let cv = fn(tag : String, value : String) -> @xml.Element {
+    ce(tag, [xa("val", value)], [])
+  }
+  let str_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("strLit", [], kids)
+  }
+  let num_lit = fn(values : Array[String]) -> @xml.Element {
+    let kids : Array[@xml.Node] = [
+      Element(ce("formatCode", [], [Text("General")])),
+      Element(cv("ptCount", values.length().to_string())),
+    ]
+    for i, v in values {
+      kids.push(
+        Element(
+          ce("pt", [xa("idx", i.to_string())], [Element(ce("v", [], [Text(v)]))]),
+        ),
+      )
+    }
+    ce("numLit", [], kids)
+  }
+  let sp_pr = ce("spPr", [], [
+    Element(
+      ae("solidFill", [], [Element(ae("srgbClr", [xa("val", "C00000")], []))]),
+    ),
+  ])
+  let band_fmt = match child.name.local_name {
+    "bandFmt" =>
+      catalog_chart_force_children(child, [
+        Element(cv("idx", "0")),
+        Element(sp_pr),
+      ])
+    _ => ce("bandFmt", [], [Element(cv("idx", "0")), Element(sp_pr)])
+  }
+  let band_fmts = match child.name.local_name {
+    "bandFmts" => catalog_chart_force_children(child, [Element(band_fmt)])
+    _ => ce("bandFmts", [], [Element(band_fmt)])
+  }
+  let ser = ce("ser", [], [
+    Element(cv("idx", "0")),
+    Element(cv("order", "0")),
+    Element(ce("tx", [], [Element(ce("v", [], [Text("Surface")]))])),
+    Element(ce("cat", [], [Element(str_lit(["A", "B", "C", "D"]))])),
+    Element(ce("val", [], [Element(num_lit(["5", "9", "7", "12"]))])),
+  ])
+  let surface_chart = ce("surfaceChart", [], [
+    Element(cv("wireframe", "0")),
+    Element(ser),
+    Element(band_fmts),
+    Element(cv("axId", "111111111")),
+    Element(cv("axId", "222222222")),
+    Element(cv("axId", "333333333")),
+  ])
+  let cat_ax = ce("catAx", [], [
+    Element(cv("axId", "111111111")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("delete", "0")),
+    Element(cv("axPos", "b")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let val_ax = ce("valAx", [], [
+    Element(cv("axId", "222222222")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("delete", "0")),
+    Element(cv("axPos", "l")),
+    Element(cv("tickLblPos", "nextTo")),
+    Element(cv("crossAx", "111111111")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let ser_ax = ce("serAx", [], [
+    Element(cv("axId", "333333333")),
+    Element(ce("scaling", [], [Element(cv("orientation", "minMax"))])),
+    Element(cv("delete", "0")),
+    Element(cv("axPos", "r")),
+    Element(cv("tickLblPos", "none")),
+    Element(cv("crossAx", "222222222")),
+    Element(cv("crosses", "autoZero")),
+  ])
+  let plot_area = ce("plotArea", [], [
+    Element(ce("layout", [], [])),
+    Element(surface_chart),
+    Element(cat_ax),
+    Element(val_ax),
+    Element(ser_ax),
+  ])
+  ce("chartSpace", [], [
+    Element(
+      ce("chart", [], [
+        Element(plot_area),
+        Element(cv("plotVisOnly", "1")),
+        Element(cv("dispBlanksAs", "gap")),
+      ]),
+    ),
   ])
 }
 

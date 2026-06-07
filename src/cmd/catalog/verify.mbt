@@ -114,6 +114,10 @@ const RT_PRINTER_SETTINGS : String = "http://schemas.openxmlformats.org/officeDo
 const RT_SUB_DOCUMENT : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/subDocument"
 
 ///|
+/// Office relationship type for external or embedded audio resources.
+const RT_AUDIO : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/audio"
+
+///|
 /// Office relationship type for external or embedded video resources.
 const RT_VIDEO : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video"
 
@@ -144,6 +148,10 @@ const CT_VML_DRAWING : String = "application/vnd.openxmlformats-officedocument.v
 ///|
 /// Spreadsheet Drawing part content type.
 const CT_SPREADSHEET_DRAWING : String = "application/vnd.openxmlformats-officedocument.drawing+xml"
+
+///|
+/// DrawingML Chart part content type.
+const CT_DRAWINGML_CHART : String = "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"
 
 ///|
 /// Single Cell Table Definitions part content type.
@@ -464,6 +472,117 @@ fn docx_package(body : @xml.Element) -> Bytes {
     ),
     ("_rels/.rels", root_rels_part("word/document.xml")),
     ("word/document.xml", write_part(document)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// Build a WordprocessingML body containing an inline DrawingML chart
+/// reference. The target is the `<c:chart r:id="…"/>` CT_RelId element
+/// under `<a:graphicData uri="…/chart">`; the package host below wires
+/// that `rIdChart` to `/word/charts/chart1.xml`.
+fn catalog_docx_chart_ref_body(chart_ref : @xml.Element) -> @xml.Element {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let ns_wp = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  for attr in chart_ref.attributes {
+    if attr.name.local_name == "id" {
+      saw_id = true
+      attrs.push({ name: attr.name, value: "rIdChart" })
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw_id {
+    attrs.push({
+      name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+      value: "rIdChart",
+    })
+  }
+  let chart_ref : @xml.Element = {
+    name: chart_ref.name,
+    attributes: attrs,
+    children: [],
+  }
+  let graphic_data = xe(
+    ns_a,
+    "graphicData",
+    [xa("uri", "http://schemas.openxmlformats.org/drawingml/2006/chart")],
+    [Element(chart_ref)],
+  )
+  let inline = xe(ns_wp, "inline", [], [
+    Element(xe(ns_wp, "extent", [xa("cx", "5486400"), xa("cy", "4114800")], [])),
+    Element(xe(ns_wp, "docPr", [xa("id", "2"), xa("name", "Chart")], [])),
+    Element(xe(ns_a, "graphic", [], [Element(graphic_data)])),
+  ])
+  xe(ns_w, "body", [], [
+    Element(
+      xe(ns_w, "p", [], [
+        Element(
+          xe(ns_w, "r", [], [
+            Element(xe(ns_w, "drawing", [], [Element(inline)])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// `.docx` package with `/word/document.xml` carrying an inline chart
+/// reference and `/word/charts/chart1.xml` carrying the actual
+/// `<c:chartSpace>` part. This mirrors the WordprocessingML context
+/// chart resolver: the `r:id` is resolved against
+/// `word/_rels/document.xml.rels`, not against package scope.
+fn docx_package_with_chart(
+  body : @xml.Element,
+  chart_space : @xml.Element,
+) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let document : @xml.Element = if body.name.local_name == "document" {
+    body
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(body)],
+    }
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rIdChart"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart",
+          ),
+          xa("Target", "charts/chart1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+        (
+          "/word/charts/chart1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chart+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("word/charts/chart1.xml", write_part(chart_space)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
@@ -1352,7 +1471,10 @@ fn xlsx_package_with_pivot(
       ]),
     ),
   ])
-  // Workbook rels — sheet (rId1) + pivot cache definition (rId2).
+  // Workbook rels — sheet (rId1) + pivot cache definition (rId2) +
+  // styles (rId3).  The pivot `<format dxfId="…">` path resolves
+  // through this stylesheet; the renderer then applies the dxf only
+  // when the pivotArea/reference constraints match a value cell.
   let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -1378,6 +1500,20 @@ fn xlsx_package_with_pivot(
             "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition",
           ),
           xa("Target", "pivotCache/pivotCacheDefinition1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+          ),
+          xa("Target", "styles.xml"),
         ],
         [],
       ),
@@ -1480,6 +1616,9 @@ fn xlsx_package_with_pivot(
     (
       "/xl/pivotCache/pivotCacheRecords1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml",
     ),
+    (
+      "/xl/styles.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml",
+    ),
   ]
   let parts : Array[(String, Bytes)] = [
     ("[Content_Types].xml", content_types_part(overrides)),
@@ -1496,17 +1635,44 @@ fn xlsx_package_with_pivot(
       write_part(cache_def_rels),
     ),
     ("xl/pivotCache/pivotCacheRecords1.xml", write_part(cache_records)),
+    ("xl/styles.xml", write_part(catalog_sml_pivot_styles())),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+fn catalog_sml_pivot_styles() -> @xml.Element {
+  xe(NS_S_PVT, "styleSheet", [], [
+    Element(
+      xe(NS_S_PVT, "fonts", [xa("count", "1")], [
+        Element(ss_font("11", "Calibri", [])),
+      ]),
+    ),
+    Element(
+      xe(NS_S_PVT, "fills", [xa("count", "2")], [
+        Element(ss_fill_none()),
+        Element(ss_fill_gray125()),
+      ]),
+    ),
+    Element(
+      xe(NS_S_PVT, "borders", [xa("count", "1")], [Element(ss_border_none())]),
+    ),
+    Element(
+      xe(NS_S_PVT, "cellXfs", [xa("count", "1")], [
+        Element(ss_cell_xf("0", "0", "0", "0", None)),
+      ]),
+    ),
+    Element(cf_dxfs([cf_dxf_solid_fill("FFFFCC00")])),
+  ])
 }
 
 ///|
 /// Catalog-only §18.10 host selection.  These are the PivotTable
 /// elements whose content reaches the existing
 /// `spreadsheet_ml/pivot_table` materializer and `viewer/pivot_render`
-/// overlay.  Metadata-only PivotTable children are intentionally left
-/// to the generic `parsed` path so the catalog does not over-count
-/// data-attribute-only traces as rendered output.
+/// overlay.  Visible aggregate cells remain the render surface; typed
+/// PivotTable/cache metadata branches are traced as `data-ooxml-pivot-*`
+/// attributes, never as fabricated visible cells.
 fn is_sml_pivot_catalog_target(
   local_name : String,
   type_name : String,
@@ -1522,6 +1688,40 @@ fn is_sml_pivot_catalog_target(
     | "CT_CacheFields"
     | "CT_CacheField"
     | "CT_SharedItems"
+    | "CT_Missing"
+    | "CT_Boolean"
+    | "CT_Error"
+    | "CT_DateTime"
+    | "CT_Tuples"
+    | "CT_CacheHierarchies"
+    | "CT_CacheHierarchy"
+    | "CT_PCDKPIs"
+    | "CT_PCDKPI"
+    | "CT_TupleCache"
+    | "CT_PCDSDTCEntries"
+    | "CT_Sets"
+    | "CT_Set"
+    | "CT_Tuple"
+    | "CT_QueryCache"
+    | "CT_Query"
+    | "CT_ServerFormats"
+    | "CT_ServerFormat"
+    | "CT_CalculatedItems"
+    | "CT_CalculatedItem"
+    | "CT_CalculatedMembers"
+    | "CT_CalculatedMember"
+    | "CT_FieldGroup"
+    | "CT_RangePr"
+    | "CT_DiscretePr"
+    | "CT_GroupItems"
+    | "CT_WorksheetSource"
+    | "CT_Consolidation"
+    | "CT_Pages"
+    | "CT_RangeSets"
+    | "CT_PCDSCPage"
+    | "CT_PageItem"
+    | "CT_RangeSet"
+    | "CT_TableMissing"
     | "CT_PivotCacheRecords"
     | "CT_Record"
     | "CT_Index"
@@ -1533,14 +1733,54 @@ fn is_sml_pivot_catalog_target(
     | "CT_PivotField"
     | "CT_RowFields"
     | "CT_ColFields"
+    | "CT_PageFields"
+    | "CT_PageField"
     | "CT_rowItems"
     | "CT_colItems"
     | "CT_DataFields"
     | "CT_DataField"
     | "CT_Field"
-    | "CT_I" => true
+    | "CT_I"
+    | "CT_Formats"
+    | "CT_Format"
+    | "CT_ConditionalFormats"
+    | "CT_ConditionalFormat"
+    | "CT_PivotAreas"
+    | "CT_PivotArea"
+    | "CT_PivotAreaReferences"
+    | "CT_PivotAreaReference"
+    | "CT_ChartFormats"
+    | "CT_ChartFormat"
+    | "CT_PivotHierarchies"
+    | "CT_PivotHierarchy"
+    | "CT_MemberProperties"
+    | "CT_MemberProperty"
+    | "CT_Members"
+    | "CT_Member"
+    | "CT_RowHierarchiesUsage"
+    | "CT_ColHierarchiesUsage"
+    | "CT_HierarchyUsage"
+    | "CT_Dimensions"
+    | "CT_PivotDimension"
+    | "CT_MeasureGroups"
+    | "CT_MeasureGroup"
+    | "CT_MeasureDimensionMaps"
+    | "CT_MeasureDimensionMap"
+    | "CT_FieldsUsage"
+    | "CT_FieldUsage"
+    | "CT_GroupLevels"
+    | "CT_GroupLevel"
+    | "CT_Groups"
+    | "CT_LevelGroup"
+    | "CT_GroupMembers"
+    | "CT_GroupMember"
+    | "CT_PivotTableStyle"
+    | "CT_Items"
+    | "CT_Item"
+    | "CT_AutoSortScope" => true
     _ =>
       match local_name {
+        "mpMap" | "x" => type_local == "CT_X"
         "pivotCacheDefinition" | "pivotCacheRecords" | "pivotTableDefinition" =>
           true
         _ => false
@@ -1576,10 +1816,65 @@ fn catalog_sml_pivot_branch(local_name : String, type_local : String) -> String 
     | "CT_CacheFields"
     | "CT_CacheField"
     | "CT_SharedItems"
-    | "CT_String" => "cache"
-    "CT_PivotCacheRecords" | "CT_Record" | "CT_Index" | "CT_Number" => "records"
+    | "CT_String"
+    | "CT_Missing"
+    | "CT_Tuples"
+    | "CT_CacheHierarchies"
+    | "CT_CacheHierarchy"
+    | "CT_PCDKPIs"
+    | "CT_PCDKPI"
+    | "CT_TupleCache"
+    | "CT_PCDSDTCEntries"
+    | "CT_Sets"
+    | "CT_Set"
+    | "CT_Tuple"
+    | "CT_QueryCache"
+    | "CT_Query"
+    | "CT_ServerFormats"
+    | "CT_ServerFormat"
+    | "CT_CalculatedItems"
+    | "CT_CalculatedItem"
+    | "CT_CalculatedMembers"
+    | "CT_CalculatedMember"
+    | "CT_FieldGroup"
+    | "CT_RangePr"
+    | "CT_DiscretePr"
+    | "CT_GroupItems"
+    | "CT_WorksheetSource"
+    | "CT_Consolidation"
+    | "CT_Pages"
+    | "CT_RangeSets"
+    | "CT_PCDSCPage"
+    | "CT_PageItem"
+    | "CT_RangeSet"
+    | "CT_TableMissing"
+    | "CT_Dimensions"
+    | "CT_PivotDimension"
+    | "CT_MeasureGroups"
+    | "CT_MeasureGroup"
+    | "CT_MeasureDimensionMaps"
+    | "CT_MeasureDimensionMap"
+    | "CT_FieldsUsage"
+    | "CT_FieldUsage"
+    | "CT_GroupLevels"
+    | "CT_GroupLevel"
+    | "CT_Groups"
+    | "CT_LevelGroup"
+    | "CT_GroupMembers"
+    | "CT_GroupMember" => "cache"
+    "CT_PivotCacheRecords"
+    | "CT_Record"
+    | "CT_Index"
+    | "CT_Number"
+    | "CT_Boolean"
+    | "CT_Error"
+    | "CT_DateTime" => "records"
+    "CT_PivotTableStyle" | "CT_Items" | "CT_Item" | "CT_AutoSortScope" =>
+      "pivot"
     _ =>
       match local_name {
+        "mpMap" => if type_local == "CT_X" { "cache" } else { "pivot" }
+        "x" => "pivot"
         "pivotCacheDefinition" => "cache"
         "pivotCacheRecords" => "records"
         _ => "pivot"
@@ -1591,18 +1886,33 @@ fn catalog_sml_pivot_branch(local_name : String, type_local : String) -> String 
 fn catalog_sml_pivot_parts(
   content : @xml.Element,
 ) -> (@xml.Element, @xml.Element, @xml.Element, @xml.Element) {
-  let sheet = catalog_sml_pivot_sheet_data()
-  let cache_def = match content.name.local_name {
-    "pivotCacheDefinition" => content
-    _ => catalog_sml_pivot_default_cache_def()
-  }
-  let cache_records = match content.name.local_name {
-    "pivotCacheRecords" => content
-    _ => catalog_sml_pivot_default_records()
-  }
   let pivot_def = match content.name.local_name {
     "pivotTableDefinition" => content
     _ => catalog_sml_pivot_default_table_def()
+  }
+  let has_page_fields = catalog_sml_pivot_def_has_page_fields(pivot_def)
+  let sheet = if has_page_fields {
+    catalog_sml_pivot_page_field_sheet_data()
+  } else {
+    catalog_sml_pivot_sheet_data()
+  }
+  let cache_def = match content.name.local_name {
+    "pivotCacheDefinition" => content
+    _ =>
+      if has_page_fields {
+        catalog_sml_pivot_page_field_cache_def()
+      } else {
+        catalog_sml_pivot_default_cache_def()
+      }
+  }
+  let cache_records = match content.name.local_name {
+    "pivotCacheRecords" => content
+    _ =>
+      if has_page_fields {
+        catalog_sml_pivot_page_field_records()
+      } else {
+        catalog_sml_pivot_default_records()
+      }
   }
   (sheet, cache_def, cache_records, pivot_def)
 }
@@ -1638,6 +1948,62 @@ fn catalog_sml_pivot_default_records() -> @xml.Element {
   records_root([
     record_row([rec_x(0), rec_n("10")]),
     record_row([rec_x(1), rec_n("20")]),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_page_field_sheet_data() -> @xml.Element {
+  xe(NS_S_PVT, "sheetData", [], [
+    Element(
+      s_row("1", [
+        s_inline("A1", "Region"),
+        s_inline("B1", "Product"),
+        s_inline("C1", "Sales"),
+      ]),
+    ),
+    Element(
+      s_row("2", [
+        s_inline("A2", "North"),
+        s_inline("B2", "Apple"),
+        s_cell("C2", "100"),
+      ]),
+    ),
+    Element(
+      s_row("3", [
+        s_inline("A3", "South"),
+        s_inline("B3", "Apple"),
+        s_cell("C3", "80"),
+      ]),
+    ),
+    Element(
+      s_row("4", [
+        s_inline("A4", "East"),
+        s_inline("B4", "Bread"),
+        s_cell("C4", "40"),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_page_field_cache_def() -> @xml.Element {
+  cache_def_root(
+    cache_source_worksheet("S1", "A1:C4"),
+    cache_fields_wrap([
+      cache_field_strings("Region", ["North", "South", "East"]),
+      cache_field_strings("Product", ["Apple", "Bread"]),
+      cache_field_numbers_inline("Sales"),
+    ]),
+    3,
+  )
+}
+
+///|
+fn catalog_sml_pivot_page_field_records() -> @xml.Element {
+  records_root([
+    record_row([rec_x(0), rec_x(0), rec_n("100")]),
+    record_row([rec_x(1), rec_x(0), rec_n("80")]),
+    record_row([rec_x(2), rec_x(1), rec_n("40")]),
   ])
 }
 
@@ -1722,8 +2088,448 @@ fn catalog_sml_pivot_cache_def_root(content : @xml.Element) -> @xml.Element {
         ),
         2,
       )
+    "m" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields_with_region(
+          catalog_sml_pivot_region_cache_field_with_shared_items(
+            catalog_sml_pivot_shared_items_with_missing(content),
+          ),
+        ),
+        2,
+      )
+    "tpls" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_tuple_cache_with_child(
+          catalog_sml_pivot_sets_with_child(
+            catalog_sml_pivot_set_with_child(content),
+          ),
+        ),
+      )
+    "fieldGroup" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields_with_region(
+          catalog_sml_pivot_region_cache_field_with_child(content),
+        ),
+        2,
+      )
+    "rangePr" | "discretePr" | "groupItems" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields_with_region(
+          catalog_sml_pivot_region_cache_field_with_child(
+            catalog_sml_pivot_field_group_with_child(content),
+          ),
+        ),
+        2,
+      )
+    "mpMap" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields_with_region(
+          catalog_sml_pivot_region_cache_field_with_child(content),
+        ),
+        2,
+      )
+    "worksheetSource" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source_with_child(content, "worksheet"),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "consolidation" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source_with_child(content, "consolidation"),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "pages" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source_with_child(
+          catalog_sml_pivot_consolidation_with_child(content),
+          "consolidation",
+        ),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "page" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source_with_child(
+          catalog_sml_pivot_consolidation_with_child(
+            catalog_sml_pivot_pages_with_child(content),
+          ),
+          "consolidation",
+        ),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "pageItem" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source_with_child(
+          catalog_sml_pivot_consolidation_with_child(
+            catalog_sml_pivot_pages_with_child(
+              catalog_sml_pivot_page_with_child(content),
+            ),
+          ),
+          "consolidation",
+        ),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "rangeSets" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source_with_child(
+          catalog_sml_pivot_consolidation_with_child(content),
+          "consolidation",
+        ),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "rangeSet" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source_with_child(
+          catalog_sml_pivot_consolidation_with_child(
+            catalog_sml_pivot_range_sets_with_child(content),
+          ),
+          "consolidation",
+        ),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "cacheHierarchies" => catalog_sml_pivot_cache_def_with_metadata(content)
+    "cacheHierarchy" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy(content),
+        ),
+      )
+    "fieldsUsage" | "groupLevels" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy_with_child(content),
+        ),
+      )
+    "fieldUsage" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy_with_child(
+            catalog_sml_pivot_fields_usage_with_child(content),
+          ),
+        ),
+      )
+    "groupLevel" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy_with_child(
+            catalog_sml_pivot_group_levels_with_child(
+              catalog_sml_pivot_group_level(content),
+            ),
+          ),
+        ),
+      )
+    "groups" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy_with_child(
+            catalog_sml_pivot_group_levels_with_child(
+              catalog_sml_pivot_group_level_with_child(content),
+            ),
+          ),
+        ),
+      )
+    "group" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy_with_child(
+            catalog_sml_pivot_group_levels_with_child(
+              catalog_sml_pivot_group_level_with_child(
+                catalog_sml_pivot_groups_with_child(
+                  catalog_sml_pivot_level_group(content),
+                ),
+              ),
+            ),
+          ),
+        ),
+      )
+    "groupMembers" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy_with_child(
+            catalog_sml_pivot_group_levels_with_child(
+              catalog_sml_pivot_group_level_with_child(
+                catalog_sml_pivot_groups_with_child(
+                  catalog_sml_pivot_level_group_with_child(content),
+                ),
+              ),
+            ),
+          ),
+        ),
+      )
+    "groupMember" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_cache_hierarchies_with_child(
+          catalog_sml_pivot_cache_hierarchy_with_child(
+            catalog_sml_pivot_group_levels_with_child(
+              catalog_sml_pivot_group_level_with_child(
+                catalog_sml_pivot_groups_with_child(
+                  catalog_sml_pivot_level_group_with_child(
+                    catalog_sml_pivot_group_members_with_child(content),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      )
+    "kpis" => catalog_sml_pivot_cache_def_with_metadata(content)
+    "kpi" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        xe(NS_S_PVT, "kpis", [xa("count", "1")], [
+          Element(catalog_sml_pivot_kpi(content)),
+        ]),
+      )
+    "tupleCache" => catalog_sml_pivot_cache_def_with_metadata(content)
+    "entries" | "sets" | "queryCache" | "serverFormats" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_tuple_cache_with_child(content),
+      )
+    "serverFormat" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_tuple_cache_with_child(
+          catalog_sml_pivot_server_formats_with_child(content),
+        ),
+      )
+    "set" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_tuple_cache_with_child(
+          catalog_sml_pivot_sets_with_child(catalog_sml_pivot_set(content)),
+        ),
+      )
+    "sortByTuple" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_tuple_cache_with_child(
+          catalog_sml_pivot_sets_with_child(
+            catalog_sml_pivot_set_with_child(content),
+          ),
+        ),
+      )
+    "tpl" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_tuple_cache_with_child(
+          catalog_sml_pivot_sets_with_child(
+            catalog_sml_pivot_set_with_child(
+              catalog_sml_pivot_tuples_with_child(content, "tpls"),
+            ),
+          ),
+        ),
+      )
+    "query" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_tuple_cache_with_child(
+          catalog_sml_pivot_query_cache_with_child(content),
+        ),
+      )
+    "calculatedItems" => catalog_sml_pivot_cache_def_with_metadata(content)
+    "calculatedItem" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        xe(NS_S_PVT, "calculatedItems", [xa("count", "1")], [
+          Element(catalog_sml_pivot_calculated_item(content)),
+        ]),
+      )
+    "calculatedMembers" => catalog_sml_pivot_cache_def_with_metadata(content)
+    "calculatedMember" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        xe(NS_S_PVT, "calculatedMembers", [xa("count", "1")], [
+          Element(catalog_sml_pivot_calculated_member(content)),
+        ]),
+      )
+    "dimensions" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_dimensions(content),
+      )
+    "dimension" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        xe(NS_S_PVT, "dimensions", [xa("count", "1")], [
+          Element(catalog_sml_pivot_dimension(content)),
+        ]),
+      )
+    "measureGroups" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_measure_groups(content),
+      )
+    "measureGroup" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        xe(NS_S_PVT, "measureGroups", [xa("count", "1")], [
+          Element(catalog_sml_pivot_measure_group(content)),
+        ]),
+      )
+    "maps" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        catalog_sml_pivot_measure_dimension_maps(content),
+      )
+    "map" =>
+      catalog_sml_pivot_cache_def_with_metadata(
+        xe(NS_S_PVT, "maps", [xa("count", "1")], [
+          Element(catalog_sml_pivot_measure_dimension_map(content)),
+        ]),
+      )
     _ => catalog_sml_pivot_default_cache_def()
   }
+}
+
+///|
+fn catalog_sml_pivot_cache_def_with_metadata(
+  metadata : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pivotCacheDefinition",
+    [
+      xa("recordCount", "2"),
+      xa("createdVersion", "3"),
+      xa("refreshedVersion", "3"),
+    ],
+    [
+      Element(cache_source_worksheet("S1", "A1:B3")),
+      Element(catalog_sml_pivot_default_cache_fields()),
+      Element(metadata),
+    ],
+  )
+}
+
+///|
+fn catalog_sml_pivot_dimensions(dimensions : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_dimension = false
+  for child in dimensions.children {
+    match child {
+      Element(ce) if ce.name.local_name == "dimension" => {
+        saw_dimension = true
+        kids.push(Element(catalog_sml_pivot_dimension(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_dimension {
+    kids.push(
+      Element(
+        xe(
+          NS_S_PVT,
+          "dimension",
+          [
+            xa("name", "Dim"),
+            xa("uniqueName", "[Dim]"),
+            xa("caption", "Dimension"),
+          ],
+          [],
+        ),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    dimensions,
+    catalog_pivot_force_attrs(dimensions.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_dimension(dimension : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    dimension,
+    catalog_pivot_force_attrs(dimension.attributes, [
+      ("name", "Dim"),
+      ("uniqueName", "[Dim]"),
+      ("caption", "Dimension"),
+    ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_measure_groups(groups : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_group = false
+  for child in groups.children {
+    match child {
+      Element(ce) if ce.name.local_name == "measureGroup" => {
+        saw_group = true
+        kids.push(Element(catalog_sml_pivot_measure_group(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_group {
+    kids.push(
+      Element(
+        xe(
+          NS_S_PVT,
+          "measureGroup",
+          [xa("name", "Sales"), xa("caption", "Sales")],
+          [],
+        ),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    groups,
+    catalog_pivot_force_attrs(groups.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_measure_group(group : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    group,
+    catalog_pivot_force_attrs(group.attributes, [
+      ("name", "Sales"),
+      ("caption", "Sales"),
+    ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_measure_dimension_maps(
+  maps : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_map = false
+  for child in maps.children {
+    match child {
+      Element(ce) if ce.name.local_name == "map" => {
+        saw_map = true
+        kids.push(Element(catalog_sml_pivot_measure_dimension_map(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_map {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "map", [xa("measureGroup", "0"), xa("dimension", "0")], []),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    maps,
+    catalog_pivot_force_attrs(maps.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_measure_dimension_map(map : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    map,
+    catalog_pivot_force_attrs(map.attributes, [
+      ("measureGroup", "0"),
+      ("dimension", "0"),
+    ]),
+    [],
+  )
 }
 
 ///|
@@ -1742,6 +2548,64 @@ fn catalog_sml_pivot_cache_source(source : @xml.Element) -> @xml.Element {
       ),
     ],
   )
+}
+
+///|
+fn catalog_sml_pivot_cache_source_with_child(
+  child : @xml.Element,
+  source_type : String,
+) -> @xml.Element {
+  xe(NS_S_PVT, "cacheSource", [xa("type", source_type)], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_consolidation_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  match child.name.local_name {
+    "pages" => {
+      kids.push(Element(child))
+      kids.push(
+        Element(
+          catalog_sml_pivot_range_sets_with_child(
+            xe(NS_S_PVT, "rangeSet", [], []),
+          ),
+        ),
+      )
+    }
+    "rangeSets" => kids.push(Element(child))
+    _ => {
+      kids.push(
+        Element(
+          catalog_sml_pivot_pages_with_child(
+            catalog_sml_pivot_page_with_child(
+              xe(NS_S_PVT, "pageItem", [xa("name", "x")], []),
+            ),
+          ),
+        ),
+      )
+      kids.push(Element(catalog_sml_pivot_range_sets_with_child(child)))
+    }
+  }
+  xe(NS_S_PVT, "consolidation", [], kids)
+}
+
+///|
+fn catalog_sml_pivot_pages_with_child(child : @xml.Element) -> @xml.Element {
+  xe(NS_S_PVT, "pages", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_page_with_child(child : @xml.Element) -> @xml.Element {
+  xe(NS_S_PVT, "page", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_range_sets_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "rangeSets", [xa("count", "1")], [Element(child)])
 }
 
 ///|
@@ -1804,6 +2668,16 @@ fn catalog_sml_pivot_region_cache_field_with_shared_items(
 }
 
 ///|
+fn catalog_sml_pivot_region_cache_field_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "cacheField", [xa("name", "Region"), xa("numFmtId", "0")], [
+    Element(catalog_sml_pivot_shared_items_default()),
+    Element(child),
+  ])
+}
+
+///|
 fn catalog_sml_pivot_shared_items_default() -> @xml.Element {
   xe(NS_S_PVT, "sharedItems", [xa("count", "2"), xa("containsString", "1")], [
     Element(xe(NS_S_PVT, "s", [xa("v", "East")], [])),
@@ -1821,6 +2695,7 @@ fn catalog_sml_pivot_shared_items(shared_items : @xml.Element) -> @xml.Element {
         kids.push(Element(catalog_sml_pivot_shared_string_value(ce, "East")))
         saw_value = true
       }
+      Element(ce) if ce.name.local_name == "m" => kids.push(Element(ce))
       _ => ()
     }
   }
@@ -1849,6 +2724,16 @@ fn catalog_sml_pivot_shared_items_with_value(
 }
 
 ///|
+fn catalog_sml_pivot_shared_items_with_missing(
+  value : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "sharedItems", [xa("count", "2"), xa("containsBlank", "1")], [
+    Element(value),
+    Element(xe(NS_S_PVT, "s", [xa("v", "West")], [])),
+  ])
+}
+
+///|
 fn catalog_sml_pivot_shared_string_value(
   value : @xml.Element,
   fallback : String,
@@ -1857,6 +2742,232 @@ fn catalog_sml_pivot_shared_string_value(
     value,
     catalog_pivot_force_attrs(value.attributes, [("v", fallback)]),
     [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_field_group_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "fieldGroup", [], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_cache_hierarchies_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "cacheHierarchies", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_cache_hierarchy(hierarchy : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    hierarchy,
+    catalog_pivot_force_attrs(hierarchy.attributes, [
+      ("uniqueName", "[Catalog].[Hierarchy]"),
+      ("count", "1"),
+    ]),
+    hierarchy.children,
+  )
+}
+
+///|
+fn catalog_sml_pivot_cache_hierarchy_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "cacheHierarchy",
+    [xa("uniqueName", "[Catalog].[Hierarchy]"), xa("count", "1")],
+    [Element(child)],
+  )
+}
+
+///|
+fn catalog_sml_pivot_fields_usage_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "fieldsUsage", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_group_levels_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "groupLevels", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_group_level(child : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    child,
+    catalog_pivot_force_attrs(child.attributes, [
+      ("uniqueName", "[Catalog].[Level]"),
+      ("caption", "Catalog Level"),
+    ]),
+    child.children,
+  )
+}
+
+///|
+fn catalog_sml_pivot_group_level_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "groupLevel",
+    [xa("uniqueName", "[Catalog].[Level]"), xa("caption", "Catalog Level")],
+    [Element(child)],
+  )
+}
+
+///|
+fn catalog_sml_pivot_groups_with_child(child : @xml.Element) -> @xml.Element {
+  xe(NS_S_PVT, "groups", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_level_group(group : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  match first_child_named_local_local(group, "groupMembers") {
+    Some(members) => kids.push(Element(members))
+    None => kids.push(Element(catalog_sml_pivot_group_members_default()))
+  }
+  catalog_sml_pivot_element_with_children(
+    group,
+    catalog_pivot_force_attrs(group.attributes, [
+      ("name", "Catalog Group"),
+      ("uniqueName", "[Catalog].[Group]"),
+      ("caption", "Catalog Group"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_level_group_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "group",
+    [
+      xa("name", "Catalog Group"),
+      xa("uniqueName", "[Catalog].[Group]"),
+      xa("caption", "Catalog Group"),
+    ],
+    [Element(child)],
+  )
+}
+
+///|
+fn catalog_sml_pivot_group_members_default() -> @xml.Element {
+  xe(NS_S_PVT, "groupMembers", [xa("count", "1")], [
+    Element(
+      xe(NS_S_PVT, "groupMember", [xa("uniqueName", "[Catalog].[Member]")], []),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_group_members_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "groupMembers", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_kpi(kpi : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    kpi,
+    catalog_pivot_force_attrs(kpi.attributes, [
+      ("uniqueName", "[Catalog].[KPI]"),
+      ("value", "[Measures].[Catalog]"),
+    ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_tuple_cache_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "tupleCache", [], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_server_formats_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "serverFormats", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_sets_with_child(child : @xml.Element) -> @xml.Element {
+  xe(NS_S_PVT, "sets", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_set(set : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    set,
+    catalog_pivot_force_attrs(set.attributes, [
+      ("maxRank", "1"),
+      ("setDefinition", "{[Catalog].[Member]}"),
+    ]),
+    set.children,
+  )
+}
+
+///|
+fn catalog_sml_pivot_set_with_child(child : @xml.Element) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "set",
+    [xa("maxRank", "1"), xa("setDefinition", "{[Catalog].[Member]}")],
+    [Element(child)],
+  )
+}
+
+///|
+fn catalog_sml_pivot_tuples_with_child(
+  child : @xml.Element,
+  local_name : String,
+) -> @xml.Element {
+  xe(NS_S_PVT, local_name, [xa("c", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_query_cache_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "queryCache", [xa("count", "1")], [Element(child)])
+}
+
+///|
+fn catalog_sml_pivot_calculated_item(item : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  match first_child_named_local_local(item, "pivotArea") {
+    Some(area) => kids.push(Element(area))
+    None =>
+      kids.push(
+        Element(catalog_sml_pivot_pivot_area(xe(NS_S_PVT, "pivotArea", [], []))),
+      )
+  }
+  catalog_sml_pivot_element_with_children(item, item.attributes, kids)
+}
+
+///|
+fn catalog_sml_pivot_calculated_member(
+  calculated_member : @xml.Element,
+) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    calculated_member,
+    catalog_pivot_force_attrs(calculated_member.attributes, [
+      ("name", "CatalogMember"),
+      ("mdx", "[Measures].[Catalog]"),
+    ]),
+    calculated_member.children,
   )
 }
 
@@ -1888,6 +2999,38 @@ fn catalog_sml_pivot_records_root(content : @xml.Element) -> @xml.Element {
       xe(NS_S_PVT, "pivotCacheRecords", [xa("count", "2")], [
         Element(
           record_row([rec_x(0), catalog_sml_pivot_record_number(content, "10")]),
+        ),
+        Element(record_row([rec_x(1), rec_n("20")])),
+      ])
+    "b" =>
+      xe(NS_S_PVT, "pivotCacheRecords", [xa("count", "2")], [
+        Element(
+          record_row([
+            rec_x(0),
+            catalog_sml_pivot_record_inline_value(content, "1"),
+          ]),
+        ),
+        Element(record_row([rec_x(1), rec_n("20")])),
+      ])
+    "e" =>
+      xe(NS_S_PVT, "pivotCacheRecords", [xa("count", "2")], [
+        Element(
+          record_row([
+            rec_x(0),
+            catalog_sml_pivot_record_inline_value(content, "#VALUE!"),
+          ]),
+        ),
+        Element(record_row([rec_x(1), rec_n("20")])),
+      ])
+    "d" =>
+      xe(NS_S_PVT, "pivotCacheRecords", [xa("count", "2")], [
+        Element(
+          record_row([
+            rec_x(0),
+            catalog_sml_pivot_record_inline_value(
+              content, "2024-01-02T00:00:00",
+            ),
+          ]),
         ),
         Element(record_row([rec_x(1), rec_n("20")])),
       ])
@@ -1928,6 +3071,18 @@ fn catalog_sml_pivot_record_number(
 }
 
 ///|
+fn catalog_sml_pivot_record_inline_value(
+  value : @xml.Element,
+  fallback : String,
+) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    value,
+    catalog_pivot_force_attrs(value.attributes, [("v", fallback)]),
+    [],
+  )
+}
+
+///|
 fn catalog_sml_pivot_table_def_root(content : @xml.Element) -> @xml.Element {
   match content.name.local_name {
     "pivotTableDefinition" =>
@@ -1955,6 +3110,26 @@ fn catalog_sml_pivot_table_def_root(content : @xml.Element) -> @xml.Element {
         "pivotFields",
         pivot_fields_wrap([
           catalog_sml_pivot_axis_field(content),
+          pivot_field("", true, 0),
+        ]),
+      )
+    "items" | "autoSortScope" =>
+      catalog_sml_pivot_table_def_with(
+        "pivotFields",
+        pivot_fields_wrap([
+          catalog_sml_pivot_axis_field_with_child(content),
+          pivot_field("", true, 0),
+        ]),
+      )
+    "item" =>
+      catalog_sml_pivot_table_def_with(
+        "pivotFields",
+        pivot_fields_wrap([
+          catalog_sml_pivot_axis_field_with_child(
+            xe(NS_S_PVT, "items", [xa("count", "1")], [
+              Element(catalog_sml_pivot_item(content)),
+            ]),
+          ),
           pivot_field("", true, 0),
         ]),
       )
@@ -2004,6 +3179,194 @@ fn catalog_sml_pivot_table_def_root(content : @xml.Element) -> @xml.Element {
           Element(catalog_sml_pivot_data_field(content)),
         ]),
       )
+    "pageFields" =>
+      catalog_sml_pivot_table_def_with_page_fields(
+        catalog_sml_pivot_page_fields(content),
+      )
+    "pageField" =>
+      catalog_sml_pivot_table_def_with_page_fields(
+        xe(NS_S_PVT, "pageFields", [xa("count", "1")], [
+          Element(catalog_sml_pivot_page_field(content)),
+        ]),
+      )
+    "filters" =>
+      catalog_sml_pivot_table_def_with_filters(
+        catalog_sml_pivot_filters_for_render(content),
+      )
+    "filter" =>
+      catalog_sml_pivot_table_def_with_filters(
+        catalog_sml_pivot_filters_for_render(content),
+      )
+    "formats" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        catalog_sml_pivot_formats(content),
+      )
+    "format" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "formats", [xa("count", "1")], [
+          Element(catalog_sml_pivot_format(content)),
+        ]),
+      )
+    "conditionalFormats" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        catalog_sml_pivot_conditional_formats(content),
+      )
+    "conditionalFormat" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "conditionalFormats", [xa("count", "1")], [
+          Element(catalog_sml_pivot_conditional_format(content)),
+        ]),
+      )
+    "pivotAreas" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "conditionalFormats", [xa("count", "1")], [
+          Element(
+            catalog_sml_pivot_conditional_format_with_pivot_areas(content),
+          ),
+        ]),
+      )
+    "pivotArea" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "formats", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "format", [xa("action", "formatting")], [
+              Element(catalog_sml_pivot_pivot_area(content)),
+            ]),
+          ),
+        ]),
+      )
+    "x" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "formats", [xa("count", "1")], [
+          Element(
+            xe(
+              NS_S_PVT,
+              "format",
+              [xa("action", "formatting"), xa("dxfId", "0")],
+              [
+                Element(
+                  catalog_sml_pivot_data_area_with_references(
+                    xe(NS_S_PVT, "references", [xa("count", "1")], [
+                      Element(
+                        xe(NS_S_PVT, "reference", [xa("count", "1")], [
+                          Element(catalog_sml_pivot_reference_index(content)),
+                        ]),
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      )
+    "references" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "formats", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "format", [xa("action", "formatting")], [
+              Element(catalog_sml_pivot_pivot_area_with_references(content)),
+            ]),
+          ),
+        ]),
+      )
+    "reference" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "formats", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "format", [xa("action", "formatting")], [
+              Element(
+                catalog_sml_pivot_pivot_area_with_references(
+                  xe(NS_S_PVT, "references", [xa("count", "1")], [
+                    Element(catalog_sml_pivot_area_reference(content)),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      )
+    "chartFormats" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        catalog_sml_pivot_chart_formats(content),
+      )
+    "chartFormat" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "chartFormats", [xa("count", "1")], [
+          Element(catalog_sml_pivot_chart_format(content)),
+        ]),
+      )
+    "pivotTableStyleInfo" => catalog_sml_pivot_table_def_with_metadata(content)
+    "pivotHierarchies" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        catalog_sml_pivot_hierarchies(content),
+      )
+    "pivotHierarchy" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "pivotHierarchies", [xa("count", "1")], [
+          Element(catalog_sml_pivot_hierarchy(content)),
+        ]),
+      )
+    "mps" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "pivotHierarchies", [xa("count", "1")], [
+          Element(catalog_sml_pivot_hierarchy_with_mps(content)),
+        ]),
+      )
+    "mp" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "pivotHierarchies", [xa("count", "1")], [
+          Element(
+            catalog_sml_pivot_hierarchy_with_mps(
+              xe(NS_S_PVT, "mps", [xa("count", "1")], [
+                Element(catalog_sml_pivot_member_property(content)),
+              ]),
+            ),
+          ),
+        ]),
+      )
+    "members" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "pivotHierarchies", [xa("count", "1")], [
+          Element(catalog_sml_pivot_hierarchy_with_members(content)),
+        ]),
+      )
+    "member" =>
+      catalog_sml_pivot_table_def_with_metadata(
+        xe(NS_S_PVT, "pivotHierarchies", [xa("count", "1")], [
+          Element(
+            catalog_sml_pivot_hierarchy_with_members(
+              xe(NS_S_PVT, "members", [xa("count", "1")], [
+                Element(catalog_sml_pivot_member(content)),
+              ]),
+            ),
+          ),
+        ]),
+      )
+    "rowHierarchiesUsage" =>
+      catalog_sml_pivot_table_def_with_late_metadata(
+        catalog_sml_pivot_row_hierarchies_usage(content),
+      )
+    "rowHierarchyUsage" =>
+      catalog_sml_pivot_table_def_with_late_metadata(
+        xe(NS_S_PVT, "rowHierarchiesUsage", [xa("count", "1")], [
+          Element(
+            catalog_sml_pivot_hierarchy_usage(content, "rowHierarchyUsage"),
+          ),
+        ]),
+      )
+    "colHierarchiesUsage" =>
+      catalog_sml_pivot_table_def_with_late_metadata(
+        catalog_sml_pivot_col_hierarchies_usage(content),
+      )
+    "colHierarchyUsage" =>
+      catalog_sml_pivot_table_def_with_late_metadata(
+        xe(NS_S_PVT, "colHierarchiesUsage", [xa("count", "1")], [
+          Element(
+            catalog_sml_pivot_hierarchy_usage(content, "colHierarchyUsage"),
+          ),
+        ]),
+      )
     _ => catalog_sml_pivot_default_table_def()
   }
 }
@@ -2021,6 +3384,57 @@ fn catalog_sml_pivot_table_def_with(
         kids.push(Element(replacement))
       _ => kids.push(child)
     }
+  }
+  { name: default.name, attributes: default.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_pivot_table_def_with_metadata(
+  metadata : @xml.Element,
+) -> @xml.Element {
+  let default = catalog_sml_pivot_default_table_def()
+  let kids : Array[@xml.Node] = []
+  let mut inserted = false
+  let replace_style = metadata.name.local_name == "pivotTableStyleInfo"
+  for child in default.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pivotTableStyleInfo" => {
+        if !inserted {
+          kids.push(Element(metadata))
+          inserted = true
+        }
+        if !replace_style {
+          kids.push(child)
+        }
+      }
+      _ => kids.push(child)
+    }
+  }
+  if !inserted {
+    kids.push(Element(metadata))
+  }
+  { name: default.name, attributes: default.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_pivot_table_def_with_late_metadata(
+  metadata : @xml.Element,
+) -> @xml.Element {
+  let default = catalog_sml_pivot_default_table_def()
+  let kids : Array[@xml.Node] = []
+  let mut inserted = false
+  for child in default.children {
+    kids.push(child)
+    match child {
+      Element(ce) if ce.name.local_name == "pivotTableStyleInfo" => {
+        kids.push(Element(metadata))
+        inserted = true
+      }
+      _ => ()
+    }
+  }
+  if !inserted {
+    kids.push(Element(metadata))
   }
   { name: default.name, attributes: default.attributes, children: kids }
 }
@@ -2045,6 +3459,638 @@ fn catalog_sml_pivot_table_def_with_col_axis(
 }
 
 ///|
+fn catalog_sml_pivot_table_def_with_filters(
+  filters : @xml.Element,
+) -> @xml.Element {
+  pivot_def_with_filters(catalog_sml_pivot_default_table_def(), filters)
+}
+
+///|
+fn catalog_sml_pivot_table_def_with_page_fields(
+  page_fields : @xml.Element,
+) -> @xml.Element {
+  let pivot_def = pivot_def_root(
+    "CatalogPivot",
+    catalog_sml_pivot_page_field_location(),
+    pivot_fields_wrap([
+      pivot_field("axisRow", false, 3),
+      pivot_field("axisPage", false, 2),
+      pivot_field("", true, 0),
+    ]),
+    Some(axis_fields("rowFields", [0])),
+    None,
+    axis_items_wrap("rowItems", [
+      pivot_axis_item([0], false),
+      pivot_axis_item([1], false),
+      pivot_axis_item([2], false),
+    ]),
+    axis_items_wrap("colItems", [pivot_axis_item([], false)]),
+    data_fields_wrap([data_field_entry("Sum of Sales", 2, "sum")]),
+    false,
+    false,
+  )
+  let kids : Array[@xml.Node] = []
+  for child in pivot_def.children {
+    match child {
+      Element(ce) if ce.name.local_name == "dataFields" => {
+        kids.push(Element(page_fields))
+        kids.push(child)
+      }
+      _ => kids.push(child)
+    }
+  }
+  { name: pivot_def.name, attributes: pivot_def.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_pivot_formats(formats : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_format = false
+  for child in formats.children {
+    match child {
+      Element(ce) if ce.name.local_name == "format" => {
+        saw_format = true
+        kids.push(Element(catalog_sml_pivot_format(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_format {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "format", [xa("action", "formatting")], [
+          Element(pivot_area_scope(0, "axisRow", 0)),
+        ]),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    formats,
+    catalog_pivot_force_attrs(formats.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_format(format_el : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_area = false
+  for child in format_el.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pivotArea" => {
+        saw_area = true
+        kids.push(Element(catalog_sml_pivot_pivot_area(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_area {
+    kids.push(Element(pivot_area_scope(0, "axisRow", 0)))
+  }
+  catalog_sml_pivot_element_with_children(
+    format_el,
+    catalog_pivot_force_attrs(format_el.attributes, [("action", "formatting")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_conditional_formats(
+  formats : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_format = false
+  for child in formats.children {
+    match child {
+      Element(ce) if ce.name.local_name == "conditionalFormat" => {
+        saw_format = true
+        kids.push(Element(catalog_sml_pivot_conditional_format(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_format {
+    kids.push(
+      Element(
+        xe(
+          NS_S_PVT,
+          "conditionalFormat",
+          [xa("priority", "1"), xa("scope", "selection"), xa("type", "all")],
+          [
+            Element(
+              xe(NS_S_PVT, "pivotAreas", [xa("count", "1")], [
+                Element(pivot_area_scope(0, "axisRow", 0)),
+              ]),
+            ),
+          ],
+        ),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    formats,
+    catalog_pivot_force_attrs(formats.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_conditional_format(
+  format_el : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_areas = false
+  for child in format_el.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pivotAreas" => {
+        saw_areas = true
+        kids.push(Element(catalog_sml_pivot_pivot_areas(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_areas {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "pivotAreas", [xa("count", "1")], [
+          Element(pivot_area_scope(0, "axisRow", 0)),
+        ]),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    format_el,
+    catalog_pivot_force_attrs(format_el.attributes, [
+      ("priority", "1"),
+      ("scope", "selection"),
+      ("type", "all"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_conditional_format_with_pivot_areas(
+  areas : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "conditionalFormat",
+    [xa("priority", "1"), xa("scope", "selection"), xa("type", "all")],
+    [Element(catalog_sml_pivot_pivot_areas(areas))],
+  )
+}
+
+///|
+fn catalog_sml_pivot_pivot_areas(areas : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_area = false
+  for child in areas.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pivotArea" => {
+        saw_area = true
+        kids.push(Element(catalog_sml_pivot_pivot_area(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_area {
+    kids.push(Element(pivot_area_scope(0, "axisRow", 0)))
+  }
+  catalog_sml_pivot_element_with_children(
+    areas,
+    catalog_pivot_force_attrs(areas.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_pivot_area(area : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_refs = false
+  for child in area.children {
+    match child {
+      Element(ce) if ce.name.local_name == "references" => {
+        saw_refs = true
+        kids.push(Element(catalog_sml_pivot_area_references(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_refs {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "references", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "reference", [xa("field", "0"), xa("count", "1")], [
+              Element(xe(NS_S_PVT, "x", [xa("v", "0")], [])),
+            ]),
+          ),
+        ]),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    area,
+    catalog_pivot_force_attrs(area.attributes, [
+      ("field", "0"),
+      ("type", "normal"),
+      ("axis", "axisRow"),
+      ("fieldPosition", "0"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_pivot_area_with_references(
+  references : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pivotArea",
+    [
+      xa("field", "0"),
+      xa("type", "normal"),
+      xa("axis", "axisRow"),
+      xa("fieldPosition", "0"),
+    ],
+    [Element(catalog_sml_pivot_area_references(references))],
+  )
+}
+
+///|
+fn catalog_sml_pivot_data_area_with_references(
+  references : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pivotArea",
+    [
+      xa("field", "0"),
+      xa("type", "data"),
+      xa("axis", "axisRow"),
+      xa("fieldPosition", "0"),
+    ],
+    [Element(catalog_sml_pivot_area_references(references))],
+  )
+}
+
+///|
+fn catalog_sml_pivot_area_references(references : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_ref = false
+  for child in references.children {
+    match child {
+      Element(ce) if ce.name.local_name == "reference" => {
+        saw_ref = true
+        kids.push(Element(catalog_sml_pivot_area_reference(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_ref {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "reference", [xa("field", "0"), xa("count", "1")], [
+          Element(xe(NS_S_PVT, "x", [xa("v", "0")], [])),
+        ]),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    references,
+    catalog_pivot_force_attrs(references.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_area_reference(reference : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_index = false
+  for child in reference.children {
+    match child {
+      Element(ce) if ce.name.local_name == "x" => {
+        saw_index = true
+        kids.push(Element(catalog_sml_pivot_reference_index(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_index {
+    kids.push(Element(xe(NS_S_PVT, "x", [xa("v", "0")], [])))
+  }
+  catalog_sml_pivot_element_with_children(
+    reference,
+    catalog_pivot_force_attrs(reference.attributes, [
+      ("field", "0"),
+      ("count", "1"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_reference_index(index : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  for child in index.children {
+    kids.push(child)
+  }
+  catalog_sml_pivot_element_with_children(
+    index,
+    catalog_force_unqualified_attrs(index.attributes, [("v", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_chart_formats(formats : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_format = false
+  for child in formats.children {
+    match child {
+      Element(ce) if ce.name.local_name == "chartFormat" => {
+        saw_format = true
+        kids.push(Element(catalog_sml_pivot_chart_format(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_format {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "chartFormat", [xa("chart", "0"), xa("format", "0")], [
+          Element(pivot_area_scope(0, "axisRow", 0)),
+        ]),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    formats,
+    catalog_pivot_force_attrs(formats.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_chart_format(format_el : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_area = false
+  for child in format_el.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pivotArea" => {
+        saw_area = true
+        kids.push(Element(catalog_sml_pivot_pivot_area(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_area {
+    kids.push(Element(pivot_area_scope(0, "axisRow", 0)))
+  }
+  catalog_sml_pivot_element_with_children(
+    format_el,
+    catalog_pivot_force_attrs(format_el.attributes, [
+      ("chart", "0"),
+      ("format", "0"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_hierarchies(hierarchies : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_hierarchy = false
+  for child in hierarchies.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pivotHierarchy" => {
+        saw_hierarchy = true
+        kids.push(Element(catalog_sml_pivot_hierarchy(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_hierarchy {
+    kids.push(Element(catalog_sml_pivot_default_hierarchy()))
+  }
+  catalog_sml_pivot_element_with_children(
+    hierarchies,
+    catalog_pivot_force_attrs(hierarchies.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_hierarchy(hierarchy : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_mps = false
+  let mut saw_members = false
+  for child in hierarchy.children {
+    match child {
+      Element(ce) if ce.name.local_name == "mps" => {
+        saw_mps = true
+        kids.push(Element(catalog_sml_pivot_member_properties(ce)))
+      }
+      Element(ce) if ce.name.local_name == "members" => {
+        saw_members = true
+        kids.push(Element(catalog_sml_pivot_members(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_mps {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "mps", [xa("count", "1")], [
+          Element(
+            xe(NS_S_PVT, "mp", [xa("field", "0"), xa("name", "Fiscal")], []),
+          ),
+        ]),
+      ),
+    )
+  }
+  if !saw_members {
+    kids.push(
+      Element(
+        xe(NS_S_PVT, "members", [xa("count", "1"), xa("level", "0")], [
+          Element(xe(NS_S_PVT, "member", [xa("name", "FY2026")], [])),
+        ]),
+      ),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    hierarchy,
+    catalog_pivot_force_attrs(hierarchy.attributes, [
+      ("caption", "Region"),
+      ("outline", "1"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_default_hierarchy() -> @xml.Element {
+  catalog_sml_pivot_hierarchy(
+    xe(NS_S_PVT, "pivotHierarchy", [xa("caption", "Region")], []),
+  )
+}
+
+///|
+fn catalog_sml_pivot_hierarchy_with_mps(mps : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_hierarchy(
+    xe(NS_S_PVT, "pivotHierarchy", [xa("caption", "Region")], [Element(mps)]),
+  )
+}
+
+///|
+fn catalog_sml_pivot_hierarchy_with_members(
+  members : @xml.Element,
+) -> @xml.Element {
+  catalog_sml_pivot_hierarchy(
+    xe(NS_S_PVT, "pivotHierarchy", [xa("caption", "Region")], [Element(members)]),
+  )
+}
+
+///|
+fn catalog_sml_pivot_member_properties(mps : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_mp = false
+  for child in mps.children {
+    match child {
+      Element(ce) if ce.name.local_name == "mp" => {
+        saw_mp = true
+        kids.push(Element(catalog_sml_pivot_member_property(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_mp {
+    kids.push(
+      Element(xe(NS_S_PVT, "mp", [xa("field", "0"), xa("name", "Fiscal")], [])),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    mps,
+    catalog_pivot_force_attrs(mps.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_member_property(mp : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    mp,
+    catalog_pivot_force_attrs(mp.attributes, [
+      ("field", "0"),
+      ("name", "Fiscal"),
+    ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_members(members : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_member = false
+  for child in members.children {
+    match child {
+      Element(ce) if ce.name.local_name == "member" => {
+        saw_member = true
+        kids.push(Element(catalog_sml_pivot_member(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_member {
+    kids.push(Element(xe(NS_S_PVT, "member", [xa("name", "FY2026")], [])))
+  }
+  catalog_sml_pivot_element_with_children(
+    members,
+    catalog_pivot_force_attrs(members.attributes, [
+      ("count", "1"),
+      ("level", "0"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_member(member_el : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    member_el,
+    catalog_pivot_force_attrs(member_el.attributes, [("name", "FY2026")]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_row_hierarchies_usage(
+  usages : @xml.Element,
+) -> @xml.Element {
+  catalog_sml_pivot_hierarchies_usage(usages, "rowHierarchyUsage")
+}
+
+///|
+fn catalog_sml_pivot_col_hierarchies_usage(
+  usages : @xml.Element,
+) -> @xml.Element {
+  catalog_sml_pivot_hierarchies_usage(usages, "colHierarchyUsage")
+}
+
+///|
+fn catalog_sml_pivot_hierarchies_usage(
+  usages : @xml.Element,
+  child_name : String,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_usage = false
+  for child in usages.children {
+    match child {
+      Element(ce) if ce.name.local_name == child_name => {
+        saw_usage = true
+        kids.push(Element(catalog_sml_pivot_hierarchy_usage(ce, child_name)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_usage {
+    kids.push(
+      Element(xe(NS_S_PVT, child_name, [xa("hierarchyUsage", "0")], [])),
+    )
+  }
+  catalog_sml_pivot_element_with_children(
+    usages,
+    catalog_pivot_force_attrs(usages.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_hierarchy_usage(
+  usage : @xml.Element,
+  _child_name : String,
+) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    usage,
+    catalog_pivot_force_attrs(usage.attributes, [("hierarchyUsage", "0")]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_def_has_page_fields(pivot_def : @xml.Element) -> Bool {
+  for child in pivot_def.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pageFields" => return true
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
 fn catalog_sml_pivot_table_def_children() -> Array[@xml.Node] {
   let default = catalog_sml_pivot_default_table_def()
   let kids : Array[@xml.Node] = []
@@ -2064,6 +4110,23 @@ fn catalog_sml_pivot_location(location : @xml.Element) -> @xml.Element {
       ("firstDataRow", "1"),
       ("firstDataCol", "1"),
     ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_page_field_location() -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "location",
+    [
+      xa("ref", "E1:F5"),
+      xa("firstHeaderRow", "1"),
+      xa("firstDataRow", "2"),
+      xa("firstDataCol", "1"),
+      xa("rowPageCount", "1"),
+      xa("colPageCount", "0"),
+    ],
     [],
   )
 }
@@ -2123,6 +4186,28 @@ fn catalog_sml_pivot_axis_field(field : @xml.Element) -> @xml.Element {
       ),
     ],
   )
+}
+
+///|
+fn catalog_sml_pivot_axis_field_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pivotField",
+    [
+      xa("axis", "axisRow"),
+      xa("compact", "0"),
+      xa("outline", "0"),
+      xa("showAll", "0"),
+    ],
+    [Element(child)],
+  )
+}
+
+///|
+fn catalog_sml_pivot_item(item : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(item, item.attributes, [])
 }
 
 ///|
@@ -2193,6 +4278,138 @@ fn catalog_sml_pivot_data_field(field : @xml.Element) -> @xml.Element {
 }
 
 ///|
+fn catalog_sml_pivot_page_fields(fields : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_page_field = false
+  for child in fields.children {
+    match child {
+      Element(ce) if ce.name.local_name == "pageField" => {
+        saw_page_field = true
+        kids.push(Element(catalog_sml_pivot_page_field(ce)))
+      }
+      _ => ()
+    }
+  }
+  if !saw_page_field {
+    kids.push(Element(catalog_sml_pivot_default_page_field()))
+  }
+  catalog_sml_pivot_element_with_children(
+    fields,
+    catalog_pivot_force_attrs(fields.attributes, [("count", "1")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_page_field(field : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    field,
+    catalog_pivot_force_attrs(field.attributes, [
+      ("fld", "1"),
+      ("item", "0"),
+      ("hier", "0"),
+      ("name", "Product"),
+      ("cap", "Product"),
+    ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_default_page_field() -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pageField",
+    [
+      xa("fld", "1"),
+      xa("item", "0"),
+      xa("hier", "0"),
+      xa("name", "Product"),
+      xa("cap", "Product"),
+    ],
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_filters_for_render(content : @xml.Element) -> @xml.Element {
+  if content.name.local_name == "filters" {
+    let kids : Array[@xml.Node] = []
+    let mut saw_filter = false
+    for child in content.children {
+      match child {
+        Element(e) if e.name.local_name == "filter" => {
+          saw_filter = true
+          kids.push(Element(catalog_sml_pivot_filter_for_render(e)))
+        }
+        other => kids.push(other)
+      }
+    }
+    if !saw_filter {
+      kids.push(
+        Element(
+          catalog_sml_pivot_filter_for_render(
+            catalog_sml_pivot_default_filter(),
+          ),
+        ),
+      )
+    }
+    return catalog_sml_pivot_element_with_children(
+      content,
+      catalog_pivot_force_attrs(content.attributes, [("count", "1")]),
+      kids,
+    )
+  }
+  xe(NS_S_PVT, "filters", [xa("count", "1")], [
+    Element(catalog_sml_pivot_filter_for_render(content)),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_filter_for_render(filter : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    filter,
+    catalog_pivot_force_attrs(filter.attributes, [
+      ("fld", "0"),
+      ("type", "captionEqual"),
+      ("id", "1"),
+      ("stringValue1", "East"),
+    ]),
+    [Element(catalog_sml_pivot_filter_auto_filter())],
+  )
+}
+
+///|
+fn catalog_sml_pivot_default_filter() -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "filter",
+    [
+      xa("fld", "0"),
+      xa("type", "captionEqual"),
+      xa("id", "1"),
+      xa("stringValue1", "East"),
+    ],
+    [Element(catalog_sml_pivot_filter_auto_filter())],
+  )
+}
+
+///|
+fn catalog_sml_pivot_filter_auto_filter() -> @xml.Element {
+  xe(NS_S_PVT, "autoFilter", [xa("ref", "A1")], [
+    Element(
+      xe(NS_S_PVT, "filterColumn", [xa("colId", "0")], [
+        Element(
+          xe(NS_S_PVT, "filters", [], [
+            Element(xe(NS_S_PVT, "filter", [xa("val", "East")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
 fn catalog_sml_pivot_element_with_children(
   element : @xml.Element,
   attributes : Array[@xml.Attribute],
@@ -2258,6 +4475,32 @@ fn catalog_force_attrs(
     if !found {
       out.push(xa(name, value))
     }
+  }
+  out
+}
+
+///|
+fn catalog_force_unqualified_attrs(
+  attrs : Array[@xml.Attribute],
+  forced : Array[(String, String)],
+) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  for a in attrs {
+    let mut replaced = false
+    for f in forced {
+      let (name, _) = f
+      if a.name.local_name == name {
+        replaced = true
+        break
+      }
+    }
+    if !replaced {
+      out.push(a)
+    }
+  }
+  for f in forced {
+    let (name, value) = f
+    out.push(xa(name, value))
   }
   out
 }
@@ -2469,9 +4712,10 @@ fn xlsx_package_styled(content : @xml.Element, styles : @xml.Element) -> Bytes {
       ]),
     ),
   ])
-  // The workbook references BOTH the worksheet (rId1) and the
-  // styles part (rId2).  The styles part rel type is the SpreadsheetML
-  // "styles" relationship.
+  // The workbook references the worksheet (rId1), styles part (rId2),
+  // and theme part (rId3).  The theme lets SpreadsheetML `<scheme>`
+  // font properties resolve through the same ECMA-376 theme chain as
+  // PowerPoint/chart fixtures.
   let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -2501,6 +4745,20 @@ fn xlsx_package_styled(content : @xml.Element, styles : @xml.Element) -> Bytes {
         [],
       ),
     ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
   ])
   let worksheet : @xml.Element = if content.name.local_name == "worksheet" {
     content
@@ -2524,6 +4782,9 @@ fn xlsx_package_styled(content : @xml.Element, styles : @xml.Element) -> Bytes {
         (
           "/xl/styles.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml",
         ),
+        (
+          "/xl/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+        ),
       ]),
     ),
     ("_rels/.rels", root_rels_part("xl/workbook.xml")),
@@ -2531,8 +4792,24 @@ fn xlsx_package_styled(content : @xml.Element, styles : @xml.Element) -> Bytes {
     ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
     ("xl/worksheets/sheet1.xml", write_part(worksheet)),
     ("xl/styles.xml", write_part(styles)),
+    ("xl/theme/theme1.xml", pptx_theme_part()),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.xlsx` package whose `xl/styles.xml` preserves the catalog target
+/// exactly. The render host may rewrite styles into an A1-visible
+/// probe stylesheet; the fidelity probe must not, otherwise it can
+/// classify the host rewrite itself as a writer drop.
+fn xlsx_package_with_raw_styles_part(content : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let styles_root : @xml.Element = if content.name.local_name == "styleSheet" {
+    content
+  } else {
+    xe(ns_s, "styleSheet", [], [Element(content)])
+  }
+  xlsx_package_styled(catalog_sml_style_probe_worksheet(), styles_root)
 }
 
 ///|
@@ -2584,6 +4861,34 @@ fn catalog_sml_style_find_any(
     match child {
       Element(c) =>
         match catalog_sml_style_find_any(c, names) {
+          Some(found) => return Some(found)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_style_find_target_any(
+  element : @xml.Element,
+  names : Array[String],
+) -> @xml.Element? {
+  let mut is_target = false
+  for attr in element.attributes {
+    if attr.name.local_name == TARGET_ATTR {
+      is_target = true
+      break
+    }
+  }
+  if is_target && catalog_sml_style_name_in(element.name.local_name, names) {
+    return Some(element)
+  }
+  for child in element.children {
+    match child {
+      Element(c) =>
+        match catalog_sml_style_find_target_any(c, names) {
           Some(found) => return Some(found)
           None => ()
         }
@@ -2655,6 +4960,11 @@ fn catalog_sml_style_font_child(child : @xml.Element) -> @xml.Element {
     "color" => catalog_sml_style_color_with_rgb(child, "FFFF0000")
     "sz" => catalog_sml_style_force_element(child, [("val", "18")])
     "name" => catalog_sml_style_force_element(child, [("val", "serif")])
+    "charset" => catalog_sml_style_force_element(child, [("val", "128")])
+    "family" => catalog_sml_style_force_element(child, [("val", "3")])
+    "vertAlign" =>
+      catalog_sml_style_force_element(child, [("val", "superscript")])
+    "scheme" => catalog_sml_style_force_element(child, [("val", "major")])
     "b" | "i" | "strike" | "outline" | "shadow" | "condense" | "extend" =>
       catalog_sml_style_force_element(child, [("val", "1")])
     "u" => catalog_sml_style_force_element(child, [("val", "single")])
@@ -2682,6 +4992,10 @@ fn catalog_sml_style_font_from_font(font : @xml.Element) -> @xml.Element {
           | "shadow"
           | "condense"
           | "extend"
+          | "vertAlign"
+          | "scheme"
+          | "charset"
+          | "family"
           | "u" => has_visible_child = true
           _ => ()
         }
@@ -2704,7 +5018,14 @@ fn catalog_sml_style_font_from_font(font : @xml.Element) -> @xml.Element {
 
 ///|
 fn catalog_sml_style_font_from_child(child : @xml.Element) -> @xml.Element {
-  ss_font("11", "sans-serif", [catalog_sml_style_font_child(child)])
+  if child.name.local_name == "family" {
+    xe(NS_S, "font", [], [
+      Element(xe(NS_S, "sz", [xa("val", "11")], [])),
+      Element(catalog_sml_style_font_child(child)),
+    ])
+  } else {
+    ss_font("11", "sans-serif", [catalog_sml_style_font_child(child)])
+  }
 }
 
 ///|
@@ -2721,6 +5042,462 @@ fn catalog_sml_style_font_sheet(font : @xml.Element) -> @xml.Element {
     catalog_sml_style_default_borders(),
     [catalog_sml_style_default_xf(), ss_cell_xf("0", "1", "0", "0", None)],
   )
+}
+
+///|
+fn catalog_sml_style_fonts_sheet(fonts : @xml.Element) -> @xml.Element {
+  for child in fonts.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "font" {
+          return catalog_sml_style_font_sheet(c)
+        }
+      _ => ()
+    }
+  }
+  catalog_sml_style_font_sheet(
+    ss_font("11", "sans-serif", [ss_color("FF0000FF")]),
+  )
+}
+
+///|
+fn catalog_sml_style_normal_cell_style(
+  cell_style : @xml.Element,
+) -> @xml.Element {
+  {
+    name: cell_style.name,
+    attributes: catalog_force_unqualified_attrs(cell_style.attributes, [
+      ("name", "Normal"),
+      ("xfId", "0"),
+      ("builtinId", "0"),
+    ]),
+    children: cell_style.children,
+  }
+}
+
+///|
+fn catalog_sml_style_cell_styles_from_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S, "cellStyles", [xa("count", "1")], [
+    Element(catalog_sml_style_normal_cell_style(child)),
+  ])
+}
+
+///|
+fn catalog_sml_style_cell_styles_from_root(
+  cell_styles : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_cell_style = false
+  for child in cell_styles.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "cellStyle" {
+          has_cell_style = true
+          kids.push(Element(catalog_sml_style_normal_cell_style(c)))
+        } else {
+          kids.push(child)
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_cell_style {
+    kids.push(
+      Element(
+        xe(
+          NS_S,
+          "cellStyle",
+          [xa("name", "Normal"), xa("xfId", "0"), xa("builtinId", "0")],
+          [],
+        ),
+      ),
+    )
+  }
+  {
+    name: cell_styles.name,
+    attributes: catalog_force_unqualified_attrs(cell_styles.attributes, [
+      ("count", "1"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_named_style_sheet(
+  cell_styles : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let fonts = [
+    catalog_sml_style_default_font(),
+    ss_font("18", "sans-serif", [ss_color("FFFF0000")]),
+  ]
+  let fn_ : Array[@xml.Node] = []
+  for font in fonts {
+    fn_.push(Element(font))
+  }
+  kids.push(Element(xe(NS_S, "fonts", [xa("count", "2")], fn_)))
+  let fills = catalog_sml_style_default_fills()
+  let fi : Array[@xml.Node] = []
+  for fill in fills {
+    fi.push(Element(fill))
+  }
+  kids.push(Element(xe(NS_S, "fills", [xa("count", "2")], fi)))
+  let bd : Array[@xml.Node] = []
+  for border in catalog_sml_style_default_borders() {
+    bd.push(Element(border))
+  }
+  kids.push(Element(xe(NS_S, "borders", [xa("count", "1")], bd)))
+  kids.push(
+    Element(
+      xe(NS_S, "cellStyleXfs", [xa("count", "1")], [
+        Element(ss_cell_xf("0", "1", "0", "0", None)),
+      ]),
+    ),
+  )
+  kids.push(
+    Element(
+      xe(NS_S, "cellXfs", [xa("count", "2")], [
+        Element(catalog_sml_style_default_xf()),
+        Element(xe(NS_S, "xf", [xa("xfId", "0"), xa("applyFont", "0")], [])),
+      ]),
+    ),
+  )
+  kids.push(Element(cell_styles))
+  xe(NS_S, "styleSheet", [], kids)
+}
+
+///|
+fn catalog_sml_style_table_dxf() -> @xml.Element {
+  xe(NS_S, "dxf", [], [
+    Element(
+      xe(NS_S, "fill", [], [
+        Element(
+          xe(NS_S, "patternFill", [], [
+            Element(xe(NS_S, "bgColor", [xa("rgb", "FF123456")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_style_table_style_element(
+  element : @xml.Element,
+) -> @xml.Element {
+  {
+    name: element.name,
+    attributes: catalog_force_unqualified_attrs(element.attributes, [
+      ("type", "headerRow"),
+      ("dxfId", "0"),
+    ]),
+    children: element.children,
+  }
+}
+
+///|
+fn catalog_sml_style_default_table_style_element() -> @xml.Element {
+  xe(NS_S, "tableStyleElement", [xa("type", "headerRow"), xa("dxfId", "0")], [])
+}
+
+///|
+fn catalog_sml_style_table_style(table_style : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_element = false
+  for child in table_style.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "tableStyleElement" {
+          has_element = true
+          kids.push(Element(catalog_sml_style_table_style_element(c)))
+        } else {
+          kids.push(child)
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_element {
+    kids.push(Element(catalog_sml_style_default_table_style_element()))
+  }
+  {
+    name: table_style.name,
+    attributes: catalog_force_unqualified_attrs(table_style.attributes, [
+      ("name", "CatalogStyle"),
+      ("pivot", "0"),
+      ("table", "1"),
+      ("count", "1"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_table_style_from_element(
+  table_style_element : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S,
+    "tableStyle",
+    [
+      xa("name", "CatalogStyle"),
+      xa("pivot", "0"),
+      xa("table", "1"),
+      xa("count", "1"),
+    ],
+    [Element(catalog_sml_style_table_style_element(table_style_element))],
+  )
+}
+
+///|
+fn catalog_sml_style_table_styles_from_style(
+  table_style : @xml.Element,
+) -> @xml.Element {
+  xe(
+    NS_S,
+    "tableStyles",
+    [xa("count", "1"), xa("defaultTableStyle", "CatalogStyle")],
+    [Element(catalog_sml_style_table_style(table_style))],
+  )
+}
+
+///|
+fn catalog_sml_style_table_styles_from_root(
+  table_styles : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_table_style = false
+  for child in table_styles.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "tableStyle" {
+          has_table_style = true
+          kids.push(Element(catalog_sml_style_table_style(c)))
+        } else {
+          kids.push(child)
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_table_style {
+    kids.push(
+      Element(
+        catalog_sml_style_table_style(
+          xe(NS_S, "tableStyle", [], [
+            Element(catalog_sml_style_default_table_style_element()),
+          ]),
+        ),
+      ),
+    )
+  }
+  {
+    name: table_styles.name,
+    attributes: catalog_force_unqualified_attrs(table_styles.attributes, [
+      ("count", "1"),
+      ("defaultTableStyle", "CatalogStyle"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_table_style_sheet(
+  table_styles : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S, "styleSheet", [], [
+    Element(
+      xe(NS_S, "dxfs", [xa("count", "1")], [
+        Element(catalog_sml_style_table_dxf()),
+      ]),
+    ),
+    Element(table_styles),
+  ])
+}
+
+///|
+fn catalog_sml_style_targets_table_style(root : @xml.Element) -> Bool {
+  match
+    catalog_sml_style_find_target_any(root, [
+      "tableStyles", "tableStyle", "tableStyleElement",
+    ]) {
+    Some(_) => true
+    None => false
+  }
+}
+
+///|
+fn catalog_sml_style_table_probe_cell(
+  r : String,
+  value : String,
+) -> @xml.Element {
+  xep("s", NS_S, "c", [xa("r", r)], [
+    Element(xep("s", NS_S, "v", [], [Text(value)])),
+  ])
+}
+
+///|
+fn catalog_sml_style_table_probe_row(
+  r : String,
+  left : String,
+  right : String,
+) -> @xml.Element {
+  xep("s", NS_S, "row", [xa("r", r)], [
+    Element(catalog_sml_style_table_probe_cell("A" + r, left)),
+    Element(catalog_sml_style_table_probe_cell("B" + r, right)),
+  ])
+}
+
+///|
+fn catalog_sml_style_table_probe_worksheet() -> @xml.Element {
+  xep("s", NS_S, "worksheet", [], [
+    Element(xep("s", NS_S, "dimension", [xa("ref", "A1:B3")], [])),
+    Element(
+      xep("s", NS_S, "sheetData", [], [
+        Element(catalog_sml_style_table_probe_row("1", "1", "2")),
+        Element(catalog_sml_style_table_probe_row("2", "3", "4")),
+        Element(catalog_sml_style_table_probe_row("3", "5", "6")),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_style_table_probe_table() -> @xml.Element {
+  xep(
+    "s",
+    NS_S,
+    "table",
+    [
+      xa("id", "1"),
+      xa("name", "CatalogTable"),
+      xa("displayName", "CatalogTable"),
+      xa("ref", "A1:B3"),
+    ],
+    [
+      Element(
+        xep("s", NS_S, "tableColumns", [xa("count", "2")], [
+          Element(
+            xep("s", NS_S, "tableColumn", [xa("id", "1"), xa("name", "A")], []),
+          ),
+          Element(
+            xep("s", NS_S, "tableColumn", [xa("id", "2"), xa("name", "B")], []),
+          ),
+        ]),
+      ),
+      Element(
+        xep(
+          "s",
+          NS_S,
+          "tableStyleInfo",
+          [
+            xa("name", "CatalogStyle"),
+            xa("showFirstColumn", "0"),
+            xa("showLastColumn", "0"),
+            xa("showRowStripes", "1"),
+            xa("showColumnStripes", "0"),
+          ],
+          [],
+        ),
+      ),
+    ],
+  )
+}
+
+///|
+fn xlsx_package_with_catalog_table_style(styles : @xml.Element) -> Bytes {
+  xlsx_package_with_tables(
+    catalog_sml_style_table_probe_worksheet(),
+    [catalog_sml_style_table_probe_table()],
+    styles=Some(styles),
+  )
+}
+
+///|
+fn catalog_sml_style_rgb_color(rgb_color : @xml.Element) -> @xml.Element {
+  {
+    name: rgb_color.name,
+    attributes: catalog_force_unqualified_attrs(rgb_color.attributes, [
+      ("rgb", "FF123456"),
+    ]),
+    children: rgb_color.children,
+  }
+}
+
+///|
+fn catalog_sml_style_indexed_colors_from_root(
+  indexed_colors : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_rgb = false
+  for child in indexed_colors.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "rgbColor" {
+          has_rgb = true
+          kids.push(Element(catalog_sml_style_rgb_color(c)))
+        } else {
+          kids.push(child)
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_rgb {
+    kids.push(Element(xe(NS_S, "rgbColor", [xa("rgb", "FF123456")], [])))
+  }
+  {
+    name: indexed_colors.name,
+    attributes: indexed_colors.attributes,
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_indexed_colors_from_rgb(
+  rgb_color : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S, "indexedColors", [], [
+    Element(catalog_sml_style_rgb_color(rgb_color)),
+  ])
+}
+
+///|
+fn catalog_sml_style_indexed_color_sheet(
+  indexed_colors : @xml.Element,
+) -> @xml.Element {
+  let styled_fill = xe(NS_S, "fill", [], [
+    Element(
+      xe(NS_S, "patternFill", [xa("patternType", "solid")], [
+        Element(xe(NS_S, "fgColor", [xa("indexed", "0")], [])),
+      ]),
+    ),
+  ])
+  let fills = [ss_fill_none(), styled_fill]
+  let fill_nodes : Array[@xml.Node] = []
+  for fill in fills {
+    fill_nodes.push(Element(fill))
+  }
+  let border_nodes : Array[@xml.Node] = []
+  for border in catalog_sml_style_default_borders() {
+    border_nodes.push(Element(border))
+  }
+  xe(NS_S, "styleSheet", [], [
+    Element(
+      xe(NS_S, "fonts", [xa("count", "1")], [
+        Element(catalog_sml_style_default_font()),
+      ]),
+    ),
+    Element(
+      xe(NS_S, "fills", [xa("count", fills.length().to_string())], fill_nodes),
+    ),
+    Element(xe(NS_S, "borders", [xa("count", "1")], border_nodes)),
+    Element(
+      xe(NS_S, "cellXfs", [xa("count", "2")], [
+        Element(catalog_sml_style_default_xf()),
+        Element(ss_cell_xf("0", "0", "1", "0", None)),
+      ]),
+    ),
+    Element(xe(NS_S, "colors", [], [Element(indexed_colors)])),
+  ])
 }
 
 ///|
@@ -2944,7 +5721,15 @@ fn catalog_sml_style_border_from_border(border : @xml.Element) -> @xml.Element {
     match child {
       Element(c) =>
         match c.name.local_name {
-          "start" | "end" | "left" | "right" | "top" | "bottom" | "diagonal" => {
+          "start"
+          | "end"
+          | "left"
+          | "right"
+          | "top"
+          | "bottom"
+          | "diagonal"
+          | "vertical"
+          | "horizontal" => {
             has_side = true
             kids.push(Element(catalog_sml_style_border_side(c)))
           }
@@ -3026,6 +5811,36 @@ fn catalog_sml_style_alignment_sheet(alignment : @xml.Element) -> @xml.Element {
 }
 
 ///|
+fn catalog_sml_style_protection_from(protection : @xml.Element) -> @xml.Element {
+  catalog_sml_style_force_element(protection, [("locked", "0"), ("hidden", "1")])
+}
+
+///|
+fn catalog_sml_style_protection_sheet(
+  protection : @xml.Element,
+) -> @xml.Element {
+  let styled_xf = xe(
+    NS_S,
+    "xf",
+    [
+      xa("numFmtId", "0"),
+      xa("fontId", "0"),
+      xa("fillId", "0"),
+      xa("borderId", "0"),
+      xa("applyProtection", "1"),
+    ],
+    [Element(catalog_sml_style_protection_from(protection))],
+  )
+  ss_sheet(
+    [],
+    [catalog_sml_style_default_font()],
+    catalog_sml_style_default_fills(),
+    catalog_sml_style_default_borders(),
+    [catalog_sml_style_default_xf(), styled_xf],
+  )
+}
+
+///|
 fn catalog_sml_style_num_fmt_sheet(num_fmt : @xml.Element) -> @xml.Element {
   let fmt = catalog_sml_style_force_element(num_fmt, [
     ("numFmtId", "164"),
@@ -3075,22 +5890,116 @@ fn catalog_sml_stylesheet_for_render(content : @xml.Element) -> @xml.Element {
   } else {
     xe(NS_S, "styleSheet", [], [Element(content)])
   }
+  match catalog_sml_style_find_target_any(root, ["numFmt"]) {
+    Some(num_fmt) => return catalog_sml_style_num_fmt_sheet(num_fmt)
+    None => ()
+  }
   match catalog_sml_style_find_any(root, ["numFmt"]) {
     Some(num_fmt) => return catalog_sml_style_num_fmt_sheet(num_fmt)
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["xf"]) {
+    Some(xf) => return catalog_sml_style_xf_sheet(xf)
     None => ()
   }
   match catalog_sml_style_find_any(root, ["xf"]) {
     Some(xf) => return catalog_sml_style_xf_sheet(xf)
     None => ()
   }
+  match catalog_sml_style_find_target_any(root, ["alignment"]) {
+    Some(alignment) => return catalog_sml_style_alignment_sheet(alignment)
+    None => ()
+  }
   match catalog_sml_style_find_any(root, ["alignment"]) {
     Some(alignment) => return catalog_sml_style_alignment_sheet(alignment)
     None => ()
   }
+  match catalog_sml_style_find_target_any(root, ["protection"]) {
+    Some(protection) => return catalog_sml_style_protection_sheet(protection)
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["border"]) {
+    Some(border) => return catalog_sml_style_border_sheet(border)
+    None => ()
+  }
+  match
+    catalog_sml_style_find_target_any(root, [
+      "start", "end", "left", "right", "top", "bottom", "diagonal", "vertical", "horizontal",
+    ]) {
+    Some(border_child) => return catalog_sml_style_border_sheet(border_child)
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["cellStyles"]) {
+    Some(cell_styles) =>
+      return catalog_sml_style_named_style_sheet(
+        catalog_sml_style_cell_styles_from_root(cell_styles),
+      )
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["cellStyle"]) {
+    Some(cell_style) =>
+      return catalog_sml_style_named_style_sheet(
+        catalog_sml_style_cell_styles_from_child(cell_style),
+      )
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["tableStyles"]) {
+    Some(table_styles) =>
+      return catalog_sml_style_table_style_sheet(
+        catalog_sml_style_table_styles_from_root(table_styles),
+      )
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["tableStyle"]) {
+    Some(table_style) =>
+      return catalog_sml_style_table_style_sheet(
+        catalog_sml_style_table_styles_from_style(table_style),
+      )
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["tableStyleElement"]) {
+    Some(table_style_element) =>
+      return catalog_sml_style_table_style_sheet(
+        catalog_sml_style_table_styles_from_style(
+          catalog_sml_style_table_style_from_element(table_style_element),
+        ),
+      )
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["indexedColors"]) {
+    Some(indexed_colors) =>
+      return catalog_sml_style_indexed_color_sheet(
+        catalog_sml_style_indexed_colors_from_root(indexed_colors),
+      )
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["rgbColor"]) {
+    Some(rgb_color) =>
+      return catalog_sml_style_indexed_color_sheet(
+        catalog_sml_style_indexed_colors_from_rgb(rgb_color),
+      )
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["fonts"]) {
+    Some(fonts) => return catalog_sml_style_fonts_sheet(fonts)
+    None => ()
+  }
+  match catalog_sml_style_find_target_any(root, ["font"]) {
+    Some(font) => return catalog_sml_style_font_sheet(font)
+    None => ()
+  }
+  match
+    catalog_sml_style_find_target_any(root, [
+      "color", "sz", "name", "charset", "b", "i", "u", "strike", "outline", "shadow",
+      "condense", "extend", "vertAlign", "scheme", "family",
+    ]) {
+    Some(font_child) => return catalog_sml_style_font_sheet(font_child)
+    None => ()
+  }
   match
     catalog_sml_style_find_any(root, [
-      "color", "sz", "name", "b", "i", "u", "strike", "outline", "shadow", "condense",
-      "extend",
+      "color", "sz", "name", "charset", "b", "i", "u", "strike", "outline", "shadow",
+      "condense", "extend", "vertAlign", "scheme", "family",
     ]) {
     Some(font_child) => return catalog_sml_style_font_sheet(font_child)
     None => ()
@@ -3099,8 +6008,19 @@ fn catalog_sml_stylesheet_for_render(content : @xml.Element) -> @xml.Element {
     Some(font) => return catalog_sml_style_font_sheet(font)
     None => ()
   }
+  match catalog_sml_style_find_target_any(root, ["fill"]) {
+    Some(fill) => return catalog_sml_style_fill_sheet(fill)
+    None => ()
+  }
   match catalog_sml_style_find_any(root, ["fill"]) {
     Some(fill) => return catalog_sml_style_fill_sheet(fill)
+    None => ()
+  }
+  match
+    catalog_sml_style_find_target_any(root, [
+      "patternFill", "gradientFill", "stop", "fgColor", "bgColor",
+    ]) {
+    Some(fill_child) => return catalog_sml_style_fill_sheet(fill_child)
     None => ()
   }
   match
@@ -3111,8 +6031,15 @@ fn catalog_sml_stylesheet_for_render(content : @xml.Element) -> @xml.Element {
     None => ()
   }
   match
-    catalog_sml_style_find_any(root, [
+    catalog_sml_style_find_target_any(root, [
       "start", "end", "left", "right", "top", "bottom", "diagonal",
+    ]) {
+    Some(border_child) => return catalog_sml_style_border_sheet(border_child)
+    None => ()
+  }
+  match
+    catalog_sml_style_find_any(root, [
+      "start", "end", "left", "right", "top", "bottom", "diagonal", "vertical", "horizontal",
     ]) {
     Some(border_child) => return catalog_sml_style_border_sheet(border_child)
     None => ()
@@ -4796,6 +7723,7 @@ fn is_dml_blip_effect_catalog_target(
     "biLevel" => type_local == "CT_BiLevelEffect"
     "blur" => type_local == "CT_BlurEffect"
     "clrChange" => type_local == "CT_ColorChangeEffect"
+    "clrFrom" | "clrTo" => type_local == "CT_Color"
     "clrRepl" => type_local == "CT_ColorReplaceEffect"
     "duotone" => type_local == "CT_DuotoneEffect"
     "fillOverlay" => type_local == "CT_FillOverlayEffect"
@@ -4878,7 +7806,23 @@ fn catalog_pml_blip_fill_for_target(target : @xml.Element) -> @xml.Element {
     }
     "fillRect" => {
       kids.push(Element(catalog_default_blip_to_catalog_image()))
-      kids.push(Element(xep("a", NS_A, "stretch", [], [Element(target)])))
+      kids.push(
+        Element(
+          xep("a", NS_A, "stretch", [], [
+            Element(catalog_dml_fill_to_rect_for_target(target)),
+          ]),
+        ),
+      )
+    }
+    "clrFrom" | "clrTo" => {
+      kids.push(
+        Element(
+          catalog_default_blip_with_child(
+            catalog_dml_clr_change_for_target(target),
+          ),
+        ),
+      )
+      kids.push(Element(catalog_default_stretch()))
     }
     _ => {
       kids.push(Element(catalog_default_blip_with_child(target)))
@@ -5011,6 +7955,49 @@ fn catalog_default_blip_to_catalog_image() -> @xml.Element {
 fn catalog_default_blip_with_child(child : @xml.Element) -> @xml.Element {
   let blip = catalog_default_blip_to_catalog_image()
   { name: blip.name, attributes: blip.attributes, children: [Element(child)] }
+}
+
+///|
+fn catalog_dml_color_container_with_srgb(
+  container : @xml.Element,
+  hex : String,
+) -> @xml.Element {
+  let ns_a = dml_ns_for(container)
+  {
+    name: container.name,
+    attributes: container.attributes,
+    children: [Element(xep("a", ns_a, "srgbClr", [xa("val", hex)], []))],
+  }
+}
+
+///|
+fn catalog_dml_default_color_container(
+  ns_a : String,
+  local_name : String,
+  hex : String,
+) -> @xml.Element {
+  xep("a", ns_a, local_name, [], [
+    Element(xep("a", ns_a, "srgbClr", [xa("val", hex)], [])),
+  ])
+}
+
+///|
+fn catalog_dml_clr_change_for_target(target : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(target)
+  match target.name.local_name {
+    "clrChange" => target
+    "clrFrom" =>
+      xep("a", ns_a, "clrChange", [xa("useA", "true")], [
+        Element(catalog_dml_color_container_with_srgb(target, "FF0000")),
+        Element(catalog_dml_default_color_container(ns_a, "clrTo", "00FF00")),
+      ])
+    "clrTo" =>
+      xep("a", ns_a, "clrChange", [xa("useA", "true")], [
+        Element(catalog_dml_default_color_container(ns_a, "clrFrom", "FF0000")),
+        Element(catalog_dml_color_container_with_srgb(target, "00FF00")),
+      ])
+    _ => target
+  }
 }
 
 ///|
@@ -5318,6 +8305,39 @@ fn pptx_package_with_slide_rels(
     ("ppt/theme/theme1.xml", pptx_theme_part()),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.pptx` package for DrawingML text fixtures whose paragraph
+/// properties may carry both external hyperlinks and image bullets.
+/// The slide-side relationship graph is the single source of truth:
+/// `rId2` remains the hyperlink probe, while `rId3` resolves
+/// `<a:buBlip>/<a:blip r:embed="rId3">` to a real PNG part.
+fn pptx_package_with_dml_text_assets(content : @xml.Element) -> Bytes {
+  let base = pptx_package_with_slide_rels(content, catalog_dml_text_rels())
+  let with_types = replace_zip_entry(
+    base,
+    "[Content_Types].xml",
+    content_types_part([
+      (
+        "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+      ),
+      (
+        "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+      ),
+      (
+        "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+      ),
+      (
+        "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+      ),
+      (
+        "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+      ),
+      ("/ppt/media/image1.png", CT_IMAGE_PNG),
+    ]),
+  )
+  replace_zip_entry(with_types, "ppt/media/image1.png", test_image_8x8_quad())
 }
 
 ///|
@@ -6246,9 +9266,130 @@ fn prune_target(el : @xml.Element) -> (@xml.Element, Bool) {
 }
 
 ///|
+fn sml_catalog_theme_root(workbook : @sml_context.Workbook) -> @xml.Element? {
+  match workbook.theme {
+    None => None
+    Some(part) =>
+      try @xml.parse(part.data) catch {
+        _ => None
+      } noraise {
+        doc => Some(doc.root)
+      }
+  }
+}
+
+///|
+fn render_sml_workbook_with_table_chrome(
+  workbook : @sml_context.Workbook,
+) -> String {
+  let buf = StringBuilder::new()
+  let theme_root = sml_catalog_theme_root(workbook)
+  let date1904 = match workbook.workbook.workbook_pr {
+    Some(pr) => pr.date1904
+    None => false
+  }
+  let options = {
+    ..@sml_viewer.default_render_options(),
+    show_table_chrome: true,
+  }
+  for sheet_index, worksheet in workbook.worksheets {
+    let result = @sml_viewer.render_svg(
+      worksheet.value,
+      shared_strings=workbook.shared_strings,
+      options~,
+      drawing=worksheet.drawing,
+      styles=workbook.styles,
+      theme=theme_root,
+      date1904~,
+      id_prefix="s" + sheet_index.to_string() + "-",
+      tables=worksheet.tables,
+      comments=worksheet.comments,
+      workbook=Some(workbook.workbook.element),
+    )
+    buf.write_string(result.svg)
+  }
+  buf.to_string()
+}
+
+///|
+fn sml_workbook_has_tables(workbook : @sml_context.Workbook) -> Bool {
+  for worksheet in workbook.worksheets {
+    if worksheet.tables.length() > 0 {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn sml_workbook_has_autofilter_ui(workbook : @sml_context.Workbook) -> Bool {
+  for worksheet in workbook.worksheets {
+    match worksheet.value.auto_filter {
+      Some(_) => return true
+      None => ()
+    }
+  }
+  false
+}
+
+///|
+fn sml_workbook_has_sheet_view_selection_ui(
+  workbook : @sml_context.Workbook,
+) -> Bool {
+  for worksheet in workbook.worksheets {
+    match worksheet.value.sheet_views {
+      None => ()
+      Some(sheet_views) =>
+        for sheet_view in sheet_views.sheet_views {
+          if sheet_view.selections.length() > 0 {
+            return true
+          }
+        }
+    }
+  }
+  false
+}
+
+///|
+fn sml_workbook_has_data_validation_ui(
+  workbook : @sml_context.Workbook,
+) -> Bool {
+  for worksheet in workbook.worksheets {
+    if sml_worksheet_has_data_validation_ui(worksheet.value.element) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn sml_worksheet_has_data_validation_ui(worksheet : @xml.Element) -> Bool {
+  for child in worksheet.children {
+    match child {
+      Element(el) =>
+        if el.name.local_name == "dataValidations" {
+          for dv_child in el.children {
+            match dv_child {
+              Element(dv) =>
+                if dv.name.local_name == "dataValidation" &&
+                  catalog_attr_value_local(dv, "type") == Some("list") {
+                  return true
+                }
+              _ => ()
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
 /// Render one host package's SVG, or `None` when the open / round-trip
 /// pipeline cannot complete.  `which` selects the host format.
 fn render_svg_of(which : String, pkg : Bytes) -> String? {
+  install_catalog_font_fixture()
   // The `which` token is either a bare format (`docx`/`xlsx`/`pptx`)
   // or a `format:part-kind` aux-host token (`docx:settings`,
   // `pptx:theme`, `xlsx:workbook`, …).  Normalise to the bare
@@ -6275,7 +9416,16 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
           try @sml_context.open(w.save()) catch {
             _ => None
           } noraise {
-            w2 => Some(w2.to_svg(debug_attrs=true))
+            w2 =>
+              if which == "xlsx:styles" ||
+                sml_workbook_has_tables(w2) ||
+                sml_workbook_has_autofilter_ui(w2) ||
+                sml_workbook_has_sheet_view_selection_ui(w2) ||
+                sml_workbook_has_data_validation_ui(w2) {
+                Some(render_sml_workbook_with_table_chrome(w2))
+              } else {
+                Some(w2.to_svg(debug_attrs=true))
+              }
           }
       }
     "pptx" =>
@@ -6469,7 +9619,7 @@ fn roundtrip_fidelity(
   let present_tree = strip_target_attr(with_marker)
   let local_name = target_local_name(content)
   let present = match
-    roundtrip_saved_xml(format, host_package(format, present_tree)) {
+    roundtrip_saved_xml(format, host_package_for_fidelity(format, present_tree)) {
     None => return "fy-open-fail"
     Some(s) => s
   }
@@ -6495,7 +9645,7 @@ fn roundtrip_fidelity(
       match
         roundtrip_saved_xml(
           format,
-          host_package(format, strip_target_attr(probe)),
+          host_package_for_fidelity(format, strip_target_attr(probe)),
         ) {
         Some(saved) => if saved.contains(marker) { return "fy-inject" }
         None => ()
@@ -6510,7 +9660,11 @@ fn roundtrip_fidelity(
   let (baseline_tree, did_prune) = prune_target(content)
   let absent_count = if did_prune {
     let absent_clean = strip_target_attr(baseline_tree)
-    match roundtrip_saved_xml(format, host_package(format, absent_clean)) {
+    match
+      roundtrip_saved_xml(
+        format,
+        host_package_for_fidelity(format, absent_clean),
+      ) {
       // Pruning broke the package (reader rejected the absent tree).
       // The target is a schema-required child the writer pipeline
       // depends on — its tag round-trips as part of a valid save.
@@ -6560,7 +9714,7 @@ fn roundtrip_fidelity(
       match
         roundtrip_saved_xml(
           format,
-          host_package(format, strip_target_attr(probe)),
+          host_package_for_fidelity(format, strip_target_attr(probe)),
         ) {
         Some(saved) => if saved.contains(marker) { return "fy-inject" }
         None => ()
@@ -6704,6 +9858,31 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "pptx:viewPr" => pptx_with_aux_root_package("viewPr", content)
     "pptx:themeOverride" => pptx_with_aux_root_package("themeOverride", content)
     "pptx:themeManager" => pptx_with_aux_root_package("themeManager", content)
+    "pptx:dml-media" =>
+      pptx_package_with_slide_rels(
+        catalog_dml_media_root(content),
+        catalog_dml_media_rels(),
+      )
+    "pptx:dml-hyperlink" =>
+      pptx_package_with_slide_rels(
+        catalog_dml_hyperlink_root(content),
+        catalog_dml_hyperlink_rels(),
+      )
+    "pptx:dml-lock" =>
+      pptx_package_with_embedded_image(
+        catalog_dml_lock_root(content),
+        test_image_8x8_quad(),
+      )
+    "pptx:dml-locked-canvas" =>
+      pptx_package_with_embedded_image(
+        sp_tree([locked_canvas_graphic_frame(content)]),
+        test_image_8x8_quad(),
+      )
+    "pptx:dml-graphic-data" =>
+      pptx_package(catalog_dml_graphic_data_slide_body(content))
+    "pptx:dml-shape" => pptx_package(content)
+    "pptx:dml-text" => pptx_package_with_dml_text_assets(content)
+    "pptx:table-styles" => pptx_package_with_table_style_part(content)
     "pptx:master-txstyle" => pptx_package_with_master_tx_styles(content)
     "pptx:placeholder-chain" => pptx_package_with_placeholder_chain(content)
     "pptx:slideRefs" => pptx_package_with_slide_refs(content)
@@ -6740,6 +9919,11 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:chartsheet" => xlsx_package_with_chartsheet(content)
     "xlsx:dialogsheet" => xlsx_package_with_dialogsheet(content)
     "xlsx:tableSingleCells" => xlsx_package_with_table_single_cells(content)
+    "xlsx:externalLink" =>
+      xlsx_package_with_externals(
+        catalog_sml_external_link_worksheet(),
+        catalog_sml_external_link_root(content),
+      )
     "xlsx:pivot" => {
       let (sheet, cache_def, cache_records, pivot_def) = catalog_sml_pivot_parts(
         content,
@@ -6781,10 +9965,73 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
         default_diagram_colors_def(),
         None,
       )
+    "pptx:diagram-data-var" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        content,
+        catalog_diagram_point_variable_layout_root(content),
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-data-cxn" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        content,
+        default_diagram_connector_layout_def(),
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
     "pptx:diagram-layout" =>
       pptx_package_with_diagram(
         default_diagram_slide_body(),
         default_diagram_data_model(),
+        content,
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-layout-adj" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        content,
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-layout-rule" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        content,
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-layout-alg" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_algorithm_data_model(),
+        content,
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-layout-flow" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_algorithm_data_model(),
+        content,
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-layout-var" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_algorithm_data_model(),
         content,
         default_diagram_style_def(),
         default_diagram_colors_def(),
@@ -6808,6 +10055,33 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
         content,
         None,
       )
+    "pptx:diagram-colors-effect" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        default_diagram_layout_def(),
+        catalog_diagram_effect_style_def(),
+        content,
+        None,
+      )
+    "pptx:diagram-colors-text-effect" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        default_diagram_layout_def(),
+        catalog_diagram_text_effect_style_def(),
+        content,
+        None,
+      )
+    "pptx:diagram-style-text-effect" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        default_diagram_layout_def(),
+        content,
+        catalog_diagram_text_effect_colors_def(),
+        None,
+      )
     "pptx:table" => pptx_package(default_table_slide_body(content))
     // §21.3 chartDrawing — `<c:userShapes>` is the chart's user-shape
     // overlay part.  The host wires the part through chart-part
@@ -6820,8 +10094,69 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
         default_minimal_chart_space_with_userShapes(),
         content,
       )
+    "pptx:chart-usershapes-ref" =>
+      pptx_package_with_chart_usershapes_real(
+        default_chart_slide_body(),
+        content,
+        chart_drawing_user_shapes(),
+      )
+    "docx:chart" =>
+      docx_package_with_chart(
+        content,
+        wrap_chart_space(bar_chart_payload(), c_axes()),
+      )
     _ => docx_package(content)
   }
+}
+
+///|
+/// Build the host package used by the round-trip fidelity probe. This
+/// normally matches `host_package`, but render-only host rewrites must
+/// be bypassed here so L2b measures reader/writer preservation of the
+/// catalog target, not the verifier's visual scaffolding.
+fn host_package_for_fidelity(which : String, content : @xml.Element) -> Bytes {
+  match which {
+    "xlsx:styles" => xlsx_package_with_raw_styles_part(content)
+    _ => host_package(which, content)
+  }
+}
+
+///|
+/// Build a render-probe host package. Most hosts receive the target
+/// sentinel stripped before packaging; `xlsx:styles` keeps it until
+/// its visual scaffold has selected the exact stylesheet child under
+/// test, then strips it from the generated package XML.
+fn host_package_for_render(which : String, content : @xml.Element) -> Bytes {
+  match which {
+    "xlsx:styles" => host_package(which, content)
+    "xlsx:pivot" => xlsx_pivot_package_for_render(content)
+    "xlsx:comments" =>
+      xlsx_package_with_comments_part(catalog_sml_comments_for_render(content))
+    "pptx:theme" => pptx_theme_package_for_render(content)
+    "xlsx" =>
+      match catalog_sml_pivot_filter_package_for_render(content) {
+        Some(pkg) => pkg
+        None =>
+          match catalog_sml_table_package_for_render(content) {
+            Some(pkg) => pkg
+            None => catalog_xlsx_package_for_render(content)
+          }
+      }
+    _ => host_package(which, strip_target_attr(content))
+  }
+}
+
+///|
+fn xlsx_pivot_package_for_render(content : @xml.Element) -> Bytes {
+  let (sheet, cache_def, cache_records, pivot_def) = catalog_sml_pivot_parts(
+    content,
+  )
+  xlsx_package_with_pivot(
+    strip_target_attr(sheet),
+    strip_target_attr(cache_def),
+    strip_target_attr(cache_records),
+    strip_target_attr(pivot_def),
+  )
 }
 
 ///|
@@ -7279,16 +10614,56 @@ fn is_drawingml_table_catalog_target(
       | "CT_TableCol"
       | "CT_TableRow"
       | "CT_TableCell"
-      | "CT_TableCellProperties" => return true
+      | "CT_TableCellProperties"
+      | "CT_TableProperties"
+      | "CT_TableCellBorderStyle"
+      | "CT_TableStyleTextStyle"
+      | "CT_TableStyleCellStyle"
+      | "CT_TableBackgroundStyle"
+      | "CT_TablePartStyle" => return true
+      "CT_Cell3D" | "CT_Headers" => return true
+      "CT_FillProperties" => if local_name == "fill" { return true }
+      "CT_EffectProperties" => if local_name == "effect" { return true }
+      "CT_FontCollection" => if local_name == "font" { return true }
+      "ST_Guid" => if local_name == "tableStyleId" { return true }
+      "CT_TableStyle" => if local_name == "tableStyle" { return true }
       "CT_LineProperties" =>
         match local_name {
           "lnL" | "lnR" | "lnT" | "lnB" | "lnTlToBr" | "lnBlToTr" => return true
           _ => ()
         }
+      "CT_ThemeableLineStyle" =>
+        match local_name {
+          "left"
+          | "right"
+          | "top"
+          | "bottom"
+          | "insideH"
+          | "insideV"
+          | "tl2br"
+          | "tr2bl" => return true
+          _ => ()
+        }
+      "string" => if local_name == "header" { return true }
       _ => ()
     }
   }
   false
+}
+
+///|
+fn is_drawingml_table_style_part_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  match (local_name, catalog_type_local(type_name)) {
+    ("tblStyle", "CT_TableStyle") | ("tblStyleLst", "CT_TableStyleList") => true
+    _ => false
+  }
 }
 
 ///|
@@ -7355,6 +10730,81 @@ fn table_cell_with_pr(ns : String, tc_pr : @xml.Element) -> @xml.Element {
 }
 
 ///|
+fn catalog_dml_has_child(e : @xml.Element, local_name : String) -> Bool {
+  for child in e.children {
+    match child {
+      Element(ce) => if ce.name.local_name == local_name { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_dml_drop_attrs(
+  attrs : Array[@xml.Attribute],
+  names : Array[String],
+) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  for attr in attrs {
+    let mut drop = false
+    for n in names {
+      if attr.name.local_name == n {
+        drop = true
+        break
+      }
+    }
+    if !drop {
+      out.push(attr)
+    }
+  }
+  out
+}
+
+///|
+fn catalog_table_visible_cell(cell : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(cell)
+  let attrs = force_local_attr_value(
+    force_local_attr_value(
+      catalog_dml_drop_attrs(cell.attributes, ["hMerge", "vMerge"]),
+      ns,
+      "gridSpan",
+      "1",
+    ),
+    ns,
+    "rowSpan",
+    "1",
+  )
+  let children : Array[@xml.Node] = []
+  let mut has_tx_body = false
+  let mut has_tc_pr = false
+  for child in cell.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "txBody" => {
+            has_tx_body = true
+            children.push(child)
+          }
+          "tcPr" => {
+            has_tc_pr = true
+            children.push(child)
+          }
+          _ => children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  if !has_tx_body {
+    children.push(Element(default_table_text_body(ns)))
+  }
+  if !has_tc_pr {
+    children.push(Element(table_elem(ns, "tcPr", [], [])))
+  }
+  { name: cell.name, attributes: attrs, children }
+}
+
+///|
 fn table_with_parts(
   ns : String,
   tbl_pr : @xml.Element?,
@@ -7372,6 +10822,812 @@ fn table_with_parts(
 }
 
 ///|
+fn catalog_table_visible_line(line : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(line)
+  let visible = catalog_dml_ensure_attr(line, "w", "38100")
+  let children : Array[@xml.Node] = [
+    Element(
+      table_elem(ns, "solidFill", [], [
+        Element(table_elem(ns, "srgbClr", [xa("val", "C00000")], [])),
+      ]),
+    ),
+  ]
+  for child in visible.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "noFill" | "solidFill" | "gradFill" | "pattFill" => ()
+          _ => children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  { name: visible.name, attributes: visible.attributes, children }
+}
+
+///|
+let catalog_table_style_id : String = "{11111111-1111-1111-1111-111111111111}"
+
+///|
+fn catalog_table_visible_fill(fill : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(fill)
+  if catalog_dml_has_child(fill, "solidFill") ||
+    catalog_dml_has_child(fill, "gradFill") ||
+    catalog_dml_has_child(fill, "pattFill") ||
+    catalog_dml_has_child(fill, "blipFill") {
+    return fill
+  }
+  let children : Array[@xml.Node] = [
+    Element(
+      table_elem(ns, "solidFill", [], [
+        Element(table_elem(ns, "srgbClr", [xa("val", "DDEBF7")], [])),
+      ]),
+    ),
+  ]
+  for child in fill.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "noFill"
+          | "solidFill"
+          | "gradFill"
+          | "pattFill"
+          | "blipFill"
+          | "grpFill" => ()
+          _ => children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  { name: fill.name, attributes: fill.attributes, children }
+}
+
+///|
+fn catalog_table_style_fill_wrapper(
+  ns : String,
+  fill? : @xml.Element? = None,
+) -> @xml.Element {
+  let fill_child = match fill {
+    Some(f) => catalog_table_visible_fill(f)
+    None =>
+      table_elem(ns, "fill", [], [
+        Element(
+          table_elem(ns, "solidFill", [], [
+            Element(table_elem(ns, "srgbClr", [xa("val", "DDEBF7")], [])),
+          ]),
+        ),
+      ])
+  }
+  if fill_child.name.local_name == "fill" {
+    fill_child
+  } else {
+    table_elem(ns, "fill", [], [Element(fill_child)])
+  }
+}
+
+///|
+fn catalog_table_style_visible_themeable_line(
+  line : @xml.Element,
+) -> @xml.Element {
+  let ns = table_ns_for(line)
+  let children : Array[@xml.Node] = [
+    Element(
+      catalog_table_visible_line(table_elem(ns, "ln", [xa("w", "38100")], [])),
+    ),
+  ]
+  for child in line.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "ln" | "lnRef" => ()
+          _ => children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  { name: line.name, attributes: line.attributes, children }
+}
+
+///|
+fn catalog_table_style_themeable_line(
+  ns : String,
+  local_name : String,
+  content? : @xml.Element? = None,
+) -> @xml.Element {
+  match content {
+    Some(c) => catalog_table_style_visible_themeable_line(c)
+    None =>
+      table_elem(ns, local_name, [], [
+        Element(
+          catalog_table_visible_line(
+            table_elem(ns, "ln", [xa("w", "38100")], []),
+          ),
+        ),
+      ])
+  }
+}
+
+///|
+fn catalog_table_style_border_for_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "tcBdr" => {
+      let children : Array[@xml.Node] = [
+        Element(catalog_table_style_themeable_line(ns, "top")),
+        Element(catalog_table_style_themeable_line(ns, "left")),
+      ]
+      for child in content.children {
+        match child {
+          Element(ce) =>
+            match ce.name.local_name {
+              "top" | "left" => ()
+              _ => children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      { name: content.name, attributes: content.attributes, children }
+    }
+    "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "insideH"
+    | "insideV"
+    | "tl2br"
+    | "tr2bl" =>
+      table_elem(ns, "tcBdr", [], [
+        Element(catalog_table_style_visible_themeable_line(content)),
+      ])
+    _ =>
+      table_elem(ns, "tcBdr", [], [
+        Element(catalog_table_style_themeable_line(ns, "top")),
+      ])
+  }
+}
+
+///|
+fn catalog_table_style_font_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  let children : Array[@xml.Node] = []
+  let mut has_latin = false
+  for child in content.children {
+    match child {
+      Element(ce) =>
+        if ce.name.local_name == "latin" {
+          has_latin = true
+          children.push(child)
+        } else {
+          children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  if !has_latin {
+    children.push(
+      Element(table_elem(ns, "latin", [xa("typeface", "Courier New")], [])),
+    )
+  }
+  { name: content.name, attributes: content.attributes, children }
+}
+
+///|
+fn catalog_table_style_text_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "tcTxStyle" => {
+      let styled = catalog_dml_ensure_attr(
+        catalog_dml_ensure_attr(content, "b", "on"),
+        "i",
+        "on",
+      )
+      let children : Array[@xml.Node] = [
+        Element(table_elem(ns, "srgbClr", [xa("val", "C00000")], [])),
+      ]
+      for child in styled.children {
+        match child {
+          Element(ce) =>
+            match ce.name.local_name {
+              "srgbClr"
+              | "schemeClr"
+              | "scrgbClr"
+              | "hslClr"
+              | "sysClr"
+              | "prstClr" => ()
+              _ => children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      { name: styled.name, attributes: styled.attributes, children }
+    }
+    "font" =>
+      table_elem(ns, "tcTxStyle", [xa("b", "on")], [
+        Element(catalog_table_style_font_for_target(content)),
+        Element(table_elem(ns, "srgbClr", [xa("val", "C00000")], [])),
+      ])
+    _ =>
+      table_elem(ns, "tcTxStyle", [xa("b", "on")], [
+        Element(table_elem(ns, "srgbClr", [xa("val", "C00000")], [])),
+      ])
+  }
+}
+
+///|
+fn catalog_table_style_cell_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "tcStyle" => {
+      let children : Array[@xml.Node] = [
+        Element(catalog_table_style_border_for_target(content)),
+        Element(catalog_table_style_fill_wrapper(ns)),
+      ]
+      for child in content.children {
+        match child {
+          Element(ce) =>
+            match ce.name.local_name {
+              "tcBdr" | "fill" => ()
+              _ => children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      { name: content.name, attributes: content.attributes, children }
+    }
+    "tcBdr"
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "insideH"
+    | "insideV"
+    | "tl2br"
+    | "tr2bl" =>
+      table_elem(ns, "tcStyle", [], [
+        Element(catalog_table_style_border_for_target(content)),
+        Element(catalog_table_style_fill_wrapper(ns)),
+      ])
+    "fill" =>
+      table_elem(ns, "tcStyle", [], [
+        Element(catalog_table_style_border_for_target(content)),
+        Element(catalog_table_style_fill_wrapper(ns, fill=Some(content))),
+      ])
+    "cell3D" =>
+      table_elem(ns, "tcStyle", [], [
+        Element(catalog_table_style_fill_wrapper(ns)),
+        Element(catalog_dml_ensure_attr(content, "prstMaterial", "plastic")),
+      ])
+    _ =>
+      table_elem(ns, "tcStyle", [], [
+        Element(catalog_table_style_border_for_target(content)),
+        Element(catalog_table_style_fill_wrapper(ns)),
+      ])
+  }
+}
+
+///|
+fn catalog_table_part_style_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "wholeTbl"
+    | "band1H"
+    | "band2H"
+    | "band1V"
+    | "band2V"
+    | "lastCol"
+    | "firstCol"
+    | "lastRow"
+    | "seCell"
+    | "swCell"
+    | "firstRow"
+    | "neCell"
+    | "nwCell" => {
+      let children : Array[@xml.Node] = [
+        Element(catalog_table_style_text_for_target(content)),
+        Element(catalog_table_style_cell_for_target(content)),
+      ]
+      for child in content.children {
+        match child {
+          Element(ce) =>
+            match ce.name.local_name {
+              "tcTxStyle" | "tcStyle" => ()
+              _ => children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      { name: content.name, attributes: content.attributes, children }
+    }
+    "tcTxStyle" | "font" =>
+      table_elem(ns, "wholeTbl", [], [
+        Element(catalog_table_style_text_for_target(content)),
+        Element(catalog_table_style_cell_for_target(content)),
+      ])
+    "tcStyle"
+    | "tcBdr"
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "insideH"
+    | "insideV"
+    | "tl2br"
+    | "tr2bl"
+    | "fill"
+    | "cell3D" =>
+      table_elem(ns, "wholeTbl", [], [
+        Element(catalog_table_style_text_for_target(content)),
+        Element(catalog_table_style_cell_for_target(content)),
+      ])
+    _ =>
+      table_elem(ns, "wholeTbl", [], [
+        Element(catalog_table_style_text_for_target(content)),
+        Element(catalog_table_style_cell_for_target(content)),
+      ])
+  }
+}
+
+///|
+fn catalog_table_style_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "tableStyle" | "tblStyle" => {
+      let styled = catalog_dml_ensure_attr(
+        catalog_dml_ensure_attr(content, "styleId", catalog_table_style_id),
+        "styleName",
+        "Catalog Table Style",
+      )
+      let mut has_whole = false
+      let children : Array[@xml.Node] = []
+      for child in styled.children {
+        match child {
+          Element(ce) =>
+            if ce.name.local_name == "wholeTbl" {
+              has_whole = true
+              children.push(Element(catalog_table_part_style_for_target(ce)))
+            } else {
+              children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      if !has_whole {
+        children.push(Element(catalog_table_part_style_for_target(content)))
+      }
+      { name: styled.name, attributes: styled.attributes, children }
+    }
+    "tblBg" => {
+      let children : Array[@xml.Node] = [
+        Element(catalog_table_style_fill_wrapper(ns)),
+      ]
+      for child in content.children {
+        match child {
+          Element(ce) =>
+            match ce.name.local_name {
+              "fill" => ()
+              _ => children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      table_elem(
+        ns,
+        "tableStyle",
+        [
+          xa("styleId", catalog_table_style_id),
+          xa("styleName", "Catalog Table Style"),
+        ],
+        [
+          Element({
+            name: content.name,
+            attributes: content.attributes,
+            children,
+          }),
+          Element(catalog_table_part_style_for_target(content)),
+        ],
+      )
+    }
+    "effect" =>
+      table_elem(
+        ns,
+        "tableStyle",
+        [
+          xa("styleId", catalog_table_style_id),
+          xa("styleName", "Catalog Table Style"),
+        ],
+        [
+          Element(table_elem(ns, "tblBg", [], [Element(content)])),
+          Element(catalog_table_part_style_for_target(content)),
+        ],
+      )
+    _ =>
+      table_elem(
+        ns,
+        "tableStyle",
+        [
+          xa("styleId", catalog_table_style_id),
+          xa("styleName", "Catalog Table Style"),
+        ],
+        [Element(catalog_table_part_style_for_target(content))],
+      )
+  }
+}
+
+///|
+fn catalog_table_with_style_pr(
+  ns : String,
+  tbl_pr : @xml.Element,
+) -> @xml.Element {
+  table_elem(ns, "tbl", [], [
+    Element(tbl_pr),
+    Element(
+      table_elem(ns, "tblGrid", [], [
+        Element(table_elem(ns, "gridCol", [xa("w", "914400")], [])),
+        Element(table_elem(ns, "gridCol", [xa("w", "914400")], [])),
+      ]),
+    ),
+    Element(
+      table_elem(ns, "tr", [xa("h", "914400")], [
+        Element(default_table_cell(ns)),
+        Element(default_table_cell(ns)),
+      ]),
+    ),
+    Element(
+      table_elem(ns, "tr", [xa("h", "914400")], [
+        Element(default_table_cell(ns)),
+        Element(default_table_cell(ns)),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_table_style_id_target(content : @xml.Element) -> @xml.Element {
+  {
+    name: content.name,
+    attributes: content.attributes,
+    children: [Text(catalog_table_style_id)],
+  }
+}
+
+///|
+fn catalog_table_properties_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  let style_attrs : Array[@xml.Attribute] = [
+    xa("firstRow", "1"),
+    xa("lastRow", "1"),
+    xa("firstCol", "1"),
+    xa("lastCol", "1"),
+    xa("bandRow", "1"),
+    xa("bandCol", "1"),
+  ]
+  match content.name.local_name {
+    "tblPr" => {
+      let children : Array[@xml.Node] = [
+        Element(
+          table_elem(ns, "solidFill", [], [
+            Element(table_elem(ns, "srgbClr", [xa("val", "DDEBF7")], [])),
+          ]),
+        ),
+      ]
+      for child in content.children {
+        match child {
+          Element(ce) =>
+            match ce.name.local_name {
+              "noFill"
+              | "solidFill"
+              | "gradFill"
+              | "blipFill"
+              | "pattFill"
+              | "grpFill" => ()
+              _ => children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      { name: content.name, attributes: content.attributes, children }
+    }
+    "tableStyleId" =>
+      table_elem(ns, "tblPr", style_attrs, [
+        Element(catalog_table_style_id_target(content)),
+      ])
+    "tableStyle" =>
+      table_elem(ns, "tblPr", style_attrs, [
+        Element(catalog_table_style_for_target(content)),
+      ])
+    "tblBg"
+    | "effect"
+    | "font"
+    | "tcTxStyle"
+    | "tcStyle"
+    | "tcBdr"
+    | "wholeTbl"
+    | "band1H"
+    | "band2H"
+    | "band1V"
+    | "band2V"
+    | "lastCol"
+    | "firstCol"
+    | "lastRow"
+    | "seCell"
+    | "swCell"
+    | "firstRow"
+    | "neCell"
+    | "nwCell"
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "insideH"
+    | "insideV"
+    | "tl2br"
+    | "tr2bl"
+    | "fill"
+    | "cell3D" =>
+      table_elem(ns, "tblPr", style_attrs, [
+        Element(catalog_table_style_for_target(content)),
+      ])
+    _ => table_elem(ns, "tblPr", style_attrs, [])
+  }
+}
+
+///|
+fn catalog_table_cell_pr_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "cell3D" =>
+      table_elem(ns, "tcPr", [], [
+        Element(catalog_dml_ensure_attr(content, "prstMaterial", "plastic")),
+      ])
+    "headers" => {
+      let children : Array[@xml.Node] = []
+      let mut has_header = false
+      for child in content.children {
+        match child {
+          Element(ce) =>
+            if ce.name.local_name == "header" {
+              has_header = true
+              children.push(Element(catalog_table_header_for_target(ce)))
+            } else {
+              children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      if !has_header {
+        children.push(
+          Element(table_elem(ns, "header", [], [Text("Catalog header")])),
+        )
+      }
+      table_elem(ns, "tcPr", [], [
+        Element({ name: content.name, attributes: content.attributes, children }),
+      ])
+    }
+    "header" =>
+      table_elem(ns, "tcPr", [], [
+        Element(
+          table_elem(ns, "headers", [], [
+            Element(catalog_table_header_for_target(content)),
+          ]),
+        ),
+      ])
+    _ => content
+  }
+}
+
+///|
+fn catalog_table_header_for_target(content : @xml.Element) -> @xml.Element {
+  let children : Array[@xml.Node] = []
+  let mut has_text = false
+  for child in content.children {
+    match child {
+      Text(t) =>
+        if t.length() > 0 {
+          has_text = true
+          children.push(child)
+        } else {
+          children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  if !has_text {
+    children.push(Text("Catalog header"))
+  }
+  { name: content.name, attributes: content.attributes, children }
+}
+
+///|
+fn catalog_table_style_list_for_target(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "tblStyleLst" => {
+      let styled = catalog_dml_ensure_attr(
+        content, "def", catalog_table_style_id,
+      )
+      let children : Array[@xml.Node] = []
+      let mut has_style = false
+      for child in styled.children {
+        match child {
+          Element(ce) =>
+            if ce.name.local_name == "tblStyle" {
+              has_style = true
+              children.push(Element(catalog_table_style_for_target(ce)))
+            } else {
+              children.push(child)
+            }
+          _ => children.push(child)
+        }
+      }
+      if !has_style {
+        children.push(
+          Element(
+            catalog_table_style_for_target(table_elem(ns, "tblStyle", [], [])),
+          ),
+        )
+      }
+      { name: styled.name, attributes: styled.attributes, children }
+    }
+    "tblStyle" =>
+      table_elem(ns, "tblStyleLst", [xa("def", catalog_table_style_id)], [
+        Element(catalog_table_style_for_target(content)),
+      ])
+    _ =>
+      table_elem(ns, "tblStyleLst", [xa("def", catalog_table_style_id)], [
+        Element(
+          catalog_table_style_for_target(table_elem(ns, "tblStyle", [], [])),
+        ),
+      ])
+  }
+}
+
+///|
+fn catalog_default_table_style_list() -> @xml.Element {
+  table_elem(NS_A, "tblStyleLst", [xa("def", catalog_table_style_id)], [
+    Element(
+      table_elem(
+        NS_A,
+        "tblStyle",
+        [
+          xa("styleId", catalog_table_style_id),
+          xa("styleName", "Catalog Table Style"),
+        ],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn catalog_table_style_part_root(content : @xml.Element) -> @xml.Element {
+  catalog_table_style_list_for_target(content)
+}
+
+///|
+fn catalog_table_style_reference_tbl_pr() -> @xml.Element {
+  table_elem(
+    NS_A,
+    "tblPr",
+    [
+      xa("firstRow", "1"),
+      xa("lastRow", "1"),
+      xa("firstCol", "1"),
+      xa("lastCol", "1"),
+      xa("bandRow", "1"),
+      xa("bandCol", "1"),
+    ],
+    [
+      Element(
+        table_elem(NS_A, "tableStyleId", [], [Text(catalog_table_style_id)]),
+      ),
+    ],
+  )
+}
+
+///|
+fn pptx_presentation_rels_with_table_styles() -> @xml.Element {
+  xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
+          ),
+          xa("Target", "slides/slide1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId4"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/tableStyles",
+          ),
+          xa("Target", "tableStyles.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn pptx_package_with_table_style_part(table_styles : @xml.Element) -> Bytes {
+  let table = catalog_table_with_style_pr(
+    NS_A,
+    catalog_table_style_reference_tbl_pr(),
+  )
+  let base = pptx_package(default_table_slide_body(table))
+  let with_types = replace_zip_entry(
+    base,
+    "[Content_Types].xml",
+    content_types_part([
+      (
+        "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+      ),
+      (
+        "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+      ),
+      (
+        "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+      ),
+      (
+        "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+      ),
+      (
+        "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+      ),
+      (
+        "/ppt/tableStyles.xml", "application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml",
+      ),
+    ]),
+  )
+  let with_rels = replace_zip_entry(
+    with_types,
+    "ppt/_rels/presentation.xml.rels",
+    write_part(pptx_presentation_rels_with_table_styles()),
+  )
+  replace_zip_entry(with_rels, "ppt/tableStyles.xml", write_part(table_styles))
+}
+
+///|
 /// Normalize a catalog table-family target into the minimum
 /// `<a:tbl>` context consumed by the existing PresentationML table
 /// renderer. The target subtree itself is left intact and, for
@@ -7381,6 +11637,57 @@ fn catalog_table_root(content : @xml.Element) -> @xml.Element {
   let ns = table_ns_for(content)
   match content.name.local_name {
     "tbl" => content
+    "tblPr" =>
+      catalog_table_with_style_pr(
+        ns,
+        catalog_table_properties_for_target(content),
+      )
+    "tableStyle"
+    | "tableStyleId"
+    | "tblBg"
+    | "effect"
+    | "font"
+    | "tcTxStyle"
+    | "tcStyle"
+    | "tcBdr"
+    | "wholeTbl"
+    | "band1H"
+    | "band2H"
+    | "band1V"
+    | "band2V"
+    | "lastCol"
+    | "firstCol"
+    | "lastRow"
+    | "seCell"
+    | "swCell"
+    | "firstRow"
+    | "neCell"
+    | "nwCell"
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "insideH"
+    | "insideV"
+    | "tl2br"
+    | "tr2bl"
+    | "fill"
+    | "cell3D" =>
+      catalog_table_with_style_pr(
+        ns,
+        catalog_table_properties_for_target(content),
+      )
+    "headers" | "header" =>
+      table_with_parts(
+        ns,
+        None,
+        default_table_grid(ns),
+        table_elem(ns, "tr", [xa("h", "914400")], [
+          Element(
+            table_cell_with_pr(ns, catalog_table_cell_pr_for_target(content)),
+          ),
+        ]),
+      )
     "tblGrid" => table_with_parts(ns, None, content, default_table_row(ns))
     "gridCol" =>
       table_with_parts(
@@ -7395,7 +11702,9 @@ fn catalog_table_root(content : @xml.Element) -> @xml.Element {
         ns,
         None,
         default_table_grid(ns),
-        table_elem(ns, "tr", [xa("h", "914400")], [Element(content)]),
+        table_elem(ns, "tr", [xa("h", "914400")], [
+          Element(catalog_table_visible_cell(content)),
+        ]),
       )
     "tcPr" =>
       table_with_parts(
@@ -7415,7 +11724,9 @@ fn catalog_table_root(content : @xml.Element) -> @xml.Element {
           Element(
             table_cell_with_pr(
               ns,
-              table_elem(ns, "tcPr", [], [Element(content)]),
+              table_elem(ns, "tcPr", [], [
+                Element(catalog_table_visible_line(content)),
+              ]),
             ),
           ),
         ]),
@@ -7465,6 +11776,3289 @@ fn default_table_slide_body(content : @xml.Element) -> @xml.Element {
 }
 
 ///|
+fn is_drawingml_text_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match (local_name, type_local) {
+    ("noAutofit", "CT_TextNoAutofit")
+    | ("spAutoFit", "CT_TextShapeAutofit")
+    | ("endParaRPr", "CT_TextCharacterProperties")
+    | ("defRPr", "CT_TextCharacterProperties")
+    | ("buClrTx", "CT_TextBulletColorFollowText")
+    | ("buClr", "CT_Color")
+    | ("buSzTx", "CT_TextBulletSizeFollowText")
+    | ("buSzPct", "CT_TextBulletSizePercent")
+    | ("buSzPts", "CT_TextBulletSizePoint")
+    | ("buFontTx", "CT_TextBulletTypefaceFollowText")
+    | ("buFont", "CT_TextFont")
+    | ("buNone", "CT_TextNoBullet")
+    | ("buAutoNum", "CT_TextAutonumberBullet")
+    | ("buChar", "CT_TextCharBullet")
+    | ("buBlip", "CT_TextBlipBullet")
+    | ("uLnTx", "CT_TextUnderlineLineFollowText")
+    | ("uLn", "CT_LineProperties")
+    | ("uFillTx", "CT_TextUnderlineFillFollowText")
+    | ("uFill", "CT_TextUnderlineFillGroupWrapper")
+    | ("highlight", "CT_Color")
+    | ("sym", "CT_TextFont")
+    | ("hlinkMouseOver", "CT_Hyperlink")
+    | ("rtl", "CT_Boolean")
+    | ("tab", "CT_TextTabStop")
+    | ("spcPct", "CT_TextSpacingPercent")
+    | ("spcPts", "CT_TextSpacingPoint")
+    | ("lnSpc", "CT_TextSpacing")
+    | ("spcBef", "CT_TextSpacing")
+    | ("spcAft", "CT_TextSpacing")
+    | ("tabLst", "CT_TextTabStopList")
+    | ("br", "CT_TextLineBreak")
+    | ("fld", "CT_TextField") => true
+    _ => false
+  }
+}
+
+///|
+fn catalog_dml_text_solid_fill(ns_a : String, hex : String) -> @xml.Element {
+  xep("a", ns_a, "solidFill", [], [
+    Element(xep("a", ns_a, "srgbClr", [xa("val", hex)], [])),
+  ])
+}
+
+///|
+fn catalog_dml_text_default_body_pr(ns_a : String) -> @xml.Element {
+  xep(
+    "a",
+    ns_a,
+    "bodyPr",
+    [
+      xa("lIns", "91440"),
+      xa("tIns", "45720"),
+      xa("rIns", "91440"),
+      xa("bIns", "45720"),
+      xa("wrap", "square"),
+    ],
+    [],
+  )
+}
+
+///|
+fn catalog_dml_text_default_lst_style(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "lstStyle", [], [])
+}
+
+///|
+fn catalog_dml_text_bulleted_lst_style(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "lstStyle", [], [
+    Element(
+      xep(
+        "a",
+        ns_a,
+        "defPPr",
+        [xa("marL", "342900"), xa("indent", "-228600")],
+        [
+          Element(catalog_dml_default_color_container(ns_a, "buClr", "C00000")),
+          Element(xep("a", ns_a, "buSzPts", [xa("val", "2600")], [])),
+          Element(xep("a", ns_a, "buFont", [xa("typeface", "Aptos")], [])),
+          Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])),
+        ],
+      ),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_text_r_pr_with_children(
+  ns_a : String,
+  children : Array[@xml.Node],
+) -> @xml.Element {
+  xep("a", ns_a, "rPr", [xa("lang", "en-US"), xa("sz", "2200")], children)
+}
+
+///|
+fn catalog_dml_text_run(
+  ns_a : String,
+  text : String,
+  r_pr? : @xml.Element? = None,
+) -> @xml.Element {
+  let children : Array[@xml.Node] = []
+  match r_pr {
+    Some(rp) => children.push(Element(rp))
+    None => ()
+  }
+  children.push(Element(xep("a", ns_a, "t", [], [Text(text)])))
+  xep("a", ns_a, "r", [], children)
+}
+
+///|
+fn catalog_dml_text_default_run(ns_a : String, text : String) -> @xml.Element {
+  catalog_dml_text_run(
+    ns_a,
+    text,
+    r_pr=Some(
+      catalog_dml_text_r_pr_with_children(ns_a, [
+        Element(catalog_dml_text_solid_fill(ns_a, "1F4E79")),
+        Element(xep("a", ns_a, "latin", [xa("typeface", "Aptos")], [])),
+      ]),
+    ),
+  )
+}
+
+///|
+fn catalog_dml_text_body_pr_for_target(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "noAutofit" | "spAutoFit" =>
+      xep("a", ns_a, "bodyPr", [], [Element(content)])
+    _ => catalog_dml_text_default_body_pr(ns_a)
+  }
+}
+
+///|
+fn catalog_dml_text_bullet_child_for_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  match content.name.local_name {
+    "buChar" => catalog_dml_ensure_attr(content, "char", "*")
+    "buAutoNum" =>
+      catalog_dml_ensure_attr(
+        catalog_dml_ensure_attr(content, "type", "arabicPeriod"),
+        "startAt",
+        "3",
+      )
+    "buClr" => catalog_dml_color_container_with_srgb(content, "C00000")
+    "buSzPct" => catalog_dml_ensure_attr(content, "val", "150000")
+    "buSzPts" => catalog_dml_ensure_attr(content, "val", "3000")
+    "buFont" => catalog_dml_ensure_attr(content, "typeface", "Courier New")
+    _ => content
+  }
+}
+
+///|
+fn catalog_dml_blip_with_embed(
+  blip : @xml.Element,
+  rid : String,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw = false
+  for attr in blip.attributes {
+    if attr.name.local_name == "embed" {
+      saw = true
+      attrs.push({
+        name: {
+          prefix: Some("r"),
+          local_name: "embed",
+          ns: Some(NS_OFFICE_REL),
+        },
+        value: rid,
+      })
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw {
+    attrs.push({
+      name: { prefix: Some("r"), local_name: "embed", ns: Some(NS_OFFICE_REL) },
+      value: rid,
+    })
+  }
+  { name: blip.name, attributes: attrs, children: blip.children }
+}
+
+///|
+fn catalog_dml_text_bu_blip_with_embed(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let children : Array[@xml.Node] = []
+  let mut has_blip = false
+  for child in content.children {
+    match child {
+      Element(ce) =>
+        if ce.name.local_name == "blip" {
+          has_blip = true
+          children.push(Element(catalog_dml_blip_with_embed(ce, "rId3")))
+        } else {
+          children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  if !has_blip {
+    children.push(
+      Element(
+        catalog_dml_blip_with_embed(xep("a", ns_a, "blip", [], []), "rId3"),
+      ),
+    )
+  }
+  { name: content.name, attributes: content.attributes, children }
+}
+
+///|
+fn catalog_dml_text_bullet_p_pr(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let children : Array[@xml.Node] = []
+  match content.name.local_name {
+    "buClrTx" => {
+      children.push(
+        Element(catalog_dml_default_color_container(ns_a, "buClr", "C00000")),
+      )
+      children.push(Element(content))
+      children.push(Element(xep("a", ns_a, "buSzPts", [xa("val", "2600")], [])))
+      children.push(
+        Element(xep("a", ns_a, "buFont", [xa("typeface", "Aptos")], [])),
+      )
+      children.push(Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])))
+    }
+    "buSzTx" => {
+      children.push(
+        Element(catalog_dml_default_color_container(ns_a, "buClr", "C00000")),
+      )
+      children.push(Element(xep("a", ns_a, "buSzPts", [xa("val", "3600")], [])))
+      children.push(Element(content))
+      children.push(
+        Element(xep("a", ns_a, "buFont", [xa("typeface", "Aptos")], [])),
+      )
+      children.push(Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])))
+    }
+    "buFontTx" => {
+      children.push(
+        Element(catalog_dml_default_color_container(ns_a, "buClr", "C00000")),
+      )
+      children.push(Element(xep("a", ns_a, "buSzPts", [xa("val", "2600")], [])))
+      children.push(
+        Element(xep("a", ns_a, "buFont", [xa("typeface", "Courier New")], [])),
+      )
+      children.push(Element(content))
+      children.push(Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])))
+    }
+    "buNone" => children.push(Element(content))
+    "buBlip" =>
+      children.push(Element(catalog_dml_text_bu_blip_with_embed(content)))
+    "buClr" => {
+      children.push(Element(catalog_dml_text_bullet_child_for_target(content)))
+      children.push(Element(xep("a", ns_a, "buSzPts", [xa("val", "2600")], [])))
+      children.push(
+        Element(xep("a", ns_a, "buFont", [xa("typeface", "Aptos")], [])),
+      )
+      children.push(Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])))
+    }
+    "buSzPct" | "buSzPts" => {
+      children.push(
+        Element(catalog_dml_default_color_container(ns_a, "buClr", "C00000")),
+      )
+      children.push(Element(catalog_dml_text_bullet_child_for_target(content)))
+      children.push(
+        Element(xep("a", ns_a, "buFont", [xa("typeface", "Aptos")], [])),
+      )
+      children.push(Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])))
+    }
+    "buFont" => {
+      children.push(
+        Element(catalog_dml_default_color_container(ns_a, "buClr", "C00000")),
+      )
+      children.push(Element(xep("a", ns_a, "buSzPts", [xa("val", "2600")], [])))
+      children.push(Element(catalog_dml_text_bullet_child_for_target(content)))
+      children.push(Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])))
+    }
+    _ => {
+      children.push(
+        Element(catalog_dml_default_color_container(ns_a, "buClr", "C00000")),
+      )
+      children.push(Element(xep("a", ns_a, "buSzPts", [xa("val", "2600")], [])))
+      children.push(
+        Element(xep("a", ns_a, "buFont", [xa("typeface", "Aptos")], [])),
+      )
+      children.push(Element(catalog_dml_text_bullet_child_for_target(content)))
+      if content.name.local_name != "buChar" &&
+        content.name.local_name != "buAutoNum" {
+        children.push(Element(xep("a", ns_a, "buChar", [xa("char", "*")], [])))
+      }
+    }
+  }
+  xep(
+    "a",
+    ns_a,
+    "pPr",
+    [xa("marL", "342900"), xa("indent", "-228600")],
+    children,
+  )
+}
+
+///|
+fn catalog_dml_text_spacing_child(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "spcPct" => catalog_dml_ensure_attr(content, "val", "200000")
+    "spcPts" => catalog_dml_ensure_attr(content, "val", "3600")
+    _ => content
+  }
+}
+
+///|
+fn catalog_dml_text_spacing_p_pr(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let child = match content.name.local_name {
+    "spcPct" | "spcPts" =>
+      xep("a", ns_a, "lnSpc", [], [
+        Element(catalog_dml_text_spacing_child(content)),
+      ])
+    "lnSpc" =>
+      if catalog_dml_has_child(content, "spcPct") ||
+        catalog_dml_has_child(content, "spcPts") {
+        content
+      } else {
+        xep("a", ns_a, "lnSpc", [], [
+          Element(xep("a", ns_a, "spcPts", [xa("val", "3600")], [])),
+        ])
+      }
+    "spcBef" | "spcAft" => {
+      let children : Array[@xml.Node] = [
+        Element(xep("a", ns_a, "spcPts", [xa("val", "2400")], [])),
+      ]
+      for n in content.children {
+        match n {
+          Element(ce) =>
+            match ce.name.local_name {
+              "spcPct" | "spcPts" => ()
+              _ => children.push(n)
+            }
+          _ => children.push(n)
+        }
+      }
+      { name: content.name, attributes: content.attributes, children }
+    }
+    _ => content
+  }
+  xep("a", ns_a, "pPr", [], [Element(child)])
+}
+
+///|
+fn catalog_dml_text_tab_p_pr(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let tab_lst = match content.name.local_name {
+    "tab" =>
+      xep("a", ns_a, "tabLst", [], [
+        Element(
+          catalog_dml_ensure_attr(
+            catalog_dml_ensure_attr(content, "pos", "1828800"),
+            "algn",
+            "l",
+          ),
+        ),
+      ])
+    "tabLst" =>
+      if catalog_dml_has_child(content, "tab") {
+        let children : Array[@xml.Node] = []
+        for child in content.children {
+          match child {
+            Element(ce) =>
+              if ce.name.local_name == "tab" {
+                children.push(
+                  Element(
+                    catalog_dml_ensure_attr(
+                      catalog_dml_ensure_attr(ce, "pos", "1828800"),
+                      "algn",
+                      "l",
+                    ),
+                  ),
+                )
+              } else {
+                children.push(child)
+              }
+            _ => children.push(child)
+          }
+        }
+        { name: content.name, attributes: content.attributes, children }
+      } else {
+        xep("a", ns_a, "tabLst", [], [
+          Element(
+            xep("a", ns_a, "tab", [xa("pos", "1828800"), xa("algn", "l")], []),
+          ),
+        ])
+      }
+    _ => content
+  }
+  xep("a", ns_a, "pPr", [], [Element(tab_lst)])
+}
+
+///|
+fn catalog_dml_text_hyperlink_with_relationship(
+  content : @xml.Element,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  let mut saw_tooltip = false
+  for attr in content.attributes {
+    if attr.name.local_name == "id" {
+      saw_id = true
+      attrs.push({ name: attr.name, value: "rId2" })
+    } else if attr.name.local_name == "tooltip" {
+      saw_tooltip = true
+      attrs.push({ name: attr.name, value: "Catalog hover link" })
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw_id {
+    attrs.push({
+      name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+      value: "rId2",
+    })
+  }
+  if !saw_tooltip {
+    attrs.push(xa("tooltip", "Catalog hover link"))
+  }
+  { name: content.name, attributes: attrs, children: content.children }
+}
+
+///|
+fn catalog_dml_text_r_pr_child_for_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "highlight" => catalog_dml_color_container_with_srgb(content, "FFF2CC")
+    "rtl" => catalog_dml_ensure_attr(content, "val", "1")
+    "sym" => catalog_dml_ensure_attr(content, "typeface", "Wingdings")
+    "hlinkMouseOver" => catalog_dml_text_hyperlink_with_relationship(content)
+    "uLn" =>
+      if catalog_dml_has_child(content, "solidFill") {
+        content
+      } else {
+        let children : Array[@xml.Node] = [
+          Element(catalog_dml_text_solid_fill(ns_a, "C00000")),
+        ]
+        for child in content.children {
+          match child {
+            Element(ce) =>
+              match ce.name.local_name {
+                "noFill" | "solidFill" | "gradFill" | "pattFill" => ()
+                _ => children.push(child)
+              }
+            _ => children.push(child)
+          }
+        }
+        { name: content.name, attributes: content.attributes, children }
+      }
+    "uFill" =>
+      if catalog_dml_has_child(content, "solidFill") {
+        content
+      } else {
+        let children : Array[@xml.Node] = [
+          Element(catalog_dml_text_solid_fill(ns_a, "C00000")),
+        ]
+        for child in content.children {
+          match child {
+            Element(ce) =>
+              match ce.name.local_name {
+                "noFill" | "solidFill" | "gradFill" | "pattFill" => ()
+                _ => children.push(child)
+              }
+            _ => children.push(child)
+          }
+        }
+        { name: content.name, attributes: content.attributes, children }
+      }
+    _ => content
+  }
+}
+
+///|
+fn catalog_dml_text_r_pr_for_target(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let children : Array[@xml.Node] = [
+    Element(catalog_dml_text_solid_fill(ns_a, "1F4E79")),
+    Element(xep("a", ns_a, "latin", [xa("typeface", "Aptos")], [])),
+  ]
+  match content.name.local_name {
+    "uLn"
+    | "uLnTx"
+    | "uFill"
+    | "uFillTx"
+    | "highlight"
+    | "sym"
+    | "hlinkMouseOver"
+    | "rtl" =>
+      children.push(Element(catalog_dml_text_r_pr_child_for_target(content)))
+    _ => ()
+  }
+  let attrs : Array[@xml.Attribute] = [xa("lang", "en-US"), xa("sz", "2400")]
+  xep("a", ns_a, "rPr", attrs, children)
+}
+
+///|
+fn catalog_dml_text_def_r_pr_for_target(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let seeded = catalog_dml_ensure_attr(
+    catalog_dml_ensure_attr(content, "sz", "3000"),
+    "b",
+    "1",
+  )
+  let target_children : Array[@xml.Node] = [
+    Element(catalog_dml_text_solid_fill(ns_a, "C00000")),
+    Element(xep("a", ns_a, "latin", [xa("typeface", "Aptos")], [])),
+  ]
+  for child in seeded.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "noFill" | "solidFill" | "gradFill" | "pattFill" | "latin" => ()
+          _ => target_children.push(child)
+        }
+      _ => target_children.push(child)
+    }
+  }
+  let target : @xml.Element = {
+    name: seeded.name,
+    attributes: seeded.attributes,
+    children: target_children,
+  }
+  xep("a", ns_a, "pPr", [], [Element(target)])
+}
+
+///|
+fn catalog_dml_text_paragraph_for_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "br" =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_text_default_run(ns_a, "Before")),
+        Element(content),
+        Element(catalog_dml_text_default_run(ns_a, "After")),
+      ])
+    "fld" =>
+      xep("a", ns_a, "p", [], [
+        Element(content),
+        Element(catalog_dml_text_default_run(ns_a, " field tail")),
+      ])
+    "endParaRPr" =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_ensure_attr(content, "sz", "3600")),
+      ])
+    "defRPr" =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_text_def_r_pr_for_target(content)),
+        Element(
+          xep("a", ns_a, "r", [], [
+            Element(xep("a", ns_a, "t", [], [Text("Default run properties")])),
+          ]),
+        ),
+      ])
+    "buClrTx"
+    | "buClr"
+    | "buSzTx"
+    | "buSzPct"
+    | "buSzPts"
+    | "buFontTx"
+    | "buFont"
+    | "buNone"
+    | "buAutoNum"
+    | "buChar"
+    | "buBlip" =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_text_bullet_p_pr(content)),
+        Element(catalog_dml_text_default_run(ns_a, "Bullet item")),
+      ])
+    "lnSpc" | "spcPct" | "spcPts" =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_text_spacing_p_pr(content)),
+        Element(catalog_dml_text_default_run(ns_a, "Line one")),
+        Element(xep("a", ns_a, "br", [], [])),
+        Element(catalog_dml_text_default_run(ns_a, "Line two")),
+      ])
+    "spcBef" | "spcAft" =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_text_spacing_p_pr(content)),
+        Element(catalog_dml_text_default_run(ns_a, "Spaced paragraph")),
+      ])
+    "tab" | "tabLst" =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_text_tab_p_pr(content)),
+        Element(catalog_dml_text_default_run(ns_a, "A\tB")),
+      ])
+    "uLnTx"
+    | "uLn"
+    | "uFillTx"
+    | "uFill"
+    | "highlight"
+    | "sym"
+    | "hlinkMouseOver"
+    | "rtl" =>
+      xep("a", ns_a, "p", [], [
+        Element(
+          catalog_dml_text_run(
+            ns_a,
+            "Run properties",
+            r_pr=Some(catalog_dml_text_r_pr_for_target(content)),
+          ),
+        ),
+      ])
+    _ =>
+      xep("a", ns_a, "p", [], [
+        Element(catalog_dml_text_default_run(ns_a, "Catalog text")),
+      ])
+  }
+}
+
+///|
+fn catalog_dml_text_tx_body_for_target(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let children : Array[@xml.Node] = [
+    Element(catalog_dml_text_body_pr_for_target(content)),
+  ]
+  if content.name.local_name == "buNone" {
+    children.push(Element(catalog_dml_text_bulleted_lst_style(ns_a)))
+  } else {
+    children.push(Element(catalog_dml_text_default_lst_style(ns_a)))
+  }
+  match content.name.local_name {
+    "spcBef" =>
+      children.push(
+        Element(
+          xep("a", ns_a, "p", [], [
+            Element(catalog_dml_text_default_run(ns_a, "Previous paragraph")),
+          ]),
+        ),
+      )
+    _ => ()
+  }
+  children.push(Element(catalog_dml_text_paragraph_for_target(content)))
+  match content.name.local_name {
+    "spcAft" | "endParaRPr" =>
+      children.push(
+        Element(
+          xep("a", ns_a, "p", [], [
+            Element(catalog_dml_text_default_run(ns_a, "Following paragraph")),
+          ]),
+        ),
+      )
+    _ => ()
+  }
+  xep("p", NS_PML, "txBody", [], children)
+}
+
+///|
+fn catalog_dml_text_shape(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  xep("p", NS_PML, "sp", [], [
+    Element(
+      xep("p", NS_PML, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog DML Text")],
+            [],
+          ),
+        ),
+        Element(xep("p", NS_PML, "cNvSpPr", [], [])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+            ),
+            Element(
+              xep(
+                "a",
+                ns_a,
+                "ext",
+                [xa("cx", "5486400"), xa("cy", "1828800")],
+                [],
+              ),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(xep("a", ns_a, "noFill", [], [])),
+      ]),
+    ),
+    Element(catalog_dml_text_tx_body_for_target(content)),
+  ])
+}
+
+///|
+fn catalog_dml_text_root(content : @xml.Element) -> @xml.Element {
+  pptx_common_slide_data(NS_PML, [catalog_dml_text_shape(content)])
+}
+
+///|
+fn catalog_theme_scheme_slots() -> Array[String] {
+  [
+    "dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5",
+    "accent6", "hlink", "folHlink",
+  ]
+}
+
+///|
+fn catalog_theme_scheme_child_order() -> Array[String] {
+  let order : Array[String] = []
+  for slot in catalog_theme_scheme_slots() {
+    order.push(slot)
+  }
+  order.push("extLst")
+  order
+}
+
+///|
+fn catalog_rewrite_dml_namespace(
+  e : @xml.Element,
+  ns_a : String,
+) -> @xml.Element {
+  let name : @xml.QName = if strip_ns(e.name.ns.unwrap_or("")) ==
+    "drawingml/main" {
+    { prefix: Some("a"), local_name: e.name.local_name, ns: Some(ns_a) }
+  } else {
+    e.name
+  }
+  let attrs : Array[@xml.Attribute] = []
+  for attr in e.attributes {
+    let attr_name : @xml.QName = if strip_ns(attr.name.ns.unwrap_or("")) ==
+      "drawingml/main" {
+      { prefix: Some("a"), local_name: attr.name.local_name, ns: Some(ns_a) }
+    } else {
+      attr.name
+    }
+    attrs.push({ name: attr_name, value: attr.value })
+  }
+  let children : Array[@xml.Node] = []
+  for child in e.children {
+    match child {
+      Element(ce) =>
+        children.push(Element(catalog_rewrite_dml_namespace(ce, ns_a)))
+      other => children.push(other)
+    }
+  }
+  { name, attributes: attrs, children }
+}
+
+///|
+fn catalog_theme_canonical_root(ns_a : String) -> @xml.Element {
+  let root = try @xml.parse(pptx_theme_part()) catch {
+    _ => xep("a", ns_a, "theme", [xa("name", "Office Theme")], [])
+  } noraise {
+    doc => doc.root
+  }
+  catalog_rewrite_dml_namespace(root, ns_a)
+}
+
+///|
+fn catalog_target_element(e : @xml.Element) -> @xml.Element? {
+  if catalog_element_has_target_attr(e) {
+    return Some(e)
+  }
+  for child in e.children {
+    match child {
+      Element(ce) =>
+        match catalog_target_element(ce) {
+          Some(found) => return Some(found)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_theme_elements(theme : @xml.Element) -> @xml.Element? {
+  first_child_named_local_local(theme, "themeElements")
+}
+
+///|
+fn catalog_theme_color_scheme(theme : @xml.Element) -> @xml.Element? {
+  match catalog_theme_elements(theme) {
+    Some(te) => first_child_named_local_local(te, "clrScheme")
+    None => None
+  }
+}
+
+///|
+fn catalog_replace_theme_elements_child(
+  theme : @xml.Element,
+  child : @xml.Element,
+) -> @xml.Element {
+  let te = match catalog_theme_elements(theme) {
+    Some(found) => found
+    None => xep("a", child.name.ns.unwrap_or(NS_A), "themeElements", [], [])
+  }
+  let next_te = splice_child_in_sequence(
+    te,
+    child,
+    theme_elements_child_order(),
+  )
+  splice_child_in_sequence(theme, next_te, theme_child_order())
+}
+
+///|
+fn catalog_replace_theme_color_slot(
+  theme : @xml.Element,
+  slot : @xml.Element,
+) -> @xml.Element {
+  let ns_a = slot.name.ns.unwrap_or(NS_A)
+  let clr = match catalog_theme_color_scheme(theme) {
+    Some(found) => found
+    None => xep("a", ns_a, "clrScheme", [xa("name", "Office")], [])
+  }
+  let next_clr = splice_child_in_sequence(
+    clr,
+    slot,
+    catalog_theme_scheme_child_order(),
+  )
+  catalog_replace_theme_elements_child(theme, next_clr)
+}
+
+///|
+fn catalog_theme_font_scheme(theme : @xml.Element) -> @xml.Element? {
+  match catalog_theme_elements(theme) {
+    Some(te) => first_child_named_local_local(te, "fontScheme")
+    None => None
+  }
+}
+
+///|
+fn catalog_theme_style_matrix(theme : @xml.Element) -> @xml.Element? {
+  match catalog_theme_elements(theme) {
+    Some(te) => first_child_named_local_local(te, "fmtScheme")
+    None => None
+  }
+}
+
+///|
+fn catalog_theme_font_scheme_order() -> Array[String] {
+  ["majorFont", "minorFont", "extLst"]
+}
+
+///|
+fn catalog_theme_font_collection_order() -> Array[String] {
+  ["latin", "ea", "cs", "font", "extLst"]
+}
+
+///|
+fn catalog_theme_style_matrix_order() -> Array[String] {
+  ["fillStyleLst", "lnStyleLst", "effectStyleLst", "bgFillStyleLst"]
+}
+
+///|
+fn catalog_theme_default_text_font(
+  ns_a : String,
+  local_name : String,
+  typeface : String,
+) -> @xml.Element {
+  xep("a", ns_a, local_name, [xa("typeface", typeface)], [])
+}
+
+///|
+fn catalog_theme_default_font_collection(
+  ns_a : String,
+  local_name : String,
+) -> @xml.Element {
+  let face = if local_name == "majorFont" { "Calibri Light" } else { "Calibri" }
+  xep("a", ns_a, local_name, [], [
+    Element(catalog_theme_default_text_font(ns_a, "latin", face)),
+    Element(catalog_theme_default_text_font(ns_a, "ea", face)),
+    Element(catalog_theme_default_text_font(ns_a, "cs", face)),
+  ])
+}
+
+///|
+fn catalog_theme_font_scheme_with_collection_child(
+  theme : @xml.Element,
+  child : @xml.Element,
+) -> @xml.Element {
+  let ns_a = child.name.ns.unwrap_or(NS_A)
+  let fs = match catalog_theme_font_scheme(theme) {
+    Some(found) => found
+    None =>
+      xep("a", ns_a, "fontScheme", [xa("name", "Office")], [
+        Element(catalog_theme_default_font_collection(ns_a, "majorFont")),
+        Element(catalog_theme_default_font_collection(ns_a, "minorFont")),
+      ])
+  }
+  let next_fs = splice_child_in_sequence(
+    fs,
+    child,
+    catalog_theme_font_scheme_order(),
+  )
+  catalog_replace_theme_elements_child(theme, next_fs)
+}
+
+///|
+fn catalog_theme_font_scheme_with_face_child(
+  theme : @xml.Element,
+  child : @xml.Element,
+) -> @xml.Element {
+  let ns_a = child.name.ns.unwrap_or(NS_A)
+  let fs = match catalog_theme_font_scheme(theme) {
+    Some(found) => found
+    None =>
+      xep("a", ns_a, "fontScheme", [xa("name", "Office")], [
+        Element(catalog_theme_default_font_collection(ns_a, "majorFont")),
+        Element(catalog_theme_default_font_collection(ns_a, "minorFont")),
+      ])
+  }
+  let major = match first_child_named_local_local(fs, "majorFont") {
+    Some(found) => found
+    None => catalog_theme_default_font_collection(ns_a, "majorFont")
+  }
+  let next_major = splice_child_in_sequence(
+    major,
+    child,
+    catalog_theme_font_collection_order(),
+  )
+  let next_fs = splice_child_in_sequence(
+    fs,
+    next_major,
+    catalog_theme_font_scheme_order(),
+  )
+  catalog_replace_theme_elements_child(theme, next_fs)
+}
+
+///|
+fn catalog_theme_style_list_with_target(
+  list : @xml.Element,
+  target : @xml.Element,
+) -> @xml.Element {
+  let children : Array[@xml.Node] = [Element(target)]
+  for child in list.children {
+    children.push(child)
+  }
+  { name: list.name, attributes: list.attributes, children }
+}
+
+///|
+fn catalog_theme_style_matrix_with_child(
+  theme : @xml.Element,
+  child : @xml.Element,
+) -> @xml.Element {
+  let ns_a = child.name.ns.unwrap_or(NS_A)
+  let fmt = match catalog_theme_style_matrix(theme) {
+    Some(found) => found
+    None => xep("a", ns_a, "fmtScheme", [xa("name", "Office")], [])
+  }
+  let next_fmt = match child.name.local_name {
+    "effectStyle" => {
+      let list = match first_child_named_local_local(fmt, "effectStyleLst") {
+        Some(found) => found
+        None => xep("a", ns_a, "effectStyleLst", [], [])
+      }
+      let next_list = catalog_theme_style_list_with_target(list, child)
+      splice_child_in_sequence(
+        fmt,
+        next_list,
+        catalog_theme_style_matrix_order(),
+      )
+    }
+    _ =>
+      splice_child_in_sequence(fmt, child, catalog_theme_style_matrix_order())
+  }
+  catalog_replace_theme_elements_child(theme, next_fmt)
+}
+
+///|
+fn catalog_theme_custom_color_list_with_child(
+  theme : @xml.Element,
+  child : @xml.Element,
+) -> @xml.Element {
+  let ns_a = child.name.ns.unwrap_or(NS_A)
+  let list = match first_child_named_local_local(theme, "custClrLst") {
+    Some(found) => found
+    None => xep("a", ns_a, "custClrLst", [], [])
+  }
+  let children : Array[@xml.Node] = []
+  let mut inserted = false
+  for node in list.children {
+    match node {
+      Element(ce) if ce.name.local_name == "custClr" && !inserted => {
+        children.push(Element(child))
+        inserted = true
+      }
+      other => children.push(other)
+    }
+  }
+  if !inserted {
+    children.push(Element(child))
+  }
+  let next_list : @xml.Element = {
+    name: list.name,
+    attributes: list.attributes,
+    children,
+  }
+  splice_child_in_sequence(theme, next_list, theme_child_order())
+}
+
+///|
+fn catalog_theme_render_root(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let canonical = catalog_theme_canonical_root(ns_a)
+  match catalog_target_element(content) {
+    None => canonical
+    Some(target) => {
+      let normalized_target = catalog_rewrite_dml_namespace(target, ns_a)
+      if catalog_theme_scheme_slots().contains(
+          normalized_target.name.local_name,
+        ) {
+        catalog_replace_theme_color_slot(canonical, normalized_target)
+      } else {
+        match normalized_target.name.local_name {
+          "clrScheme" =>
+            catalog_replace_theme_elements_child(canonical, normalized_target)
+          "fontScheme" | "fmtScheme" =>
+            catalog_replace_theme_elements_child(canonical, normalized_target)
+          "themeElements" =>
+            splice_child_in_sequence(
+              canonical,
+              normalized_target,
+              theme_child_order(),
+            )
+          "majorFont" | "minorFont" =>
+            catalog_theme_font_scheme_with_collection_child(
+              canonical, normalized_target,
+            )
+          "latin" | "ea" | "cs" | "font" =>
+            catalog_theme_font_scheme_with_face_child(
+              canonical, normalized_target,
+            )
+          "fillStyleLst"
+          | "lnStyleLst"
+          | "effectStyleLst"
+          | "bgFillStyleLst"
+          | "effectStyle" =>
+            catalog_theme_style_matrix_with_child(canonical, normalized_target)
+          "custClrLst" =>
+            splice_child_in_sequence(
+              canonical,
+              normalized_target,
+              theme_child_order(),
+            )
+          "custClr" =>
+            catalog_theme_custom_color_list_with_child(
+              canonical, normalized_target,
+            )
+          _ => canonical
+        }
+      }
+    }
+  }
+}
+
+///|
+fn catalog_theme_scheme_probe_shape(
+  ns_p : String,
+  ns_a : String,
+  slot : String,
+  idx : Int,
+) -> @xml.Element {
+  let col = idx % 4
+  let row = idx / 4
+  let x = (914400 + col * 1828800).to_string()
+  let y = (914400 + row * 1219200).to_string()
+  xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", (idx + 20).to_string()), xa("name", "Theme " + slot)],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(xep("a", ns_a, "off", [xa("x", x), xa("y", y)], [])),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "1371600"), xa("cy", "762000")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "solidFill", [], [
+            Element(xep("a", ns_a, "schemeClr", [xa("val", slot)], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "ln", [xa("w", "12700")], [
+            Element(
+              xep("a", ns_a, "solidFill", [], [
+                Element(xep("a", ns_a, "schemeClr", [xa("val", "tx1")], [])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_theme_style_matrix_ref(
+  ns_a : String,
+  local_name : String,
+  idx : String,
+  color_slot : String,
+) -> @xml.Element {
+  xep("a", ns_a, local_name, [xa("idx", idx)], [
+    Element(xep("a", ns_a, "schemeClr", [xa("val", color_slot)], [])),
+  ])
+}
+
+///|
+fn catalog_theme_font_ref(ns_a : String, color_slot : String) -> @xml.Element {
+  xep("a", ns_a, "fontRef", [xa("idx", "minor")], [
+    Element(xep("a", ns_a, "schemeClr", [xa("val", color_slot)], [])),
+  ])
+}
+
+///|
+fn catalog_theme_style_matrix_probe_shape(
+  ns_p : String,
+  ns_a : String,
+  idx : Int,
+) -> @xml.Element {
+  let x = (914400 + idx * 1828800).to_string()
+  let y = "4572000"
+  let ref_idx = (idx + 1).to_string()
+  let color_slot = match idx {
+    0 => "accent1"
+    1 => "accent2"
+    _ => "accent3"
+  }
+  xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [
+              xa("id", (idx + 80).to_string()),
+              xa("name", "Theme Style " + ref_idx),
+            ],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(xep("a", ns_a, "off", [xa("x", x), xa("y", y)], [])),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "1371600"), xa("cy", "762000")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "style", [], [
+        Element(
+          catalog_theme_style_matrix_ref(ns_a, "lnRef", ref_idx, color_slot),
+        ),
+        Element(
+          catalog_theme_style_matrix_ref(ns_a, "fillRef", ref_idx, color_slot),
+        ),
+        Element(
+          catalog_theme_style_matrix_ref(ns_a, "effectRef", ref_idx, color_slot),
+        ),
+        Element(catalog_theme_font_ref(ns_a, color_slot)),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_theme_scheme_probe_slide(ns_a : String) -> @xml.Element {
+  let ns_p = NS_PML
+  let shapes : Array[@xml.Element] = []
+  for i, slot in catalog_theme_scheme_slots() {
+    shapes.push(catalog_theme_scheme_probe_shape(ns_p, ns_a, slot, i))
+  }
+  for i in 0..<3 {
+    shapes.push(catalog_theme_style_matrix_probe_shape(ns_p, ns_a, i))
+  }
+  pptx_common_slide_data(ns_p, shapes)
+}
+
+///|
+fn pptx_theme_package_for_render(content : @xml.Element) -> Bytes {
+  let ns_a = dml_ns_for(content)
+  let base = pptx_package_with_replaced_theme(
+    catalog_theme_render_root(content),
+  )
+  let slide = xep("p", NS_PML, "sld", [], [
+    Element(catalog_theme_scheme_probe_slide(ns_a)),
+  ])
+  replace_zip_entry(base, "ppt/slides/slide1.xml", write_part(slide))
+}
+
+///|
+fn is_drawingml_media_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match local_name {
+    "st" | "end" => type_local == "CT_AudioCDTime"
+    "audioCd" => type_local == "CT_AudioCD"
+    "wavAudioFile" => type_local == "CT_EmbeddedWAVAudioFile"
+    "audioFile" => type_local == "CT_AudioFile"
+    "videoFile" => type_local == "CT_VideoFile"
+    "quickTimeFile" => type_local == "CT_QuickTimeFile"
+    _ => false
+  }
+}
+
+///|
+fn catalog_media_relationship_attr(local_name : String) -> (String, String)? {
+  match local_name {
+    "wavAudioFile" => Some(("embed", "rId2"))
+    "audioFile" => Some(("link", "rId2"))
+    "videoFile" | "quickTimeFile" => Some(("link", "rId3"))
+    _ => None
+  }
+}
+
+///|
+fn catalog_dml_media_with_relationship(content : @xml.Element) -> @xml.Element {
+  match catalog_media_relationship_attr(content.name.local_name) {
+    None => content
+    Some((attr_local, rid)) => {
+      let attrs : Array[@xml.Attribute] = []
+      let mut saw = false
+      for attr in content.attributes {
+        if attr.name.local_name == attr_local {
+          saw = true
+          attrs.push({ name: attr.name, value: rid })
+        } else {
+          attrs.push(attr)
+        }
+      }
+      if !saw {
+        attrs.push({
+          name: {
+            prefix: Some("r"),
+            local_name: attr_local,
+            ns: Some(NS_OFFICE_REL),
+          },
+          value: rid,
+        })
+      }
+      { name: content.name, attributes: attrs, children: content.children }
+    }
+  }
+}
+
+///|
+fn catalog_dml_audio_cd_for_target(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let st = xep("a", ns_a, "st", [xa("track", "1"), xa("time", "0")], [])
+  let end = xep("a", ns_a, "end", [xa("track", "1"), xa("time", "1000")], [])
+  match content.name.local_name {
+    "audioCd" => content
+    "st" => xep("a", ns_a, "audioCd", [], [Element(content), Element(end)])
+    "end" => xep("a", ns_a, "audioCd", [], [Element(st), Element(content)])
+    _ => xep("a", ns_a, "audioCd", [], [Element(st), Element(end)])
+  }
+}
+
+///|
+fn catalog_dml_media_for_target(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "st" | "end" | "audioCd" => catalog_dml_audio_cd_for_target(content)
+    _ => catalog_dml_media_with_relationship(content)
+  }
+}
+
+///|
+fn catalog_dml_media_shape(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  let ns_a = dml_ns_for(content)
+  xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog Media")],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(
+          xep("p", ns_p, "nvPr", [], [
+            Element(catalog_dml_media_for_target(content)),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+            ),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "2286000"), xa("cy", "914400")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "solidFill", [], [
+            Element(xep("a", ns_a, "srgbClr", [xa("val", "D9EAF7")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_media_root(content : @xml.Element) -> @xml.Element {
+  pptx_common_slide_data(NS_PML, [catalog_dml_media_shape(content)])
+}
+
+///|
+fn catalog_dml_media_rels() -> Array[(String, String, String, String)] {
+  [
+    ("rId2", RT_AUDIO, "https://example.com/catalog.wav", "External"),
+    ("rId3", RT_VIDEO, "https://example.com/catalog.mov", "External"),
+  ]
+}
+
+///|
+fn is_drawingml_hyperlink_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  strip_ns(ns) == "drawingml/main" &&
+  catalog_type_local(type_name) == "CT_Hyperlink" &&
+  (local_name == "hlinkClick" || local_name == "hlinkHover")
+}
+
+///|
+fn catalog_dml_hyperlink_with_relationship(
+  content : @xml.Element,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw = false
+  for attr in content.attributes {
+    if attr.name.local_name == "id" {
+      saw = true
+      attrs.push({ name: attr.name, value: "rId2" })
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw {
+    attrs.push({
+      name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+      value: "rId2",
+    })
+  }
+  { name: content.name, attributes: attrs, children: content.children }
+}
+
+///|
+fn catalog_dml_hyperlink_root(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  let ns_a = dml_ns_for(content)
+  let shape = xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog Hyperlink")],
+            [Element(catalog_dml_hyperlink_with_relationship(content))],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+            ),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "2286000"), xa("cy", "914400")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "solidFill", [], [
+            Element(xep("a", ns_a, "srgbClr", [xa("val", "E2F0D9")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  pptx_common_slide_data(ns_p, [shape])
+}
+
+///|
+fn catalog_dml_hyperlink_rels() -> Array[(String, String, String, String)] {
+  [("rId2", RT_HYPERLINK, "https://example.com/catalog-link", "External")]
+}
+
+///|
+fn catalog_dml_text_rels() -> Array[(String, String, String, String)] {
+  let rels = catalog_dml_hyperlink_rels()
+  rels.push(("rId3", RT_IMAGE, "../media/image1.png", ""))
+  rels
+}
+
+///|
+fn is_drawingml_lock_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match local_name {
+    "spLocks" => type_local == "CT_ShapeLocking"
+    "cxnSpLocks" => type_local == "CT_ConnectorLocking"
+    "picLocks" => type_local == "CT_PictureLocking"
+    "grpSpLocks" => type_local == "CT_GroupLocking"
+    "graphicFrameLocks" => type_local == "CT_GraphicalObjectFrameLocking"
+    _ => false
+  }
+}
+
+///|
+fn catalog_dml_lock_sp(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  xep("p", NS_PML, "sp", [], [
+    Element(
+      xep("p", NS_PML, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog Locked Shape")],
+            [],
+          ),
+        ),
+        Element(xep("p", NS_PML, "cNvSpPr", [], [Element(content)])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+            ),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "2286000"), xa("cy", "914400")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "solidFill", [], [
+            Element(xep("a", ns_a, "srgbClr", [xa("val", "FFF2CC")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_lock_cxn_sp(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  xep("p", NS_PML, "cxnSp", [], [
+    Element(
+      xep("p", NS_PML, "nvCxnSpPr", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "cNvPr",
+            [xa("id", "3"), xa("name", "Catalog Locked Connector")],
+            [],
+          ),
+        ),
+        Element(xep("p", NS_PML, "cNvCxnSpPr", [], [Element(content)])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "2286000")], []),
+            ),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "2286000"), xa("cy", "914400")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "line")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "ln", [xa("w", "25400")], [
+            Element(
+              xep("a", ns_a, "solidFill", [], [
+                Element(xep("a", ns_a, "srgbClr", [xa("val", "4472C4")], [])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_lock_pic(content : @xml.Element) -> @xml.Element {
+  xep("p", NS_PML, "pic", [], [
+    Element(
+      xep("p", NS_PML, "nvPicPr", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "cNvPr",
+            [xa("id", "4"), xa("name", "Catalog Locked Picture")],
+            [],
+          ),
+        ),
+        Element(xep("p", NS_PML, "cNvPicPr", [], [Element(content)])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(catalog_pml_default_blip_fill()),
+    Element(catalog_pml_default_pic_sp_pr()),
+  ])
+}
+
+///|
+fn catalog_dml_lock_group(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  xep("p", NS_PML, "grpSp", [], [
+    Element(
+      xep("p", NS_PML, "nvGrpSpPr", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "cNvPr",
+            [xa("id", "5"), xa("name", "Catalog Locked Group")],
+            [],
+          ),
+        ),
+        Element(xep("p", NS_PML, "cNvGrpSpPr", [], [Element(content)])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "grpSpPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "3657600"), xa("y", "914400")], []),
+            ),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "1828800"), xa("cy", "914400")], []),
+            ),
+            Element(xep("a", ns_a, "chOff", [xa("x", "0"), xa("y", "0")], [])),
+            Element(
+              xep(
+                "a",
+                ns_a,
+                "chExt",
+                [xa("cx", "1828800"), xa("cy", "914400")],
+                [],
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+    Element(catalog_dml_group_transform_child_shape(NS_PML, ns_a)),
+  ])
+}
+
+///|
+fn catalog_dml_lock_graphic_frame(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  xep("p", NS_PML, "graphicFrame", [], [
+    Element(
+      xep("p", NS_PML, "nvGraphicFramePr", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "cNvPr",
+            [xa("id", "6"), xa("name", "Catalog Locked GraphicFrame")],
+            [],
+          ),
+        ),
+        Element(xep("p", NS_PML, "cNvGraphicFramePr", [], [Element(content)])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", NS_PML, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "3657600")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "2286000"), xa("cy", "914400")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "graphic", [], [
+        Element(
+          xep(
+            "a",
+            ns_a,
+            "graphicData",
+            [xa("uri", "urn:ooxml:catalog:locks")],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_lock_root(content : @xml.Element) -> @xml.Element {
+  let shape = match content.name.local_name {
+    "spLocks" => catalog_dml_lock_sp(content)
+    "cxnSpLocks" => catalog_dml_lock_cxn_sp(content)
+    "picLocks" => catalog_dml_lock_pic(content)
+    "grpSpLocks" => catalog_dml_lock_group(content)
+    "graphicFrameLocks" => catalog_dml_lock_graphic_frame(content)
+    _ => catalog_dml_lock_sp(content)
+  }
+  pptx_common_slide_data(NS_PML, [shape])
+}
+
+///|
+fn is_drawingml_gvml_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match (local_name, type_local) {
+    ("useSpRect", "CT_GvmlUseShapeRectangle") => true
+    ("nvSpPr", "CT_GvmlShapeNonVisual") => true
+    ("txSp", "CT_GvmlTextShape") => true
+    ("nvCxnSpPr", "CT_GvmlConnectorNonVisual") => true
+    ("nvPicPr", "CT_GvmlPictureNonVisual") => true
+    ("nvGraphicFramePr", "CT_GvmlGraphicFrameNonVisual") => true
+    ("nvGrpSpPr", "CT_GvmlGroupShapeNonVisual") => true
+    ("sp", "CT_GvmlShape") => true
+    ("cxnSp", "CT_GvmlConnector") => true
+    ("pic", "CT_GvmlPicture") => true
+    ("graphicFrame", "CT_GvmlGraphicalObjectFrame") => true
+    ("grpSp", "CT_GvmlGroupShape") => true
+    _ => false
+  }
+}
+
+///|
+fn is_drawingml_graphic_data_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  strip_ns(ns) == "drawingml/main" &&
+  local_name == "graphicData" &&
+  catalog_type_local(type_name) == "CT_GraphicalObjectData"
+}
+
+///|
+fn catalog_dml_gvml_shape_order() -> Array[String] {
+  ["nvSpPr", "spPr", "txSp", "style", "extLst"]
+}
+
+///|
+fn catalog_dml_gvml_cxn_order() -> Array[String] {
+  ["nvCxnSpPr", "spPr", "style", "extLst"]
+}
+
+///|
+fn catalog_dml_gvml_pic_order() -> Array[String] {
+  ["nvPicPr", "blipFill", "spPr", "style", "extLst"]
+}
+
+///|
+fn catalog_dml_gvml_graphic_frame_order() -> Array[String] {
+  ["nvGraphicFramePr", "graphic", "xfrm", "extLst"]
+}
+
+///|
+fn catalog_dml_gvml_group_order() -> Array[String] {
+  [
+    "nvGrpSpPr", "grpSpPr", "sp", "cxnSp", "pic", "graphicFrame", "grpSp", "extLst",
+  ]
+}
+
+///|
+fn catalog_dml_gvml_tx_sp_order() -> Array[String] {
+  ["txBody", "useSpRect", "extLst"]
+}
+
+///|
+fn catalog_dml_gvml_text_body(ns_a : String, text : String) -> @xml.Element {
+  xep("a", ns_a, "txBody", [], [
+    Element(xep("a", ns_a, "bodyPr", [], [])),
+    Element(
+      xep("a", ns_a, "p", [], [
+        Element(
+          xep("a", ns_a, "r", [], [
+            Element(xep("a", ns_a, "t", [], [Text(text)])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_gvml_visible_tx_sp(tx_sp : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(tx_sp)
+  splice_child_in_sequence(
+    tx_sp,
+    catalog_dml_gvml_text_body(ns_a, "GVML text"),
+    catalog_dml_gvml_tx_sp_order(),
+  )
+}
+
+///|
+fn catalog_dml_gvml_tx_sp_with_child(child : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(child)
+  xep("a", ns_a, "txSp", [], [
+    Element(catalog_dml_gvml_text_body(ns_a, "GVML text")),
+    Element(child),
+  ])
+}
+
+///|
+fn catalog_dml_gvml_default_nv_sp_pr() -> @xml.Element {
+  xe(NS_A, "nvSpPr", [], [
+    Element(xe(NS_A, "cNvPr", [xa("id", "2"), xa("name", "GVML Shape")], [])),
+    Element(xe(NS_A, "cNvSpPr", [xa("txBox", "1")], [])),
+  ])
+}
+
+///|
+fn catalog_dml_gvml_default_nv_pic_pr() -> @xml.Element {
+  xe(NS_A, "nvPicPr", [], [
+    Element(xe(NS_A, "cNvPr", [xa("id", "4"), xa("name", "GVML Picture")], [])),
+    Element(xe(NS_A, "cNvPicPr", [], [])),
+  ])
+}
+
+///|
+fn catalog_dml_gvml_default_blip_fill() -> @xml.Element {
+  xe(NS_A, "blipFill", [], [
+    Element(catalog_default_blip_to_catalog_image()),
+    Element(catalog_default_stretch()),
+  ])
+}
+
+///|
+fn catalog_dml_gvml_default_pic_sp_pr() -> @xml.Element {
+  locked_canvas_shape_props("2743200", "0", "1371600", "914400", "E2F0D9")
+}
+
+///|
+fn catalog_dml_gvml_normalize_pic(pic : @xml.Element) -> @xml.Element {
+  catalog_normalize_picture_element(
+    pic,
+    catalog_dml_gvml_default_nv_pic_pr,
+    fn(blip_fill) {
+      catalog_normalize_picture_blip_fill(
+        blip_fill, catalog_default_blip_to_catalog_image, catalog_default_stretch,
+      )
+    },
+    fn(sp_pr) { sp_pr },
+    catalog_dml_gvml_default_blip_fill,
+    catalog_dml_gvml_default_pic_sp_pr,
+  )
+}
+
+///|
+fn catalog_dml_gvml_visible_shape(sp : @xml.Element) -> @xml.Element {
+  let with_nv = splice_child_in_sequence(
+    sp,
+    catalog_dml_gvml_default_nv_sp_pr(),
+    catalog_dml_gvml_shape_order(),
+  )
+  let with_sp_pr = splice_child_in_sequence(
+    with_nv,
+    locked_canvas_shape_props("0", "0", "1371600", "914400", "D9EAF7"),
+    catalog_dml_gvml_shape_order(),
+  )
+  splice_child_in_sequence(
+    with_sp_pr,
+    catalog_dml_gvml_tx_sp_with_child(xe(NS_A, "useSpRect", [], [])),
+    catalog_dml_gvml_shape_order(),
+  )
+}
+
+///|
+fn catalog_dml_gvml_text_shape_with_child(child : @xml.Element) -> @xml.Element {
+  let base = locked_canvas_text_shape()
+  match child.name.local_name {
+    "nvSpPr" =>
+      splice_child_in_sequence(base, child, catalog_dml_gvml_shape_order())
+    "txSp" =>
+      splice_child_in_sequence(
+        base,
+        catalog_dml_gvml_visible_tx_sp(child),
+        catalog_dml_gvml_shape_order(),
+      )
+    "useSpRect" =>
+      splice_child_in_sequence(
+        base,
+        catalog_dml_gvml_tx_sp_with_child(child),
+        catalog_dml_gvml_shape_order(),
+      )
+    _ => base
+  }
+}
+
+///|
+fn catalog_dml_gvml_visible_cxn_sp(cxn : @xml.Element) -> @xml.Element {
+  splice_child_in_sequence(
+    cxn,
+    locked_canvas_shape_props("1371600", "0", "1371600", "914400", "FFFFFF"),
+    catalog_dml_gvml_cxn_order(),
+  )
+}
+
+///|
+fn catalog_dml_gvml_connector_with_child(child : @xml.Element) -> @xml.Element {
+  match child.name.local_name {
+    "nvCxnSpPr" =>
+      splice_child_in_sequence(
+        locked_canvas_connector(),
+        child,
+        catalog_dml_gvml_cxn_order(),
+      )
+    _ => locked_canvas_connector()
+  }
+}
+
+///|
+fn catalog_dml_gvml_visible_graphic_data(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_uri = false
+  for attr in content.attributes {
+    if attr.name.local_name == "uri" {
+      attrs.push({ name: attr.name, value: DML_MAIN_TABLE_URI })
+      saw_uri = true
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw_uri {
+    attrs.push(xa("uri", DML_MAIN_TABLE_URI))
+  }
+  let tbl = table_with_parts(
+    ns_a,
+    None,
+    default_table_grid(ns_a),
+    default_table_row(ns_a),
+  )
+  { name: content.name, attributes: attrs, children: [Element(tbl)] }
+}
+
+///|
+fn catalog_dml_gvml_default_graphic() -> @xml.Element {
+  xe(NS_A, "graphic", [], [
+    Element(
+      catalog_dml_gvml_visible_graphic_data(
+        xe(NS_A, "graphicData", [xa("uri", DML_MAIN_TABLE_URI)], []),
+      ),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_gvml_visible_graphic_frame(frame : @xml.Element) -> @xml.Element {
+  let with_graphic = splice_child_in_sequence(
+    frame,
+    catalog_dml_gvml_default_graphic(),
+    catalog_dml_gvml_graphic_frame_order(),
+  )
+  splice_child_in_sequence(
+    with_graphic,
+    locked_canvas_xfrm("4114800", "0", "1371600", "914400"),
+    catalog_dml_gvml_graphic_frame_order(),
+  )
+}
+
+///|
+fn catalog_dml_gvml_graphic_frame_with_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  match child.name.local_name {
+    "nvGraphicFramePr" =>
+      splice_child_in_sequence(
+        locked_canvas_graphical_object_frame(),
+        child,
+        catalog_dml_gvml_graphic_frame_order(),
+      )
+    _ => locked_canvas_graphical_object_frame()
+  }
+}
+
+///|
+fn catalog_dml_gvml_visible_group(grp : @xml.Element) -> @xml.Element {
+  let with_pr = splice_child_in_sequence(
+    grp,
+    xe(NS_A, "grpSpPr", [], [Element(locked_canvas_group_xfrm())]),
+    catalog_dml_gvml_group_order(),
+  )
+  let mut has_visible_child = false
+  for child in with_pr.children {
+    match child {
+      Element(ce) =>
+        if ce.name.local_name == "sp" ||
+          ce.name.local_name == "cxnSp" ||
+          ce.name.local_name == "pic" ||
+          ce.name.local_name == "graphicFrame" ||
+          ce.name.local_name == "grpSp" {
+          has_visible_child = true
+        }
+      _ => ()
+    }
+  }
+  if has_visible_child {
+    with_pr
+  } else {
+    let kids : Array[@xml.Node] = []
+    for child in with_pr.children {
+      kids.push(child)
+    }
+    kids.push(Element(locked_canvas_text_shape()))
+    { name: with_pr.name, attributes: with_pr.attributes, children: kids }
+  }
+}
+
+///|
+fn catalog_dml_locked_canvas_with_children(
+  children : Array[@xml.Element],
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = [
+    Element(
+      xe(NS_A, "nvGrpSpPr", [], [
+        Element(
+          xe(NS_A, "cNvPr", [xa("id", "1"), xa("name", "Catalog GVML")], []),
+        ),
+        Element(xe(NS_A, "cNvGrpSpPr", [], [])),
+      ]),
+    ),
+    Element(xe(NS_A, "grpSpPr", [], [Element(locked_canvas_group_xfrm())])),
+  ]
+  for child in children {
+    kids.push(Element(child))
+  }
+  xep("lc", NS_DML_LOCKED_CANVAS, "lockedCanvas", [], kids)
+}
+
+///|
+fn catalog_dml_locked_canvas_root_for_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  match content.name.local_name {
+    "sp" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_visible_shape(content),
+      ])
+    "nvSpPr" | "txSp" | "useSpRect" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_text_shape_with_child(content),
+      ])
+    "cxnSp" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_visible_cxn_sp(content),
+      ])
+    "nvCxnSpPr" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_connector_with_child(content),
+      ])
+    "pic" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_normalize_pic(content),
+      ])
+    "nvPicPr" =>
+      catalog_dml_locked_canvas_with_children([
+        splice_child_in_sequence(
+          catalog_dml_gvml_normalize_pic(locked_canvas_picture()),
+          content,
+          catalog_dml_gvml_pic_order(),
+        ),
+      ])
+    "graphicFrame" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_visible_graphic_frame(content),
+      ])
+    "nvGraphicFramePr" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_graphic_frame_with_child(content),
+      ])
+    "grpSp" =>
+      catalog_dml_locked_canvas_with_children([
+        catalog_dml_gvml_visible_group(content),
+      ])
+    "nvGrpSpPr" =>
+      xep("lc", NS_DML_LOCKED_CANVAS, "lockedCanvas", [], [
+        Element(content),
+        Element(xe(NS_A, "grpSpPr", [], [Element(locked_canvas_group_xfrm())])),
+        Element(locked_canvas_text_shape()),
+      ])
+    _ => catalog_dml_locked_canvas_with_children([locked_canvas_text_shape()])
+  }
+}
+
+///|
+fn catalog_dml_graphic_data_slide_body(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  let ns_a = dml_ns_for(content)
+  let graphic_frame = xep("p", ns_p, "graphicFrame", [], [
+    Element(
+      xep("p", ns_p, "nvGraphicFramePr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog GraphicData")],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "3657600"), xa("cy", "1828800")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "graphic", [], [
+        Element(catalog_dml_gvml_visible_graphic_data(content)),
+      ]),
+    ),
+  ])
+  pptx_common_slide_data(ns_p, [graphic_frame])
+}
+
+///|
+fn is_drawingml_content_part_lock_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  strip_ns(ns) == "drawingml/main" &&
+  local_name == "cpLocks" &&
+  catalog_type_local(type_name) == "CT_ContentPartLocking"
+}
+
+///|
+fn catalog_wml_content_part_lock_body(content : @xml.Element) -> @xml.Element {
+  let ns_wp = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  let content_part = xep(
+    "wp",
+    ns_wp,
+    "contentPart",
+    [
+      {
+        name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+        value: "rIdContentPart",
+      },
+    ],
+    [
+      Element(
+        xep("wp", ns_wp, "nvContentPartPr", [], [
+          Element(
+            xep(
+              "wp",
+              ns_wp,
+              "cNvPr",
+              [xa("id", "7"), xa("name", "Catalog Content Part")],
+              [],
+            ),
+          ),
+          Element(xep("wp", ns_wp, "cNvContentPartPr", [], [Element(content)])),
+        ]),
+      ),
+      Element(
+        xep("wp", ns_wp, "xfrm", [], [
+          Element(xep("a", NS_A, "off", [xa("x", "0"), xa("y", "0")], [])),
+          Element(
+            xep("a", NS_A, "ext", [xa("cx", "914400"), xa("cy", "914400")], []),
+          ),
+        ]),
+      ),
+    ],
+  )
+  let wpc = xep(
+    "wpc",
+    "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+    "wpc",
+    [],
+    [Element(content_part)],
+  )
+  let graphic = xep("a", NS_A, "graphic", [], [
+    Element(
+      xep(
+        "a",
+        NS_A,
+        "graphicData",
+        [
+          xa(
+            "uri", "http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas",
+          ),
+        ],
+        [Element(wpc)],
+      ),
+    ),
+  ])
+  let inline = xep("wp", ns_wp, "inline", [], [
+    Element(
+      xep("wp", ns_wp, "extent", [xa("cx", "914400"), xa("cy", "914400")], []),
+    ),
+    Element(
+      xep(
+        "wp",
+        ns_wp,
+        "docPr",
+        [xa("id", "1"), xa("name", "ContentPartLocks")],
+        [],
+      ),
+    ),
+    Element(graphic),
+  ])
+  xep("w", NS_W, "body", [], [
+    Element(
+      xep("w", NS_W, "p", [], [
+        Element(
+          xep("w", NS_W, "r", [], [
+            Element(xep("w", NS_W, "t", [], [Text("Before ")])),
+          ]),
+        ),
+        Element(
+          xep("w", NS_W, "r", [], [
+            Element(xep("w", NS_W, "drawing", [], [Element(inline)])),
+          ]),
+        ),
+        Element(
+          xep("w", NS_W, "r", [], [
+            Element(xep("w", NS_W, "t", [], [Text(" after.")])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn is_drawingml_view_scale_ratio_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  strip_ns(ns) == "drawingml/main" &&
+  catalog_type_local(type_name) == "CT_Ratio" &&
+  (local_name == "sx" || local_name == "sy")
+}
+
+///|
+fn catalog_pml_view_scale_root(content : @xml.Element) -> @xml.Element {
+  let sx = if content.name.local_name == "sx" {
+    content
+  } else {
+    xep("a", NS_A, "sx", [xa("n", "1"), xa("d", "1")], [])
+  }
+  let sy = if content.name.local_name == "sy" {
+    content
+  } else {
+    xep("a", NS_A, "sy", [xa("n", "1"), xa("d", "1")], [])
+  }
+  xep("p", NS_PML, "viewPr", [], [
+    Element(
+      xep("p", NS_PML, "notesTextViewPr", [], [
+        Element(
+          xep("p", NS_PML, "cViewPr", [], [
+            Element(xep("p", NS_PML, "scale", [], [Element(sx), Element(sy)])),
+            Element(
+              xep("p", NS_PML, "origin", [xa("x", "0"), xa("y", "0")], []),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn is_drawingml_timing_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match local_name {
+    "dgm" => type_local == "CT_AnimationDgmElement"
+    "chart" => type_local == "CT_AnimationChartElement"
+    "bldDgm" => type_local == "CT_AnimationDgmBuildProperties"
+    "bldChart" => type_local == "CT_AnimationChartBuildProperties"
+    _ => false
+  }
+}
+
+///|
+fn catalog_dml_timing_shape() -> @xml.Element {
+  let ns_p = NS_PML
+  xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Timing Target")],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "spPr", [], [
+        Element(
+          xep("a", NS_A, "xfrm", [], [
+            Element(
+              xep("a", NS_A, "off", [xa("x", "914400"), xa("y", "914400")], []),
+            ),
+            Element(
+              xep(
+                "a",
+                NS_A,
+                "ext",
+                [xa("cx", "2743200"), xa("cy", "1371600")],
+                [],
+              ),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", NS_A, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", NS_A, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", NS_A, "solidFill", [], [
+            Element(xep("a", NS_A, "srgbClr", [xa("val", "D9EAF7")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_timing_graphic_target(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  xep("p", ns_p, "tnLst", [], [
+    Element(
+      xep("p", ns_p, "par", [], [
+        Element(
+          xep("p", ns_p, "cTn", [xa("id", "1")], [
+            Element(
+              xep("p", ns_p, "childTnLst", [], [
+                Element(
+                  xep(
+                    "p",
+                    ns_p,
+                    "anim",
+                    [xa("valueType", "num"), xa("calcmode", "lin")],
+                    [
+                      Element(
+                        xep("p", ns_p, "cBhvr", [], [
+                          Element(xep("p", ns_p, "cTn", [xa("id", "2")], [])),
+                          Element(
+                            xep("p", ns_p, "tgtEl", [], [
+                              Element(
+                                xep("p", ns_p, "spTgt", [xa("spid", "2")], [
+                                  Element(
+                                    xep("p", ns_p, "graphicEl", [], [
+                                      Element(content),
+                                    ]),
+                                  ),
+                                ]),
+                              ),
+                            ]),
+                          ),
+                        ]),
+                      ),
+                    ],
+                  ),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_timing_build_list(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  xep("p", ns_p, "bldLst", [], [
+    Element(
+      xep("p", ns_p, "bldGraphic", [xa("spid", "2"), xa("grpId", "0")], [
+        Element(xep("p", ns_p, "bldSub", [], [Element(content)])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_timing_root(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  let timing_children : Array[@xml.Node] = []
+  match content.name.local_name {
+    "dgm" | "chart" =>
+      timing_children.push(Element(catalog_dml_timing_graphic_target(content)))
+    "bldDgm" | "bldChart" =>
+      timing_children.push(Element(catalog_dml_timing_build_list(content)))
+    _ => ()
+  }
+  xep("p", ns_p, "sld", [], [
+    Element(pptx_common_slide_data(ns_p, [catalog_dml_timing_shape()])),
+    Element(xep("p", ns_p, "timing", [], timing_children)),
+  ])
+}
+
+///|
+fn is_drawingml_group_transform_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match local_name {
+    "chOff" => type_local == "CT_Point2D"
+    "chExt" => type_local == "CT_PositiveSize2D"
+    "xfrm" => type_local == "CT_GroupTransform2D"
+    _ => false
+  }
+}
+
+///|
+fn dml_ns_for(content : @xml.Element) -> String {
+  content.name.ns.unwrap_or(NS_A)
+}
+
+///|
+fn catalog_dml_ensure_attr(
+  e : @xml.Element,
+  local_name : String,
+  value : String,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut replaced = false
+  for attr in e.attributes {
+    if attr.name.local_name == local_name {
+      attrs.push({ name: attr.name, value })
+      replaced = true
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !replaced {
+    attrs.push(xa(local_name, value))
+  }
+  { name: e.name, attributes: attrs, children: e.children }
+}
+
+///|
+fn catalog_dml_attr_value(e : @xml.Element, local_name : String) -> String? {
+  for attr in e.attributes {
+    if attr.name.local_name == local_name {
+      return Some(attr.value)
+    }
+  }
+  None
+}
+
+///|
+fn catalog_dml_default_shape_xfrm(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "xfrm", [], [
+    Element(xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], [])),
+    Element(
+      xep("a", ns_a, "ext", [xa("cx", "2743200"), xa("cy", "1371600")], []),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_default_shape_geom(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+    Element(xep("a", ns_a, "avLst", [], [])),
+  ])
+}
+
+///|
+fn catalog_dml_default_shape_fill(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "solidFill", [], [
+    Element(xep("a", ns_a, "srgbClr", [xa("val", "4472C4")], [])),
+  ])
+}
+
+///|
+fn catalog_dml_default_shape_line(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "ln", [xa("w", "38100")], [
+    Element(
+      xep("a", ns_a, "solidFill", [], [
+        Element(xep("a", ns_a, "srgbClr", [xa("val", "C00000")], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_gradient_stops(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "gsLst", [], [
+    Element(
+      xep("a", ns_a, "gs", [xa("pos", "0")], [
+        Element(xep("a", ns_a, "srgbClr", [xa("val", "FFFFFF")], [])),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "gs", [xa("pos", "100000")], [
+        Element(xep("a", ns_a, "srgbClr", [xa("val", "4472C4")], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_shape_fill_for_target(content : @xml.Element) -> @xml.Element? {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "fillToRect" =>
+      Some(
+        xep("a", ns_a, "gradFill", [], [
+          Element(catalog_dml_gradient_stops(ns_a)),
+          Element(
+            xep("a", ns_a, "path", [xa("path", "circle")], [
+              Element(catalog_dml_fill_to_rect_for_target(content)),
+            ]),
+          ),
+        ]),
+      )
+    "bgClr" =>
+      Some(
+        xep("a", ns_a, "pattFill", [xa("prst", "pct25")], [
+          Element(
+            xep("a", ns_a, "fgClr", [], [
+              Element(xep("a", ns_a, "srgbClr", [xa("val", "4472C4")], [])),
+            ]),
+          ),
+          Element(content),
+        ]),
+      )
+    "path" =>
+      Some(
+        xep("a", ns_a, "gradFill", [], [
+          Element(catalog_dml_gradient_stops(ns_a)),
+          Element(content),
+        ]),
+      )
+    "tileRect" =>
+      Some(
+        xep("a", ns_a, "gradFill", [], [
+          Element(catalog_dml_gradient_stops(ns_a)),
+          Element(xep("a", ns_a, "lin", [xa("ang", "0")], [])),
+          Element(catalog_dml_fill_to_rect_for_target(content)),
+        ]),
+      )
+    _ => None
+  }
+}
+
+///|
+fn catalog_dml_fill_to_rect_for_target(content : @xml.Element) -> @xml.Element {
+  let with_l = catalog_dml_ensure_attr(content, "l", "50000")
+  let with_t = catalog_dml_ensure_attr(with_l, "t", "0")
+  let with_r = catalog_dml_ensure_attr(with_t, "r", "0")
+  catalog_dml_ensure_attr(with_r, "b", "25000")
+}
+
+///|
+fn catalog_dml_default_camera(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "camera", [xa("prst", "legacyObliqueTopLeft")], [
+    Element(
+      xep(
+        "a",
+        ns_a,
+        "rot",
+        [xa("lat", "600000"), xa("lon", "600000"), xa("rev", "900000")],
+        [],
+      ),
+    ),
+  ])
+}
+
+///|
+fn catalog_dml_default_light_rig(ns_a : String) -> @xml.Element {
+  xep("a", ns_a, "lightRig", [xa("rig", "harsh"), xa("dir", "br")], [])
+}
+
+///|
+fn catalog_dml_backdrop_for_target(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "backdrop" => content
+    "anchor" =>
+      xep("a", ns_a, "backdrop", [], [
+        Element(content),
+        Element(
+          xep(
+            "a",
+            ns_a,
+            "norm",
+            [xa("dx", "0"), xa("dy", "0"), xa("dz", "100000")],
+            [],
+          ),
+        ),
+        Element(
+          xep(
+            "a",
+            ns_a,
+            "up",
+            [xa("dx", "0"), xa("dy", "100000"), xa("dz", "0")],
+            [],
+          ),
+        ),
+      ])
+    "norm" =>
+      xep("a", ns_a, "backdrop", [], [
+        Element(
+          xep("a", ns_a, "anchor", [xa("x", "0"), xa("y", "0"), xa("z", "0")], []),
+        ),
+        Element(content),
+        Element(
+          xep(
+            "a",
+            ns_a,
+            "up",
+            [xa("dx", "0"), xa("dy", "100000"), xa("dz", "0")],
+            [],
+          ),
+        ),
+      ])
+    "up" =>
+      xep("a", ns_a, "backdrop", [], [
+        Element(
+          xep("a", ns_a, "anchor", [xa("x", "0"), xa("y", "0"), xa("z", "0")], []),
+        ),
+        Element(
+          xep(
+            "a",
+            ns_a,
+            "norm",
+            [xa("dx", "0"), xa("dy", "0"), xa("dz", "100000")],
+            [],
+          ),
+        ),
+        Element(content),
+      ])
+    _ => content
+  }
+}
+
+///|
+fn catalog_dml_scene3d_for_target(content : @xml.Element) -> @xml.Element? {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "scene3d" => Some(content)
+    "camera" =>
+      Some(
+        xep("a", ns_a, "scene3d", [], [
+          Element(content),
+          Element(catalog_dml_default_light_rig(ns_a)),
+        ]),
+      )
+    "rot" =>
+      Some(
+        xep("a", ns_a, "scene3d", [], [
+          Element(
+            xep("a", ns_a, "camera", [xa("prst", "legacyObliqueTopLeft")], [
+              Element(content),
+            ]),
+          ),
+          Element(catalog_dml_default_light_rig(ns_a)),
+        ]),
+      )
+    "lightRig" =>
+      Some(
+        xep("a", ns_a, "scene3d", [], [
+          Element(catalog_dml_default_camera(ns_a)),
+          Element(content),
+        ]),
+      )
+    "backdrop" | "anchor" | "norm" | "up" =>
+      Some(
+        xep("a", ns_a, "scene3d", [], [
+          Element(catalog_dml_default_camera(ns_a)),
+          Element(catalog_dml_default_light_rig(ns_a)),
+          Element(catalog_dml_backdrop_for_target(content)),
+        ]),
+      )
+    _ => None
+  }
+}
+
+///|
+fn catalog_dml_default_sp3d_color(
+  ns_a : String,
+  local_name : String,
+  hex : String,
+) -> @xml.Element {
+  xep("a", ns_a, local_name, [], [
+    Element(xep("a", ns_a, "srgbClr", [xa("val", hex)], [])),
+  ])
+}
+
+///|
+fn catalog_dml_sp3d_for_target(content : @xml.Element) -> @xml.Element? {
+  let ns_a = dml_ns_for(content)
+  let attrs : Array[@xml.Attribute] = [
+    xa("extrusionH", "152400"),
+    xa("contourW", "25400"),
+  ]
+  match content.name.local_name {
+    "sp3d" => Some(content)
+    "extrusionClr" =>
+      Some(
+        xep("a", ns_a, "sp3d", attrs, [
+          Element(
+            xep(
+              "a",
+              ns_a,
+              "bevelT",
+              [xa("w", "76200"), xa("h", "76200"), xa("prst", "relaxedInset")],
+              [],
+            ),
+          ),
+          Element(content),
+          Element(catalog_dml_default_sp3d_color(ns_a, "contourClr", "203864")),
+        ]),
+      )
+    "contourClr" =>
+      Some(
+        xep("a", ns_a, "sp3d", attrs, [
+          Element(
+            xep(
+              "a",
+              ns_a,
+              "bevelT",
+              [xa("w", "76200"), xa("h", "76200"), xa("prst", "relaxedInset")],
+              [],
+            ),
+          ),
+          Element(
+            catalog_dml_default_sp3d_color(ns_a, "extrusionClr", "A9D18E"),
+          ),
+          Element(content),
+        ]),
+      )
+    "bevel" =>
+      if catalog_dml_attr_value(content, "prst") is Some(_) ||
+        catalog_dml_attr_value(content, "w") is Some(_) ||
+        catalog_dml_attr_value(content, "h") is Some(_) {
+        Some(
+          xep("a", ns_a, "sp3d", attrs, [
+            Element({
+              name: { prefix: Some("a"), local_name: "bevelT", ns: Some(ns_a) },
+              attributes: content.attributes,
+              children: content.children,
+            }),
+            Element(
+              catalog_dml_default_sp3d_color(ns_a, "extrusionClr", "A9D18E"),
+            ),
+            Element(
+              catalog_dml_default_sp3d_color(ns_a, "contourClr", "203864"),
+            ),
+          ]),
+        )
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn catalog_dml_effect_for_target(content : @xml.Element) -> @xml.Element? {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "effectLst" | "effectDag" => Some(content)
+    "outerShdw"
+    | "innerShdw"
+    | "glow"
+    | "softEdge"
+    | "prstShdw"
+    | "reflection" => Some(xep("a", ns_a, "effectLst", [], [Element(content)]))
+    _ => None
+  }
+}
+
+///|
+fn catalog_dml_path_move_to(
+  ns_a : String,
+  x : String,
+  y : String,
+) -> @xml.Element {
+  xep("a", ns_a, "moveTo", [], [
+    Element(xep("a", ns_a, "pt", [xa("x", x), xa("y", y)], [])),
+  ])
+}
+
+///|
+fn catalog_dml_path_line_to(
+  ns_a : String,
+  x : String,
+  y : String,
+) -> @xml.Element {
+  xep("a", ns_a, "lnTo", [], [
+    Element(xep("a", ns_a, "pt", [xa("x", x), xa("y", y)], [])),
+  ])
+}
+
+///|
+fn catalog_dml_path_with_command(command : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(command)
+  let kids : Array[@xml.Node] = [
+    Element(catalog_dml_path_move_to(ns_a, "0", "0")),
+  ]
+  if command.name.local_name == "close" {
+    kids.push(Element(catalog_dml_path_line_to(ns_a, "100000", "0")))
+    kids.push(Element(catalog_dml_path_line_to(ns_a, "100000", "100000")))
+  }
+  kids.push(Element(command))
+  xep("a", ns_a, "path", [xa("w", "100000"), xa("h", "100000")], kids)
+}
+
+///|
+fn catalog_dml_normalize_path2d(path : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(path)
+  let kids : Array[@xml.Node] = [
+    Element(catalog_dml_path_move_to(ns_a, "0", "0")),
+    Element(catalog_dml_path_line_to(ns_a, "100000", "0")),
+    Element(catalog_dml_path_line_to(ns_a, "100000", "100000")),
+  ]
+  for child in path.children {
+    kids.push(child)
+  }
+  {
+    name: path.name,
+    attributes: [
+      xa("w", "100000"),
+      xa("h", "100000"),
+      xa("fill", "norm"),
+      xa("stroke", "true"),
+    ],
+    children: kids,
+  }
+}
+
+///|
+fn catalog_dml_default_path2d(ns_a : String) -> @xml.Element {
+  xep(
+    "a",
+    ns_a,
+    "path",
+    [
+      xa("w", "100000"),
+      xa("h", "100000"),
+      xa("fill", "norm"),
+      xa("stroke", "true"),
+    ],
+    [
+      Element(catalog_dml_path_move_to(ns_a, "0", "0")),
+      Element(catalog_dml_path_line_to(ns_a, "100000", "0")),
+      Element(catalog_dml_path_line_to(ns_a, "100000", "100000")),
+      Element(xep("a", ns_a, "close", [], [])),
+    ],
+  )
+}
+
+///|
+fn catalog_dml_path_list_for_target(path_lst : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(path_lst)
+  let kids : Array[@xml.Node] = []
+  let mut has_path = false
+  for child in path_lst.children {
+    match child {
+      Element(ce) =>
+        if ce.name.local_name == "path" {
+          has_path = true
+          kids.push(Element(catalog_dml_normalize_path2d(ce)))
+        } else {
+          kids.push(child)
+        }
+      _ => kids.push(child)
+    }
+  }
+  if !has_path {
+    kids.push(Element(catalog_dml_default_path2d(ns_a)))
+  }
+  { name: path_lst.name, attributes: path_lst.attributes, children: kids }
+}
+
+///|
+fn catalog_dml_custom_geom_for_target(content : @xml.Element) -> @xml.Element? {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "custGeom" => Some(content)
+    "pathLst" =>
+      Some(
+        xep("a", ns_a, "custGeom", [], [
+          Element(catalog_dml_path_list_for_target(content)),
+        ]),
+      )
+    "path" =>
+      if catalog_dml_attr_value(content, "path") is Some(_) {
+        None
+      } else {
+        Some(
+          xep("a", ns_a, "custGeom", [], [
+            Element(
+              xep("a", ns_a, "pathLst", [], [
+                Element(catalog_dml_normalize_path2d(content)),
+              ]),
+            ),
+          ]),
+        )
+      }
+    "close" | "lnTo" | "arcTo" | "quadBezTo" | "cubicBezTo" =>
+      Some(
+        xep("a", ns_a, "custGeom", [], [
+          Element(
+            xep("a", ns_a, "pathLst", [], [
+              Element(catalog_dml_path_with_command(content)),
+            ]),
+          ),
+        ]),
+      )
+    _ => None
+  }
+}
+
+///|
+fn catalog_dml_line_child_for_target(content : @xml.Element) -> @xml.Element? {
+  match content.name.local_name {
+    "prstDash" => Some(catalog_dml_ensure_attr(content, "val", "dash"))
+    "headEnd" => Some(catalog_dml_ensure_attr(content, "type", "triangle"))
+    "tailEnd" => Some(catalog_dml_ensure_attr(content, "type", "triangle"))
+    "bevel" =>
+      if catalog_dml_attr_value(content, "prst") is Some(_) ||
+        catalog_dml_attr_value(content, "w") is Some(_) ||
+        catalog_dml_attr_value(content, "h") is Some(_) {
+        None
+      } else {
+        Some(content)
+      }
+    "miter" => Some(catalog_dml_ensure_attr(content, "lim", "800000"))
+    "round" | "custDash" => Some(content)
+    "ds" =>
+      Some(xep("a", dml_ns_for(content), "custDash", [], [Element(content)]))
+    _ => None
+  }
+}
+
+///|
+fn catalog_dml_line_for_target(content : @xml.Element) -> @xml.Element? {
+  let ns_a = dml_ns_for(content)
+  match catalog_dml_line_child_for_target(content) {
+    None => None
+    Some(child) =>
+      Some(
+        xep("a", ns_a, "ln", [xa("w", "76200")], [
+          Element(
+            xep("a", ns_a, "solidFill", [], [
+              Element(xep("a", ns_a, "srgbClr", [xa("val", "C00000")], [])),
+            ]),
+          ),
+          Element(child),
+        ]),
+      )
+  }
+}
+
+///|
+fn catalog_dml_text_body_for_target(content : @xml.Element) -> @xml.Element? {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "prstTxWarp" =>
+      Some(
+        xep("p", NS_PML, "txBody", [], [
+          Element(
+            xep("a", ns_a, "bodyPr", [], [
+              Element(catalog_dml_ensure_attr(content, "prst", "textArchUp")),
+            ]),
+          ),
+          Element(
+            xep("a", ns_a, "p", [], [
+              Element(
+                xep("a", ns_a, "r", [], [
+                  Element(xep("a", ns_a, "t", [], [Text("Catalog warp")])),
+                ]),
+              ),
+            ]),
+          ),
+        ]),
+      )
+    _ => None
+  }
+}
+
+///|
+fn is_drawingml_shape_property_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match (local_name, type_local) {
+    ("camera", "CT_Camera")
+    | ("rot", "CT_SphereCoords")
+    | ("lightRig", "CT_LightRig")
+    | ("backdrop", "CT_Backdrop")
+    | ("anchor", "CT_Point3D")
+    | ("norm", "CT_Vector3D")
+    | ("up", "CT_Vector3D")
+    | ("extrusionClr", "CT_Color")
+    | ("contourClr", "CT_Color")
+    | ("fillToRect", "CT_RelativeRect")
+    | ("bgClr", "CT_Color")
+    | ("path", "CT_PathShadeProperties")
+    | ("glow", "CT_GlowEffect")
+    | ("innerShdw", "CT_InnerShadowEffect")
+    | ("outerShdw", "CT_OuterShadowEffect")
+    | ("prstShdw", "CT_PresetShadowEffect")
+    | ("reflection", "CT_ReflectionEffect")
+    | ("softEdge", "CT_SoftEdgesEffect")
+    | ("close", "CT_Path2DClose")
+    | ("lnTo", "CT_Path2DLineTo")
+    | ("arcTo", "CT_Path2DArcTo")
+    | ("quadBezTo", "CT_Path2DQuadBezierTo")
+    | ("cubicBezTo", "CT_Path2DCubicBezierTo")
+    | ("path", "CT_Path2D")
+    | ("pathLst", "CT_Path2DList")
+    | ("prstTxWarp", "CT_PresetTextShape")
+    | ("round", "CT_LineJoinRound")
+    | ("bevel", "CT_LineJoinBevel")
+    | ("miter", "CT_LineJoinMiterProperties")
+    | ("ds", "CT_DashStop")
+    | ("prstDash", "CT_PresetLineDashProperties")
+    | ("custDash", "CT_DashStopList")
+    | ("headEnd", "CT_LineEndProperties")
+    | ("tailEnd", "CT_LineEndProperties")
+    | ("bevel", "CT_Bevel") => true
+    _ => false
+  }
+}
+
+///|
+fn catalog_dml_shape_property_root(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  let geom = match catalog_dml_custom_geom_for_target(content) {
+    Some(cg) => cg
+    None => catalog_dml_default_shape_geom(ns_a)
+  }
+  let fill = match catalog_dml_shape_fill_for_target(content) {
+    Some(f) => f
+    None => catalog_dml_default_shape_fill(ns_a)
+  }
+  let line = match catalog_dml_line_for_target(content) {
+    Some(l) => l
+    None => catalog_dml_default_shape_line(ns_a)
+  }
+  let sp_pr_children : Array[@xml.Node] = [
+    Element(catalog_dml_default_shape_xfrm(ns_a)),
+    Element(geom),
+    Element(fill),
+    Element(line),
+  ]
+  match catalog_dml_effect_for_target(content) {
+    Some(e) => sp_pr_children.push(Element(e))
+    None => ()
+  }
+  match catalog_dml_scene3d_for_target(content) {
+    Some(s) => sp_pr_children.push(Element(s))
+    None => ()
+  }
+  match catalog_dml_sp3d_for_target(content) {
+    Some(s) => sp_pr_children.push(Element(s))
+    None => ()
+  }
+  let shape_children : Array[@xml.Node] = [
+    Element(
+      xep("p", NS_PML, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            NS_PML,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog DML Shape Property")],
+            [],
+          ),
+        ),
+        Element(xep("p", NS_PML, "cNvSpPr", [], [])),
+        Element(xep("p", NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(xep("p", NS_PML, "spPr", [], sp_pr_children)),
+  ]
+  match catalog_dml_text_body_for_target(content) {
+    Some(tb) => shape_children.push(Element(tb))
+    None => ()
+  }
+  pptx_common_slide_data(NS_PML, [xep("p", NS_PML, "sp", [], shape_children)])
+}
+
+///|
+fn catalog_dml_group_xfrm_for_target(content : @xml.Element) -> @xml.Element {
+  let ns_a = dml_ns_for(content)
+  match content.name.local_name {
+    "xfrm" => content
+    "chOff" =>
+      xep("a", ns_a, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "1828800"), xa("cy", "914400")], []),
+        ),
+        Element(content),
+        Element(
+          xep("a", ns_a, "chExt", [xa("cx", "1828800"), xa("cy", "914400")], []),
+        ),
+      ])
+    "chExt" =>
+      xep("a", ns_a, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "1828800"), xa("cy", "914400")], []),
+        ),
+        Element(xep("a", ns_a, "chOff", [xa("x", "0"), xa("y", "0")], [])),
+        Element(content),
+      ])
+    _ =>
+      xep("a", ns_a, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "1828800"), xa("cy", "914400")], []),
+        ),
+        Element(xep("a", ns_a, "chOff", [xa("x", "0"), xa("y", "0")], [])),
+        Element(
+          xep("a", ns_a, "chExt", [xa("cx", "1828800"), xa("cy", "914400")], []),
+        ),
+      ])
+  }
+}
+
+///|
+fn catalog_dml_group_transform_child_shape(
+  ns_p : String,
+  ns_a : String,
+) -> @xml.Element {
+  xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "3"), xa("name", "Catalog Group Child")],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "457200"), xa("y", "457200")], []),
+            ),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "914400"), xa("cy", "457200")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "solidFill", [], [
+            Element(xep("a", ns_a, "srgbClr", [xa("val", "4472C4")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// §20.1.7.5 group transform targets (`chOff` / `chExt`) are consumed
+/// only when they live inside an actual group shape, not the root
+/// `spTree` bookkeeping `grpSpPr`. Host them under `p:grpSp` so the
+/// PresentationML viewer's group-transform path remains the SoT.
+fn catalog_dml_group_transform_root(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  let ns_a = dml_ns_for(content)
+  let group = xep("p", ns_p, "grpSp", [], [
+    Element(
+      xep("p", ns_p, "nvGrpSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog Group")],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "grpSpPr", [], [
+        Element(catalog_dml_group_xfrm_for_target(content)),
+      ]),
+    ),
+    Element(catalog_dml_group_transform_child_shape(ns_p, ns_a)),
+  ])
+  pptx_common_slide_data(ns_p, [group])
+}
+
+///|
 /// Catalog-specific `.xlsx` host. A synthesised AutoFilter subtree is
 /// structurally valid but not render-observable by itself when it has
 /// no `@ref`, candidate rows, `styles.xml` dxfs, or iconSet conditional
@@ -7484,13 +15078,2143 @@ fn catalog_xlsx_package(content : @xml.Element) -> Bytes {
 }
 
 ///|
+/// Render-only host for §18.5 SpreadsheetML table targets.  The
+/// catalog synthesiser hands the verifier a single target subtree,
+/// but real tables are not worksheet children: `<worksheet>` owns a
+/// `<tableParts>` relationship list, and each relationship points at
+/// an `xl/tables/tableN.xml` part.  This helper normalises any table
+/// family target into that OPC shape so the existing context loader
+/// consumes the same SoT as real workbooks.
+fn catalog_sml_table_package_for_render(content : @xml.Element) -> Bytes? {
+  match catalog_sml_table_render_probe(content) {
+    None => None
+    Some(_) => {
+      if catalog_sml_table_parts_render_probe(content) {
+        let table_part_count = catalog_sml_table_part_count(content)
+        if table_part_count == 0 {
+          return Some(xlsx_package(catalog_sml_table_render_worksheet()))
+        }
+      }
+      let table = strip_target_attr(catalog_sml_table_for_render(content))
+      Some(
+        xlsx_package_with_tables(catalog_sml_table_render_worksheet(), [table]),
+      )
+    }
+  }
+}
+
+///|
+fn catalog_sml_pivot_filter_package_for_render(
+  content : @xml.Element,
+) -> Bytes? {
+  match catalog_sml_pivot_filter_render_probe(content) {
+    None => None
+    Some(target) => {
+      let pivot_def = catalog_sml_pivot_table_def_with_filters(
+        strip_target_attr(catalog_sml_pivot_filters_for_render(target)),
+      )
+      Some(
+        xlsx_package_with_pivot(
+          catalog_sml_pivot_sheet_data(),
+          catalog_sml_pivot_default_cache_def(),
+          catalog_sml_pivot_default_records(),
+          pivot_def,
+        ),
+      )
+    }
+  }
+}
+
+///|
+fn catalog_sml_pivot_filter_render_probe(
+  element : @xml.Element,
+) -> @xml.Element? {
+  if catalog_sml_is_pivot_filter_family_element(element) {
+    return Some(element)
+  }
+  for child in element.children {
+    match child {
+      Element(ce) =>
+        match catalog_sml_pivot_filter_render_probe(ce) {
+          Some(found) => return Some(found)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_is_pivot_filter_family_element(element : @xml.Element) -> Bool {
+  let ns = element.name.ns.unwrap_or("")
+  if !ns.contains("spreadsheetml") {
+    return false
+  }
+  if element.name.local_name == "filter" {
+    return catalog_sml_is_pivot_filter_element(element)
+  }
+  if element.name.local_name == "filters" {
+    if catalog_attr_value_local(element, "count") is Some(_) {
+      return true
+    }
+    for child in element.children {
+      match child {
+        Element(ce) =>
+          if catalog_sml_is_pivot_filter_element(ce) {
+            return true
+          }
+        _ => ()
+      }
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_is_pivot_filter_element(element : @xml.Element) -> Bool {
+  if element.name.local_name != "filter" {
+    return false
+  }
+  if catalog_attr_value_local(element, "fld") is Some(_) {
+    return true
+  }
+  if first_child_named_local_local(element, "autoFilter") is Some(_) {
+    return true
+  }
+  false
+}
+
+///|
+fn catalog_sml_table_parts_render_probe(element : @xml.Element) -> Bool {
+  let ns = element.name.ns.unwrap_or("")
+  if ns.contains("spreadsheetml") {
+    match element.name.local_name {
+      "tableParts" | "tablePart" => return true
+      _ => ()
+    }
+  }
+  for child in element.children {
+    match child {
+      Element(ce) => if catalog_sml_table_parts_render_probe(ce) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_table_part_count(element : @xml.Element) -> Int {
+  let ns = element.name.ns.unwrap_or("")
+  let mut count = 0
+  if ns.contains("spreadsheetml") && element.name.local_name == "tablePart" {
+    count += 1
+  }
+  for child in element.children {
+    match child {
+      Element(ce) => count += catalog_sml_table_part_count(ce)
+      _ => ()
+    }
+  }
+  count
+}
+
+///|
+fn catalog_sml_table_render_probe(element : @xml.Element) -> @xml.Element? {
+  if catalog_sml_is_table_render_element(element) {
+    return Some(element)
+  }
+  for child in element.children {
+    match child {
+      Element(ce) =>
+        match catalog_sml_table_render_probe(ce) {
+          Some(found) => return Some(found)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_is_table_render_element(element : @xml.Element) -> Bool {
+  let ns = element.name.ns.unwrap_or("")
+  if !ns.contains("spreadsheetml") {
+    return false
+  }
+  match element.name.local_name {
+    "tableParts"
+    | "tablePart"
+    | "table"
+    | "tableColumns"
+    | "tableColumn"
+    | "tableStyleInfo"
+    | "calculatedColumnFormula"
+    | "totalsRowFormula"
+    | "xmlColumnPr" => true
+    _ => false
+  }
+}
+
+///|
+fn catalog_sml_table_for_render(content : @xml.Element) -> @xml.Element {
+  match catalog_sml_first_table_element(content) {
+    Some(table) => catalog_sml_normalize_table(table)
+    None =>
+      match catalog_sml_table_render_probe(content) {
+        Some(target) => catalog_sml_table_from_target(target)
+        None => catalog_sml_table_from_target(content)
+      }
+  }
+}
+
+///|
+fn catalog_sml_first_table_element(element : @xml.Element) -> @xml.Element? {
+  let ns = element.name.ns.unwrap_or("")
+  if ns.contains("spreadsheetml") && element.name.local_name == "table" {
+    return Some(element)
+  }
+  for child in element.children {
+    match child {
+      Element(ce) =>
+        match catalog_sml_first_table_element(ce) {
+          Some(found) => return Some(found)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_table_from_target(target : @xml.Element) -> @xml.Element {
+  let columns = match target.name.local_name {
+    "tableColumns"
+    | "tableColumn"
+    | "calculatedColumnFormula"
+    | "totalsRowFormula"
+    | "xmlColumnPr" => catalog_sml_table_columns_for_render(target)
+    _ =>
+      catalog_sml_table_columns_for_render(catalog_sml_default_table_columns())
+  }
+  let style_info = match target.name.local_name {
+    "tableStyleInfo" => catalog_sml_table_style_info_for_render(target)
+    _ => catalog_sml_default_table_style_info()
+  }
+  xep(
+    "s",
+    NS_S,
+    "table",
+    [
+      xa("id", "1"),
+      xa("name", "CatalogTable"),
+      xa("displayName", "CatalogTable"),
+      xa("ref", "A1:C5"),
+      xa("headerRowCount", "1"),
+      xa("totalsRowCount", "1"),
+    ],
+    [Element(columns), Element(style_info)],
+  )
+}
+
+///|
+fn catalog_sml_normalize_table(table : @xml.Element) -> @xml.Element {
+  let columns = match catalog_sml_direct_child(table, "tableColumns") {
+    Some(c) => catalog_sml_table_columns_for_render(c)
+    None =>
+      catalog_sml_table_columns_for_render(catalog_sml_default_table_columns())
+  }
+  let style_info = match catalog_sml_direct_child(table, "tableStyleInfo") {
+    Some(s) => catalog_sml_table_style_info_for_render(s)
+    None => catalog_sml_default_table_style_info()
+  }
+  let kids : Array[@xml.Node] = []
+  match catalog_sml_direct_child(table, "autoFilter") {
+    Some(af) => kids.push(Element(catalog_sml_table_auto_filter_for_render(af)))
+    None => ()
+  }
+  kids.push(Element(columns))
+  kids.push(Element(style_info))
+  {
+    name: table.name,
+    attributes: catalog_force_attrs(table.attributes, [
+      ("id", "1"),
+      ("name", "CatalogTable"),
+      ("displayName", "CatalogTable"),
+      ("ref", "A1:C5"),
+      ("headerRowCount", "1"),
+      ("totalsRowCount", "1"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_direct_child(
+  element : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in element.children {
+    match child {
+      Element(ce) => if ce.name.local_name == local_name { return Some(ce) }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_table_columns_for_render(element : @xml.Element) -> @xml.Element {
+  let columns : Array[@xml.Node] = []
+  let mut count = 0
+  if element.name.local_name == "tableColumns" {
+    for child in element.children {
+      match child {
+        Element(ce) =>
+          if ce.name.local_name == "tableColumn" && count < 3 {
+            count += 1
+            columns.push(
+              Element(
+                catalog_sml_table_column_for_render(
+                  ce,
+                  count.to_string(),
+                  catalog_sml_table_column_name(count),
+                ),
+              ),
+            )
+          }
+        _ => ()
+      }
+    }
+  } else if element.name.local_name == "tableColumn" {
+    count = 1
+    columns.push(
+      Element(catalog_sml_table_column_for_render(element, "1", "Item")),
+    )
+  } else if catalog_sml_table_column_child_name(element.name.local_name) {
+    count = 1
+    columns.push(Element(catalog_sml_table_column_wrapping_child(element)))
+  }
+  while count < 3 {
+    count += 1
+    columns.push(Element(catalog_sml_default_table_column(count)))
+  }
+  let attrs = if element.name.local_name == "tableColumns" {
+    catalog_force_attrs(element.attributes, [("count", "3")])
+  } else {
+    [xa("count", "3")]
+  }
+  let name = if element.name.local_name == "tableColumns" {
+    element.name
+  } else {
+    { prefix: Some("s"), local_name: "tableColumns", ns: Some(NS_S) }
+  }
+  { name, attributes: attrs, children: columns }
+}
+
+///|
+fn catalog_sml_table_column_for_render(
+  column : @xml.Element,
+  id : String,
+  display_name : String,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  for child in column.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "calculatedColumnFormula" =>
+            kids.push(
+              Element(
+                catalog_sml_table_formula_for_render(
+                  ce, "calculatedColumnFormula", "=[@Qty]*2",
+                ),
+              ),
+            )
+          "totalsRowFormula" =>
+            kids.push(
+              Element(
+                catalog_sml_table_formula_for_render(
+                  ce, "totalsRowFormula", "SUM([Qty])",
+                ),
+              ),
+            )
+          "xmlColumnPr" =>
+            kids.push(Element(catalog_sml_xml_column_pr_for_render(ce)))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  {
+    name: column.name,
+    attributes: catalog_force_attrs(column.attributes, [
+      ("id", id),
+      ("name", display_name),
+      ("totalsRowFunction", "custom"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_table_column_wrapping_child(
+  child : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  match child.name.local_name {
+    "calculatedColumnFormula" =>
+      kids.push(
+        Element(
+          catalog_sml_table_formula_for_render(
+            child, "calculatedColumnFormula", "=[@Qty]*2",
+          ),
+        ),
+      )
+    "totalsRowFormula" =>
+      kids.push(
+        Element(
+          catalog_sml_table_formula_for_render(
+            child, "totalsRowFormula", "SUM([Qty])",
+          ),
+        ),
+      )
+    "xmlColumnPr" =>
+      kids.push(Element(catalog_sml_xml_column_pr_for_render(child)))
+    _ => ()
+  }
+  xep(
+    "s",
+    NS_S,
+    "tableColumn",
+    [xa("id", "1"), xa("name", "Item"), xa("totalsRowFunction", "custom")],
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_table_column_child_name(local_name : String) -> Bool {
+  match local_name {
+    "calculatedColumnFormula" | "totalsRowFormula" | "xmlColumnPr" => true
+    _ => false
+  }
+}
+
+///|
+fn catalog_sml_table_formula_for_render(
+  formula : @xml.Element,
+  local_name : String,
+  default_text : String,
+) -> @xml.Element {
+  let mut has_text = false
+  let kids : Array[@xml.Node] = []
+  for child in formula.children {
+    match child {
+      Text(_) => {
+        has_text = true
+        kids.push(child)
+      }
+      other => kids.push(other)
+    }
+  }
+  if !has_text {
+    kids.push(Text(default_text))
+  }
+  {
+    name: { prefix: formula.name.prefix, local_name, ns: formula.name.ns },
+    attributes: catalog_force_attrs(formula.attributes, [("array", "0")]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_xml_column_pr_for_render(element : @xml.Element) -> @xml.Element {
+  {
+    name: element.name,
+    attributes: catalog_force_attrs(element.attributes, [
+      ("mapId", "1"),
+      ("xpath", "/catalog/item"),
+      ("xmlDataType", "string"),
+      ("denormalized", "0"),
+    ]),
+    children: element.children,
+  }
+}
+
+///|
+fn catalog_sml_table_style_info_for_render(
+  element : @xml.Element,
+) -> @xml.Element {
+  {
+    name: element.name,
+    attributes: catalog_force_attrs(element.attributes, [
+      ("name", "TableStyleMedium2"),
+      ("showFirstColumn", "0"),
+      ("showLastColumn", "0"),
+      ("showRowStripes", "1"),
+      ("showColumnStripes", "0"),
+    ]),
+    children: [],
+  }
+}
+
+///|
+fn catalog_sml_table_auto_filter_for_render(
+  element : @xml.Element,
+) -> @xml.Element {
+  {
+    name: element.name,
+    attributes: catalog_force_attrs(element.attributes, [("ref", "A1:C5")]),
+    children: [],
+  }
+}
+
+///|
+fn catalog_sml_default_table_columns() -> @xml.Element {
+  xep("s", NS_S, "tableColumns", [xa("count", "3")], [
+    Element(catalog_sml_default_table_column(1)),
+    Element(catalog_sml_default_table_column(2)),
+    Element(catalog_sml_default_table_column(3)),
+  ])
+}
+
+///|
+fn catalog_sml_default_table_column(index : Int) -> @xml.Element {
+  xep(
+    "s",
+    NS_S,
+    "tableColumn",
+    [
+      xa("id", index.to_string()),
+      xa("name", catalog_sml_table_column_name(index)),
+    ],
+    [],
+  )
+}
+
+///|
+fn catalog_sml_table_column_name(index : Int) -> String {
+  match index {
+    1 => "Item"
+    2 => "Qty"
+    3 => "Amount"
+    _ => "Column" + index.to_string()
+  }
+}
+
+///|
+fn catalog_sml_default_table_style_info() -> @xml.Element {
+  xep(
+    "s",
+    NS_S,
+    "tableStyleInfo",
+    [
+      xa("name", "TableStyleMedium2"),
+      xa("showFirstColumn", "0"),
+      xa("showLastColumn", "0"),
+      xa("showRowStripes", "1"),
+      xa("showColumnStripes", "0"),
+    ],
+    [],
+  )
+}
+
+///|
+fn catalog_sml_table_render_worksheet() -> @xml.Element {
+  xe(NS_S, "worksheet", [], [
+    Element(xe(NS_S, "dimension", [xa("ref", "A1:C5")], [])),
+    Element(
+      xe(NS_S, "sheetData", [], [
+        Element(
+          s_row("1", [
+            s_inline("A1", "Item"),
+            s_inline("B1", "Qty"),
+            s_inline("C1", "Amount"),
+          ]),
+        ),
+        Element(
+          s_row("2", [
+            s_inline("A2", "Apple"),
+            s_cell("B2", "3"),
+            s_cell("C2", "6"),
+          ]),
+        ),
+        Element(
+          s_row("3", [
+            s_inline("A3", "Bread"),
+            s_cell("B3", "2"),
+            s_cell("C3", "4"),
+          ]),
+        ),
+        Element(
+          s_row("4", [
+            s_inline("A4", "Cheese"),
+            s_cell("B4", "1"),
+            s_cell("C4", "8"),
+          ]),
+        ),
+        Element(
+          s_row("5", [
+            s_inline("A5", "Total"),
+            s_cell("B5", "6"),
+            s_cell("C5", "18"),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Catalog render-only `.xlsx` host.  Header/footer text leaves are
+/// ST_Xstring payloads, and the synthesized single-element probes are
+/// often structurally valid but empty.  For render verification only,
+/// seed the target header/footer subtree with deterministic visible
+/// text before stripping the sentinel; fidelity checks still use the
+/// unmodified `host_package` path.
+fn catalog_xlsx_package_for_render(content : @xml.Element) -> Bytes {
+  let seeded = catalog_sml_print_layout_seed_target(
+    catalog_sml_page_break_seed_target(
+      catalog_sml_background_picture_seed_target(
+        catalog_sml_legacy_drawing_hf_seed_target(
+          catalog_sml_legacy_drawing_seed_target(
+            catalog_sml_controls_seed_target(
+              catalog_sml_custom_properties_seed_target(
+                catalog_sml_main_drawing_seed_target(
+                  catalog_sml_hyperlink_seed_target(
+                    catalog_sml_data_validation_seed_target(
+                      catalog_sml_sheet_view_seed_target(
+                        catalog_sml_header_footer_seed_target(content),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  )
+  if catalog_sml_background_picture_has_target(seeded) ||
+    catalog_sml_legacy_drawing_hf_has_target(seeded) ||
+    catalog_sml_legacy_drawing_has_target(seeded) ||
+    catalog_sml_controls_has_target(seeded) ||
+    catalog_sml_custom_properties_has_target(seeded) ||
+    catalog_sml_main_drawing_has_target(seeded) ||
+    catalog_sml_hyperlink_has_target(seeded) {
+    xlsx_package_with_worksheet_refs(
+      strip_target_attr(catalog_sml_page_break_ensure_sheet(seeded)),
+    )
+  } else {
+    catalog_xlsx_package(strip_target_attr(seeded))
+  }
+}
+
+///|
+fn catalog_sml_data_validation_seed_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  let has_target = catalog_sml_data_validation_has_target(content)
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let out : @xml.Element = {
+      name: e.name,
+      attributes: if is_target && e.name.local_name == "dataValidation" {
+        catalog_sml_data_validation_attrs(e.attributes)
+      } else {
+        e.attributes
+      },
+      children: kids,
+    }
+    if is_target &&
+      e.name.local_name == "dataValidations" &&
+      !catalog_sml_data_validations_has_validation(out) {
+      let seeded_kids : Array[@xml.Node] = []
+      for child in out.children {
+        seeded_kids.push(child)
+      }
+      seeded_kids.push(
+        Element(
+          catalog_sml_seed_data_validation(
+            xep(
+              out.name.prefix.unwrap_or("s"),
+              out.name.ns.unwrap_or(NS_S),
+              "dataValidation",
+              [],
+              [],
+            ),
+          ),
+        ),
+      )
+      return {
+        name: out.name,
+        attributes: catalog_sml_data_validations_attrs(out.attributes),
+        children: seeded_kids,
+      }
+    }
+    out
+  }
+  let seeded = walk(content)
+  if has_target {
+    catalog_sml_page_break_ensure_sheet(
+      catalog_sml_data_validation_ensure_sheet(seeded),
+    )
+  } else {
+    seeded
+  }
+}
+
+///|
+fn catalog_sml_data_validation_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) &&
+    (
+      e.name.local_name == "dataValidations" ||
+      e.name.local_name == "dataValidation"
+    ) {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_data_validation_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_data_validation_ensure_sheet(
+  content : @xml.Element,
+) -> @xml.Element {
+  if content.name.local_name == "worksheet" {
+    content
+  } else if content.name.local_name == "dataValidation" {
+    xe(NS_S, "worksheet", [], [
+      Element(
+        xe(NS_S, "dataValidations", [xa("count", "1")], [
+          Element(catalog_sml_seed_data_validation(content)),
+        ]),
+      ),
+    ])
+  } else {
+    xe(NS_S, "worksheet", [], [Element(content)])
+  }
+}
+
+///|
+fn catalog_sml_data_validations_has_validation(e : @xml.Element) -> Bool {
+  for child in e.children {
+    match child {
+      Element(c) => if c.name.local_name == "dataValidation" { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_seed_data_validation(
+  data_validation : @xml.Element,
+) -> @xml.Element {
+  {
+    name: data_validation.name,
+    attributes: catalog_sml_data_validation_attrs(data_validation.attributes),
+    children: data_validation.children,
+  }
+}
+
+///|
+fn catalog_sml_data_validations_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_count = false
+  for attr in attrs_in {
+    if attr.name.local_name == "count" {
+      saw_count = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_count {
+    attrs.push(xa("count", "1"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_data_validation_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_type = false
+  let mut saw_sqref = false
+  let mut saw_allow_blank = false
+  for attr in attrs_in {
+    match attr.name.local_name {
+      "type" => saw_type = true
+      "sqref" => saw_sqref = true
+      "allowBlank" => saw_allow_blank = true
+      _ => ()
+    }
+    attrs.push(attr)
+  }
+  if !saw_type {
+    attrs.push(xa("type", "list"))
+  }
+  if !saw_sqref {
+    attrs.push(xa("sqref", "A1"))
+  }
+  if !saw_allow_blank {
+    attrs.push(xa("allowBlank", "1"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_hyperlink_seed_target(content : @xml.Element) -> @xml.Element {
+  let has_target = catalog_sml_hyperlink_has_target(content)
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let out : @xml.Element = {
+      name: e.name,
+      attributes: if is_target && e.name.local_name == "hyperlink" {
+        catalog_sml_hyperlink_attrs(e.attributes)
+      } else {
+        e.attributes
+      },
+      children: kids,
+    }
+    if is_target &&
+      e.name.local_name == "hyperlinks" &&
+      !catalog_sml_hyperlinks_has_hyperlink(out) {
+      let seeded_kids : Array[@xml.Node] = []
+      for child in out.children {
+        seeded_kids.push(child)
+      }
+      seeded_kids.push(
+        Element(
+          catalog_sml_seed_hyperlink(
+            xep(
+              out.name.prefix.unwrap_or("s"),
+              out.name.ns.unwrap_or(NS_S),
+              "hyperlink",
+              [],
+              [],
+            ),
+          ),
+        ),
+      )
+      return {
+        name: out.name,
+        attributes: out.attributes,
+        children: seeded_kids,
+      }
+    }
+    out
+  }
+  let seeded = walk(content)
+  if has_target {
+    catalog_sml_hyperlink_ensure_sheet(seeded)
+  } else {
+    seeded
+  }
+}
+
+///|
+fn catalog_sml_hyperlink_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) &&
+    (e.name.local_name == "hyperlinks" || e.name.local_name == "hyperlink") {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_hyperlink_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_hyperlink_ensure_sheet(content : @xml.Element) -> @xml.Element {
+  if content.name.local_name == "worksheet" {
+    content
+  } else if content.name.local_name == "hyperlink" {
+    xe(NS_S, "worksheet", [], [
+      Element(
+        xe(NS_S, "hyperlinks", [], [
+          Element(catalog_sml_seed_hyperlink(content)),
+        ]),
+      ),
+    ])
+  } else {
+    xe(NS_S, "worksheet", [], [Element(content)])
+  }
+}
+
+///|
+fn catalog_sml_hyperlinks_has_hyperlink(e : @xml.Element) -> Bool {
+  for child in e.children {
+    match child {
+      Element(c) => if c.name.local_name == "hyperlink" { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_seed_hyperlink(hyperlink : @xml.Element) -> @xml.Element {
+  {
+    name: hyperlink.name,
+    attributes: catalog_sml_hyperlink_attrs(hyperlink.attributes),
+    children: hyperlink.children,
+  }
+}
+
+///|
+fn catalog_sml_hyperlink_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_ref = false
+  let mut saw_id = false
+  let mut saw_display = false
+  for attr in attrs_in {
+    match attr.name.local_name {
+      "ref" => saw_ref = true
+      "id" => saw_id = true
+      "display" => saw_display = true
+      _ => ()
+    }
+    attrs.push(attr)
+  }
+  if !saw_ref {
+    attrs.push(xa("ref", "A1"))
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", "rIdHyperlink"))
+  }
+  if !saw_display {
+    attrs.push(xa("display", "Catalog hyperlink"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_main_drawing_seed_target(content : @xml.Element) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let attrs = if is_target && e.name.local_name == "drawing" {
+      catalog_sml_main_drawing_attrs(e.attributes)
+    } else {
+      e.attributes
+    }
+    { name: e.name, attributes: attrs, children: kids }
+  }
+  walk(content)
+}
+
+///|
+fn catalog_sml_main_drawing_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) && e.name.local_name == "drawing" {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_main_drawing_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_main_drawing_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  for attr in attrs_in {
+    if attr.name.local_name == "id" {
+      saw_id = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", "rIdDrawing"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_sheet_view_seed_target(content : @xml.Element) -> @xml.Element {
+  let has_view_target = catalog_sml_sheet_view_has_target(content)
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let out : @xml.Element = {
+      name: e.name,
+      attributes: e.attributes,
+      children: kids,
+    }
+    if catalog_element_has_target_attr(e) {
+      match e.name.local_name {
+        "pane" => return catalog_sml_seed_pane(out)
+        "selection" => return catalog_sml_seed_selection(out)
+        "sheetView" =>
+          if catalog_sml_sheet_view_has_pane_or_selection(e) {
+            return catalog_sml_seed_sheet_view(out)
+          }
+        "sheetViews" =>
+          if catalog_sml_sheet_view_has_pane_or_selection(e) {
+            return catalog_sml_seed_sheet_views(out)
+          }
+        _ => ()
+      }
+    }
+    out
+  }
+  let seeded = walk(content)
+  if has_view_target {
+    catalog_sml_sheet_view_ensure_sheet(seeded)
+  } else {
+    seeded
+  }
+}
+
+///|
+fn catalog_sml_sheet_view_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) {
+    match e.name.local_name {
+      "pane" | "selection" => return true
+      "sheetView" | "sheetViews" =>
+        if catalog_sml_sheet_view_has_pane_or_selection(e) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_sheet_view_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_sheet_view_has_pane_or_selection(e : @xml.Element) -> Bool {
+  match e.name.local_name {
+    "pane" | "selection" => return true
+    _ => ()
+  }
+  for child in e.children {
+    match child {
+      Element(c) =>
+        if catalog_sml_sheet_view_has_pane_or_selection(c) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_seed_pane(pane : @xml.Element) -> @xml.Element {
+  {
+    name: pane.name,
+    attributes: catalog_force_attrs(pane.attributes, [
+      ("xSplit", "1"),
+      ("ySplit", "2"),
+      ("topLeftCell", "B3"),
+      ("activePane", "bottomRight"),
+      ("state", "frozen"),
+    ]),
+    children: pane.children,
+  }
+}
+
+///|
+fn catalog_sml_seed_selection(selection : @xml.Element) -> @xml.Element {
+  {
+    name: selection.name,
+    attributes: catalog_force_attrs(selection.attributes, [
+      ("pane", "bottomRight"),
+      ("activeCell", "B2"),
+      ("activeCellId", "0"),
+      ("sqref", "B2:C3"),
+    ]),
+    children: selection.children,
+  }
+}
+
+///|
+fn catalog_sml_seed_sheet_view(sheet_view : @xml.Element) -> @xml.Element {
+  let ns = sheet_view.name.ns.unwrap_or(NS_S)
+  let prefix = sheet_view.name.prefix.unwrap_or("s")
+  let kids : Array[@xml.Node] = []
+  let mut saw_pane = false
+  let mut saw_selection = false
+  for child in sheet_view.children {
+    match child {
+      Element(e) => {
+        if e.name.local_name == "pane" {
+          saw_pane = true
+        }
+        if e.name.local_name == "selection" {
+          saw_selection = true
+        }
+        kids.push(child)
+      }
+      other => kids.push(other)
+    }
+  }
+  if !saw_pane {
+    kids.push(Element(catalog_sml_seed_pane(xep(prefix, ns, "pane", [], []))))
+  }
+  if !saw_selection {
+    kids.push(
+      Element(catalog_sml_seed_selection(xep(prefix, ns, "selection", [], []))),
+    )
+  }
+  {
+    name: sheet_view.name,
+    attributes: catalog_attrs_with_defaults(sheet_view.attributes, [
+      ("workbookViewId", "0"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_seed_sheet_views(sheet_views : @xml.Element) -> @xml.Element {
+  let ns = sheet_views.name.ns.unwrap_or(NS_S)
+  let prefix = sheet_views.name.prefix.unwrap_or("s")
+  let kids : Array[@xml.Node] = []
+  let mut saw_sheet_view = false
+  for child in sheet_views.children {
+    match child {
+      Element(e) => {
+        if e.name.local_name == "sheetView" {
+          saw_sheet_view = true
+        }
+        kids.push(child)
+      }
+      other => kids.push(other)
+    }
+  }
+  if !saw_sheet_view {
+    kids.push(
+      Element(catalog_sml_seed_sheet_view(xep(prefix, ns, "sheetView", [], []))),
+    )
+  }
+  { name: sheet_views.name, attributes: sheet_views.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_sheet_view_ensure_sheet(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "worksheet" => catalog_sml_sheet_view_ensure_sheet_data(content)
+    "sheetViews" =>
+      catalog_sml_sheet_view_ensure_sheet_data(
+        xe(NS_S, "worksheet", [], [Element(content)]),
+      )
+    "sheetView" =>
+      catalog_sml_sheet_view_ensure_sheet_data(
+        xe(NS_S, "worksheet", [], [
+          Element(xe(NS_S, "sheetViews", [], [Element(content)])),
+        ]),
+      )
+    "pane" | "selection" =>
+      catalog_sml_sheet_view_ensure_sheet_data(
+        xe(NS_S, "worksheet", [], [
+          Element(
+            xe(NS_S, "sheetViews", [], [
+              Element(
+                xe(NS_S, "sheetView", [xa("workbookViewId", "0")], [
+                  Element(content),
+                ]),
+              ),
+            ]),
+          ),
+        ]),
+      )
+    _ => content
+  }
+}
+
+///|
+fn catalog_sml_sheet_view_ensure_sheet_data(
+  worksheet : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_dimension = false
+  let mut saw_sheet_data = false
+  for child in worksheet.children {
+    match child {
+      Element(e) => {
+        if e.name.local_name == "dimension" {
+          saw_dimension = true
+        }
+        if e.name.local_name == "sheetData" {
+          saw_sheet_data = true
+        }
+      }
+      _ => ()
+    }
+  }
+  if !saw_dimension {
+    kids.push(Element(xe(NS_S, "dimension", [xa("ref", "A1:C4")], [])))
+  }
+  for child in worksheet.children {
+    kids.push(child)
+  }
+  if !saw_sheet_data {
+    kids.push(Element(catalog_sml_sheet_view_sheet_data()))
+  }
+  { name: worksheet.name, attributes: worksheet.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_sheet_view_sheet_data() -> @xml.Element {
+  xe(NS_S, "sheetData", [], [
+    Element(s_row("1", [s_inline("A1", "Header"), s_inline("B1", "Value")])),
+    Element(s_row("2", [s_inline("A2", "Selected"), s_cell("B2", "20")])),
+    Element(s_row("3", [s_inline("A3", "Also"), s_cell("B3", "30")])),
+    Element(s_row("4", [s_inline("A4", "Tail"), s_cell("B4", "40")])),
+  ])
+}
+
+///|
+fn catalog_sml_custom_properties_seed_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let attrs = if is_target && e.name.local_name == "customPr" {
+      catalog_sml_custom_pr_attrs(e.attributes)
+    } else {
+      e.attributes
+    }
+    if is_target &&
+      e.name.local_name == "customProperties" &&
+      !catalog_xml_children_have_local(kids, "customPr") {
+      for child in sml_aux_custom_properties().children {
+        kids.push(child)
+      }
+    }
+    { name: e.name, attributes: attrs, children: kids }
+  }
+  walk(content)
+}
+
+///|
+fn catalog_sml_custom_properties_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) &&
+    (e.name.local_name == "customProperties" || e.name.local_name == "customPr") {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) =>
+        if catalog_sml_custom_properties_has_target(c) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_custom_pr_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_name = false
+  let mut saw_id = false
+  for attr in attrs_in {
+    if attr.name.local_name == "name" {
+      saw_name = true
+    }
+    if attr.name.local_name == "id" {
+      saw_id = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_name {
+    attrs.push(xa("name", "CatalogProperty"))
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", "rIdCustom"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_controls_seed_target(content : @xml.Element) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let attrs = if is_target && e.name.local_name == "control" {
+      catalog_sml_control_attrs(e.attributes)
+    } else if is_target && e.name.local_name == "controlPr" {
+      catalog_sml_control_pr_attrs(e.attributes)
+    } else {
+      e.attributes
+    }
+    if is_target &&
+      e.name.local_name == "controls" &&
+      !catalog_xml_children_have_local(kids, "control") {
+      for child in sml_aux_controls().children {
+        kids.push(child)
+      }
+    }
+    if is_target &&
+      e.name.local_name == "control" &&
+      !catalog_xml_children_have_local(kids, "controlPr") {
+      kids.push(
+        Element(
+          xe(NS_S, "controlPr", catalog_sml_control_pr_attrs([]), [
+            Element(sml_aux_object_anchor()),
+          ]),
+        ),
+      )
+    }
+    if is_target &&
+      e.name.local_name == "controlPr" &&
+      !catalog_xml_children_have_local(kids, "anchor") {
+      kids.push(Element(sml_aux_object_anchor()))
+    }
+    { name: e.name, attributes: attrs, children: kids }
+  }
+  walk(content)
+}
+
+///|
+fn catalog_sml_controls_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) &&
+    (
+      e.name.local_name == "controls" ||
+      e.name.local_name == "control" ||
+      e.name.local_name == "controlPr"
+    ) {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_controls_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_xml_children_have_local(
+  kids : Array[@xml.Node],
+  local_name : String,
+) -> Bool {
+  for child in kids {
+    match child {
+      Element(e) => if e.name.local_name == local_name { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_control_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_shape_id = false
+  let mut saw_name = false
+  let mut saw_id = false
+  for attr in attrs_in {
+    match attr.name.local_name {
+      "shapeId" => saw_shape_id = true
+      "name" => saw_name = true
+      "id" => saw_id = true
+      _ => ()
+    }
+    attrs.push(attr)
+  }
+  if !saw_shape_id {
+    attrs.push(xa("shapeId", "2"))
+  }
+  if !saw_name {
+    attrs.push(xa("name", "CatalogControl"))
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", "rIdControl"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_control_pr_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_alt_text = false
+  for attr in attrs_in {
+    if attr.name.local_name == "altText" {
+      saw_alt_text = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_alt_text {
+    attrs.push(xa("altText", "Catalog embedded control"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_legacy_drawing_seed_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let attrs = if is_target && e.name.local_name == "legacyDrawing" {
+      catalog_sml_legacy_drawing_attrs(e.attributes)
+    } else {
+      e.attributes
+    }
+    { name: e.name, attributes: attrs, children: kids }
+  }
+  walk(content)
+}
+
+///|
+fn catalog_sml_legacy_drawing_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) && e.name.local_name == "legacyDrawing" {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_legacy_drawing_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_legacy_drawing_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  for attr in attrs_in {
+    if attr.name.local_name == "id" {
+      saw_id = true
+      if @xml.is_ncname(attr.value) {
+        attrs.push(attr)
+      } else {
+        attrs.push(sml_aux_rel_attr("id", "rIdLegacy"))
+      }
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", "rIdLegacy"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_legacy_drawing_hf_seed_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let attrs = if is_target && e.name.local_name == "legacyDrawingHF" {
+      catalog_sml_legacy_drawing_hf_attrs(e.attributes)
+    } else {
+      e.attributes
+    }
+    { name: e.name, attributes: attrs, children: kids }
+  }
+  walk(content)
+}
+
+///|
+fn catalog_sml_legacy_drawing_hf_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) &&
+    e.name.local_name == "legacyDrawingHF" {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) =>
+        if catalog_sml_legacy_drawing_hf_has_target(c) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_legacy_drawing_hf_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  for attr in attrs_in {
+    if attr.name.local_name == "id" {
+      saw_id = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", "rIdLegacyHF"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_background_picture_seed_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let attrs = if is_target && e.name.local_name == "picture" {
+      catalog_sml_background_picture_attrs(e.attributes)
+    } else {
+      e.attributes
+    }
+    { name: e.name, attributes: attrs, children: kids }
+  }
+  walk(content)
+}
+
+///|
+fn catalog_sml_background_picture_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) && e.name.local_name == "picture" {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) =>
+        if catalog_sml_background_picture_has_target(c) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_background_picture_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  for attr in attrs_in {
+    if attr.name.local_name == "id" {
+      saw_id = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", "rIdPicture"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_header_footer_seed_target(
+  content : @xml.Element,
+) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    if is_target &&
+      catalog_sml_header_footer_text_name(e.name.local_name) &&
+      catalog_xml_text_content(e).trim().to_owned() == "" {
+      return {
+        name: e.name,
+        attributes: e.attributes,
+        children: [Text(catalog_sml_header_footer_seed_text(e.name.local_name))],
+      }
+    }
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let out : @xml.Element = {
+      name: e.name,
+      attributes: e.attributes,
+      children: kids,
+    }
+    if is_target &&
+      e.name.local_name == "headerFooter" &&
+      !catalog_sml_header_footer_has_visible_text(out) {
+      let ns = e.name.ns.unwrap_or(NS_S)
+      let prefix = e.name.prefix.unwrap_or("s")
+      let seeded_kids : Array[@xml.Node] = []
+      for child in out.children {
+        seeded_kids.push(child)
+      }
+      seeded_kids.push(
+        Element(
+          xep(prefix, ns, "oddHeader", [], [
+            Text(catalog_sml_header_footer_seed_text("oddHeader")),
+          ]),
+        ),
+      )
+      return {
+        name: out.name,
+        attributes: out.attributes,
+        children: seeded_kids,
+      }
+    }
+    out
+  }
+  walk(content)
+}
+
+///|
+fn catalog_element_has_target_attr(e : @xml.Element) -> Bool {
+  for attr in e.attributes {
+    if attr.name.local_name == TARGET_ATTR {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn catalog_attr_value_local(e : @xml.Element, local_name : String) -> String? {
+  for attr in e.attributes {
+    if attr.name.local_name == local_name {
+      return Some(attr.value)
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_header_footer_text_name(local_name : String) -> Bool {
+  local_name == "oddHeader" ||
+  local_name == "oddFooter" ||
+  local_name == "evenHeader" ||
+  local_name == "evenFooter" ||
+  local_name == "firstHeader" ||
+  local_name == "firstFooter"
+}
+
+///|
+fn catalog_sml_header_footer_seed_text(local_name : String) -> String {
+  match local_name {
+    "oddFooter" => "&CCatalog odd footer"
+    "evenHeader" => "&CCatalog even header"
+    "evenFooter" => "&CCatalog even footer"
+    "firstHeader" => "&CCatalog first header"
+    "firstFooter" => "&CCatalog first footer"
+    _ => "&CCatalog odd header"
+  }
+}
+
+///|
+fn catalog_sml_header_footer_has_visible_text(e : @xml.Element) -> Bool {
+  if catalog_sml_header_footer_text_name(e.name.local_name) &&
+    catalog_xml_text_content(e).trim().to_owned() != "" {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) =>
+        if catalog_sml_header_footer_has_visible_text(c) {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_xml_text_content(e : @xml.Element) -> String {
+  let buf = StringBuilder::new()
+  fn walk(el : @xml.Element) -> Unit {
+    for child in el.children {
+      match child {
+        Text(t) => buf.write_string(t)
+        Element(c) => walk(c)
+        _ => ()
+      }
+    }
+  }
+  walk(e)
+  buf.to_string()
+}
+
+///|
+fn catalog_sml_page_break_seed_target(content : @xml.Element) -> @xml.Element {
+  let has_break_target = catalog_sml_page_break_has_target(content)
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    if is_target && e.name.local_name == "brk" {
+      return catalog_sml_seed_break(e)
+    }
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let out : @xml.Element = {
+      name: e.name,
+      attributes: e.attributes,
+      children: kids,
+    }
+    if is_target &&
+      (e.name.local_name == "rowBreaks" || e.name.local_name == "colBreaks") &&
+      !catalog_sml_page_break_has_break(out) {
+      let seeded_kids : Array[@xml.Node] = []
+      for child in out.children {
+        seeded_kids.push(child)
+      }
+      seeded_kids.push(
+        Element(
+          catalog_sml_seed_break(
+            xep(
+              out.name.prefix.unwrap_or("s"),
+              out.name.ns.unwrap_or(NS_S),
+              "brk",
+              [],
+              [],
+            ),
+          ),
+        ),
+      )
+      return {
+        name: out.name,
+        attributes: catalog_sml_page_break_attrs(out.attributes),
+        children: seeded_kids,
+      }
+    }
+    out
+  }
+  let seeded = walk(content)
+  if has_break_target {
+    catalog_sml_page_break_ensure_sheet(seeded)
+  } else {
+    seeded
+  }
+}
+
+///|
+fn catalog_sml_page_break_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) &&
+    (
+      e.name.local_name == "rowBreaks" ||
+      e.name.local_name == "colBreaks" ||
+      e.name.local_name == "brk"
+    ) {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_page_break_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_page_break_ensure_sheet(content : @xml.Element) -> @xml.Element {
+  if content.name.local_name == "worksheet" {
+    catalog_sml_page_break_ensure_sheet_data(content)
+  } else if content.name.local_name == "brk" {
+    catalog_sml_page_break_ensure_sheet_data(
+      xe(NS_S, "worksheet", [], [
+        Element(
+          xe(
+            NS_S,
+            "rowBreaks",
+            [xa("count", "1"), xa("manualBreakCount", "1")],
+            [Element(content)],
+          ),
+        ),
+      ]),
+    )
+  } else {
+    catalog_sml_page_break_ensure_sheet_data(
+      xe(NS_S, "worksheet", [], [Element(content)]),
+    )
+  }
+}
+
+///|
+fn catalog_sml_page_break_ensure_sheet_data(
+  worksheet : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_dimension = false
+  let mut saw_sheet_data = false
+  for child in worksheet.children {
+    match child {
+      Element(e) => {
+        if e.name.local_name == "dimension" {
+          saw_dimension = true
+        }
+        if e.name.local_name == "sheetData" {
+          saw_sheet_data = true
+        }
+      }
+      _ => ()
+    }
+  }
+  if !saw_dimension {
+    kids.push(Element(xe(NS_S, "dimension", [xa("ref", "A1:C3")], [])))
+  }
+  if !saw_sheet_data {
+    kids.push(Element(catalog_sml_page_break_sheet_data()))
+  }
+  for child in worksheet.children {
+    kids.push(child)
+  }
+  { name: worksheet.name, attributes: worksheet.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_page_break_sheet_data() -> @xml.Element {
+  xe(NS_S, "sheetData", [], [
+    Element(
+      xe(NS_S, "row", [xa("r", "1")], [
+        Element(
+          xe(NS_S, "c", [xa("r", "A1"), xa("t", "str")], [
+            Element(xe(NS_S, "v", [], [Text("page break")])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xe(NS_S, "row", [xa("r", "2")], [
+        Element(
+          xe(NS_S, "c", [xa("r", "A2"), xa("t", "str")], [
+            Element(xe(NS_S, "v", [], [Text("after break")])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_page_break_has_break(e : @xml.Element) -> Bool {
+  for child in e.children {
+    match child {
+      Element(c) => if c.name.local_name == "brk" { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_seed_break(brk : @xml.Element) -> @xml.Element {
+  let attrs = catalog_sml_break_attrs(brk.attributes)
+  { name: brk.name, attributes: attrs, children: brk.children }
+}
+
+///|
+fn catalog_sml_break_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  let mut saw_min = false
+  let mut saw_max = false
+  let mut saw_man = false
+  for attr in attrs_in {
+    match attr.name.local_name {
+      "id" => saw_id = true
+      "min" => saw_min = true
+      "max" => saw_max = true
+      "man" => saw_man = true
+      _ => ()
+    }
+    attrs.push(attr)
+  }
+  if !saw_id {
+    attrs.push(xa("id", "1"))
+  }
+  if !saw_min {
+    attrs.push(xa("min", "0"))
+  }
+  if !saw_max {
+    attrs.push(xa("max", "16383"))
+  }
+  if !saw_man {
+    attrs.push(xa("man", "1"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_page_break_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_count = false
+  let mut saw_manual = false
+  for attr in attrs_in {
+    if attr.name.local_name == "count" {
+      saw_count = true
+    }
+    if attr.name.local_name == "manualBreakCount" {
+      saw_manual = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_count {
+    attrs.push(xa("count", "1"))
+  }
+  if !saw_manual {
+    attrs.push(xa("manualBreakCount", "1"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_print_layout_seed_target(content : @xml.Element) -> @xml.Element {
+  let has_print_target = catalog_sml_print_layout_has_target(content)
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let attrs = if is_target && e.name.local_name == "printOptions" {
+      catalog_sml_print_options_attrs(e.attributes)
+    } else if is_target && e.name.local_name == "pageMargins" {
+      catalog_sml_page_margins_attrs(e.attributes)
+    } else if is_target && e.name.local_name == "pageSetup" {
+      catalog_sml_page_setup_attrs(e.attributes)
+    } else {
+      e.attributes
+    }
+    { name: e.name, attributes: attrs, children: kids }
+  }
+  let seeded = walk(content)
+  if has_print_target {
+    catalog_sml_page_break_ensure_sheet(seeded)
+  } else {
+    seeded
+  }
+}
+
+///|
+fn catalog_sml_print_layout_has_target(e : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(e) &&
+    (
+      e.name.local_name == "printOptions" ||
+      e.name.local_name == "pageMargins" ||
+      e.name.local_name == "pageSetup"
+    ) {
+    return true
+  }
+  for child in e.children {
+    match child {
+      Element(c) => if catalog_sml_print_layout_has_target(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_print_options_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_headings = false
+  let mut saw_grid_lines = false
+  let mut saw_grid_lines_set = false
+  for attr in attrs_in {
+    if attr.name.local_name == "headings" {
+      saw_headings = true
+    }
+    if attr.name.local_name == "gridLines" {
+      saw_grid_lines = true
+    }
+    if attr.name.local_name == "gridLinesSet" {
+      saw_grid_lines_set = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_headings {
+    attrs.push(xa("headings", "1"))
+  }
+  if !saw_grid_lines {
+    attrs.push(xa("gridLines", "1"))
+  }
+  if !saw_grid_lines_set {
+    attrs.push(xa("gridLinesSet", "1"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_page_margins_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_left = false
+  let mut saw_right = false
+  let mut saw_top = false
+  let mut saw_bottom = false
+  for attr in attrs_in {
+    match attr.name.local_name {
+      "left" => saw_left = true
+      "right" => saw_right = true
+      "top" => saw_top = true
+      "bottom" => saw_bottom = true
+      _ => ()
+    }
+    attrs.push(attr)
+  }
+  if !saw_left {
+    attrs.push(xa("left", "0.1"))
+  }
+  if !saw_right {
+    attrs.push(xa("right", "0.1"))
+  }
+  if !saw_top {
+    attrs.push(xa("top", "0.1"))
+  }
+  if !saw_bottom {
+    attrs.push(xa("bottom", "0.1"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_page_setup_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_paper_size = false
+  let mut saw_orientation = false
+  let mut saw_scale = false
+  let mut saw_copies = false
+  for attr in attrs_in {
+    match attr.name.local_name {
+      "paperSize" => saw_paper_size = true
+      "orientation" => saw_orientation = true
+      "scale" => saw_scale = true
+      "copies" => saw_copies = true
+      _ => ()
+    }
+    attrs.push(attr)
+  }
+  if !saw_paper_size {
+    attrs.push(xa("paperSize", "9"))
+  }
+  if !saw_orientation {
+    attrs.push(xa("orientation", "landscape"))
+  }
+  if !saw_scale {
+    attrs.push(xa("scale", "120"))
+  }
+  if !saw_copies {
+    attrs.push(xa("copies", "2"))
+  }
+  attrs
+}
+
+///|
 fn has_autofilter_filter_column(element : @xml.Element) -> Bool {
   if !is_catalog_autofilter_probe_root(element) &&
-    element.name.local_name != "autoFilter" {
+    element.name.local_name != "autoFilter" &&
+    element.name.local_name != "sortState" &&
+    element.name.local_name != "sortCondition" {
     return false
   }
   fn walk(e : @xml.Element) -> Bool {
-    if e.name.local_name == "filterColumn" {
+    if e.name.local_name == "filterColumn" || e.name.local_name == "sortState" {
       return true
     }
     for child in e.children {
@@ -7536,7 +17260,20 @@ fn catalog_autofilter_worksheet(content : @xml.Element) -> @xml.Element {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
   let auto_filter = match first_descendant_named_local(content, "autoFilter") {
     Some(e) => normalize_catalog_autofilter(e)
-    None => return content
+    None =>
+      match content.name.local_name {
+        "sortState" =>
+          normalize_catalog_autofilter(
+            xep("s", ns_s, "autoFilter", [], [Element(content)]),
+          )
+        "sortCondition" =>
+          normalize_catalog_autofilter(
+            xep("s", ns_s, "autoFilter", [], [
+              Element(xep("s", ns_s, "sortState", [], [Element(content)])),
+            ]),
+          )
+        _ => return content
+      }
   }
   xe(ns_s, "worksheet", [], [
     Element(xe(ns_s, "dimension", [xa("ref", "A1:B4")], [])),
@@ -7546,19 +17283,19 @@ fn catalog_autofilter_worksheet(content : @xml.Element) -> @xml.Element {
         Element(
           s_row("2", [
             s_inline("A2", "Red low"),
-            s_cell_styled_x("B2", "10", "1"),
+            s_cell_styled_x("B2", "45000", "1"),
           ]),
         ),
         Element(
           s_row("3", [
             s_inline("A3", "Green middle"),
-            s_cell_styled_x("B3", "50", "2"),
+            s_cell_styled_x("B3", "45600", "2"),
           ]),
         ),
         Element(
           s_row("4", [
             s_inline("A4", "Red high"),
-            s_cell_styled_x("B4", "90", "1"),
+            s_cell_styled_x("B4", "45900", "1"),
           ]),
         ),
       ]),
@@ -7606,6 +17343,7 @@ fn normalize_catalog_autofilter(element : @xml.Element) -> @xml.Element {
       attrs.push(attr)
     }
   }
+  let attrs = catalog_sml_autofilter_rule_attrs(element.name.local_name, attrs)
   if element.name.local_name == "autoFilter" && !saw_ref {
     attrs.push(xa("ref", "A1:B4"))
   }
@@ -7613,13 +17351,81 @@ fn normalize_catalog_autofilter(element : @xml.Element) -> @xml.Element {
     attrs.push(xa("colId", "1"))
   }
   let children : Array[@xml.Node] = []
+  let filters_target = if element.name.local_name == "filters" {
+    catalog_sml_autofilter_filters_target_child(element)
+  } else {
+    None
+  }
   for child in element.children {
     match child {
-      Element(ce) => children.push(Element(normalize_catalog_autofilter(ce)))
+      Element(ce) =>
+        match filters_target {
+          Some(target_local) =>
+            if catalog_sml_autofilter_filters_choice_child(ce.name.local_name) &&
+              ce.name.local_name != target_local {
+              ()
+            } else {
+              children.push(Element(normalize_catalog_autofilter(ce)))
+            }
+          None => children.push(Element(normalize_catalog_autofilter(ce)))
+        }
       _ => children.push(child)
     }
   }
   { name: element.name, attributes: attrs, children }
+}
+
+///|
+fn catalog_sml_autofilter_filters_target_child(
+  filters : @xml.Element,
+) -> String? {
+  for child in filters.children {
+    match child {
+      Element(ce) =>
+        if catalog_element_has_target_attr(ce) &&
+          catalog_sml_autofilter_filters_choice_child(ce.name.local_name) {
+          return Some(ce.name.local_name)
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_autofilter_filters_choice_child(local_name : String) -> Bool {
+  match local_name {
+    "filter" | "dateGroupItem" => true
+    _ => false
+  }
+}
+
+///|
+fn catalog_sml_autofilter_rule_attrs(
+  local_name : String,
+  attrs : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  match local_name {
+    "filter" => catalog_force_attrs(attrs, [("val", "45000")])
+    "sortState" => catalog_force_attrs(attrs, [("ref", "A1:B4")])
+    "sortCondition" =>
+      catalog_force_attrs(attrs, [("ref", "B2:B4"), ("descending", "1")])
+    "top10" =>
+      catalog_force_attrs(attrs, [
+        ("top", "1"),
+        ("percent", "0"),
+        ("val", "1"),
+        ("filterVal", "45900"),
+      ])
+    "dateGroupItem" =>
+      catalog_force_attrs(attrs, [
+        ("year", "2025"),
+        ("month", "8"),
+        ("day", "31"),
+        ("dateTimeGrouping", "day"),
+      ])
+    _ => attrs
+  }
 }
 
 ///|
@@ -7787,6 +17593,138 @@ fn default_minimal_chart_space_with_userShapes() -> @xml.Element {
     Element(print_settings),
     Element(user_shapes_ref),
   ])
+}
+
+///|
+/// Chart-space host for §21.2.2.218 `<c:userShapes r:id="…"/>`.
+/// The target is the chart-part relationship reference itself; the
+/// package host wires `rId1` to a real §21.3 chartDrawing part so
+/// pruning this element removes the overlay from the rendered chart.
+fn catalog_chart_user_shapes_ref_root(ref_elem : @xml.Element) -> @xml.Element {
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  for attr in ref_elem.attributes {
+    if attr.name.local_name == "id" {
+      saw_id = true
+      attrs.push({ name: attr.name, value: "rId1" })
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw_id {
+    attrs.push({
+      name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+      value: "rId1",
+    })
+  }
+  let ref_elem : @xml.Element = {
+    name: ref_elem.name,
+    attributes: attrs,
+    children: [],
+  }
+  let base = default_minimal_chart_space_with_userShapes()
+  let children : Array[@xml.Node] = []
+  for child in base.children {
+    match child {
+      Element(e) if e.name.local_name == "userShapes" =>
+        children.push(Element(ref_elem))
+      _ => children.push(child)
+    }
+  }
+  { name: base.name, attributes: base.attributes, children }
+}
+
+///|
+/// ChartDrawing non-visual hosts (`cdr:nvSpPr`, `cdr:nvCxnSpPr`,
+/// `cdr:nvPicPr`, `cdr:nvGraphicFramePr`, `cdr:nvGrpSpPr`) own the
+/// shared DrawingML `<cdr:cNvPr hidden="…">` flag.  Place the target
+/// non-visual block inside its matching §21.3 object so the renderer
+/// exercises the real visibility contract: hidden objects emit no SVG
+/// primitive; pruning the non-visual block restores visibility.
+fn catalog_chart_user_shapes_nonvisual_root(nv : @xml.Element) -> @xml.Element {
+  let hidden_nv = catalog_cdr_nonvisual_force_hidden(nv)
+  let obj = match hidden_nv.name.local_name {
+    "nvSpPr" =>
+      cdr_elem("sp", [], [
+        Element(hidden_nv),
+        Element(cdr_shape_props("rect", "dceaff")),
+      ])
+    "nvCxnSpPr" =>
+      cdr_elem("cxnSp", [], [
+        Element(hidden_nv),
+        Element(cdr_shape_props("straightConnector1", "6b7280")),
+      ])
+    "nvPicPr" =>
+      cdr_elem("pic", [], [
+        Element(hidden_nv),
+        Element(
+          cdr_elem("blipFill", [], [
+            Element(
+              xe(NS_A, "stretch", [], [Element(xe(NS_A, "fillRect", [], []))]),
+            ),
+          ]),
+        ),
+        Element(cdr_shape_props("rect", "d9ead3")),
+      ])
+    "nvGraphicFramePr" =>
+      cdr_elem("graphicFrame", [], [
+        Element(hidden_nv),
+        Element(cdr_xfrm2d()),
+        Element(
+          xe(NS_A, "graphic", [], [
+            Element(
+              xe(NS_A, "graphicData", [xa("uri", "urn:ooxml:chartDrawing")], []),
+            ),
+          ]),
+        ),
+      ])
+    "nvGrpSpPr" =>
+      cdr_elem("grpSp", [], [
+        Element(hidden_nv),
+        Element(cdr_elem("grpSpPr", [], [])),
+      ])
+    _ => cdr_shape("10", "Shape", "dceaff")
+  }
+  c_elem("userShapes", [], [Element(cdr_abs_anchor("0.15", "0.20", obj))])
+}
+
+///|
+fn catalog_cdr_nonvisual_force_hidden(nv : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_c_nv_pr = false
+  for child in nv.children {
+    match child {
+      Element(e) if e.name.local_name == "cNvPr" => {
+        saw_c_nv_pr = true
+        kids.push(
+          Element({
+            name: e.name,
+            attributes: catalog_force_attrs(e.attributes, [
+              ("id", "101"),
+              ("name", "Catalog Hidden"),
+              ("hidden", "1"),
+            ]),
+            children: e.children,
+          }),
+        )
+      }
+      other => kids.push(other)
+    }
+  }
+  if !saw_c_nv_pr {
+    kids.insert(
+      0,
+      Element(
+        cdr_elem(
+          "cNvPr",
+          [xa("id", "101"), xa("name", "Catalog Hidden"), xa("hidden", "1")],
+          [],
+        ),
+      ),
+    )
+  }
+  { name: nv.name, attributes: nv.attributes, children: kids }
 }
 
 ///|
@@ -8199,65 +18137,36 @@ fn diagram_slide_body_with_rel_ids(rel_ids : @xml.Element) -> @xml.Element {
 
 ///|
 fn default_diagram_data_model() -> @xml.Element {
-  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
-  xep("dgm", ns_dgm, "dataModel", [], [
-    Element(
-      xep("dgm", ns_dgm, "ptLst", [], [
-        Element(
-          xep("dgm", ns_dgm, "pt", [xa("modelId", "0"), xa("type", "doc")], [
-            Element(xep("dgm", ns_dgm, "prSet", [], [])),
-            Element(xep("dgm", ns_dgm, "spPr", [], [])),
-          ]),
-        ),
-      ]),
-    ),
-    Element(xep("dgm", ns_dgm, "cxnLst", [], [])),
-  ])
+  shared_data_model(["Catalog"])
+}
+
+///|
+fn default_diagram_algorithm_data_model() -> @xml.Element {
+  shared_data_model(["One", "Two", "Three"])
 }
 
 ///|
 fn default_diagram_layout_def() -> @xml.Element {
-  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
-  // Minimal layoutDef with a `<dgm:constrLst>` carrying width/height
-  // geometric constraints — required so the engine's
-  // `definition_has_geometric_constraints` gate passes and the
-  // SmartArt engine actually emits node bounds.  Without this the
-  // engine returns `[]` and per-element diagram tests cannot see a
-  // differential render outcome.
-  xep("dgm", ns_dgm, "layoutDef", [xa("uniqueId", "default")], [
-    Element(xep("dgm", ns_dgm, "title", [xa("val", "Default")], [])),
-    Element(xep("dgm", ns_dgm, "desc", [xa("val", "Default")], [])),
-    Element(xep("dgm", ns_dgm, "catLst", [], [])),
-    Element(xep("dgm", ns_dgm, "sampData", [], [])),
-    Element(xep("dgm", ns_dgm, "styleData", [], [])),
-    Element(xep("dgm", ns_dgm, "clrData", [], [])),
-    Element(
-      xep("dgm", ns_dgm, "layoutNode", [xa("name", "node1")], [
-        Element(
-          xep("dgm", ns_dgm, "constrLst", [], [
-            Element(
-              xep(
-                "dgm",
-                ns_dgm,
-                "constr",
-                [xa("type", "w"), xa("val", "1.0")],
-                [],
-              ),
-            ),
-            Element(
-              xep(
-                "dgm",
-                ns_dgm,
-                "constr",
-                [xa("type", "h"), xa("val", "1.0")],
-                [],
-              ),
-            ),
-          ]),
-        ),
-      ]),
-    ),
-  ])
+  // The catalog host must exercise the same SmartArt rendering path
+  // as a real slide: one data-model child point, a layout node with
+  // geometric constraints, `presOf`, and `styleLbl="node1"` so
+  // colorsDef / quickStyle probes can change visible SVG primitives.
+  make_layout_def_with_child_constraints(
+    "urn:catalog:diagram-default",
+    "lin",
+    explicit_w=900000.0,
+    explicit_h=360000.0,
+  )
+}
+
+///|
+fn default_diagram_connector_layout_def() -> @xml.Element {
+  make_layout_def_with_self_size_constraint(
+    "urn:catalog:diagram-connector-default",
+    "hierRoot",
+    explicit_w=900000.0,
+    explicit_h=600000.0,
+  )
 }
 
 ///|
@@ -8275,11 +18184,22 @@ fn default_diagram_style_def() -> @xml.Element {
 ///|
 fn default_diagram_colors_def() -> @xml.Element {
   let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let style_lbl = fn(name : String, hex : String) -> @xml.Element {
+    xep("dgm", ns_dgm, "styleLbl", [xa("name", name)], [
+      Element(
+        xep("dgm", ns_dgm, "fillClrLst", [], [
+          Element(xep("a", ns_a, "srgbClr", [xa("val", hex)], [])),
+        ]),
+      ),
+    ])
+  }
   xep("dgm", ns_dgm, "colorsDef", [xa("uniqueId", "default")], [
     Element(xep("dgm", ns_dgm, "title", [xa("val", "Default")], [])),
     Element(xep("dgm", ns_dgm, "desc", [xa("val", "Default")], [])),
     Element(xep("dgm", ns_dgm, "catLst", [], [])),
-    Element(xep("dgm", ns_dgm, "styleLbl", [xa("name", "node1")], [])),
+    Element(style_lbl("node1", "4472C4")),
+    Element(style_lbl("node2", "FF0000")),
   ])
 }
 
@@ -8399,6 +18319,34 @@ fn build_default_num_cache() -> @xml.Element {
     Element(
       xep("c", ns_c, "pt", [xa("idx", "2")], [
         Element(xep("c", ns_c, "v", [], [Text("3")])),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// Three spreadsheet serial dates spanning a month boundary.  Date-axis
+/// catalog probes use these as real category values so baseTimeUnit /
+/// majorTimeUnit / minorTimeUnit drive axis labels, ticks, and point
+/// coordinates through the chart renderer's date-axis path.
+fn build_default_date_cache() -> @xml.Element {
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  xep("c", ns_c, "numCache", [], [
+    Element(xep("c", ns_c, "formatCode", [], [Text("m/d/yyyy")])),
+    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+    Element(
+      xep("c", ns_c, "pt", [xa("idx", "0")], [
+        Element(xep("c", ns_c, "v", [], [Text("45292")])),
+      ]),
+    ),
+    Element(
+      xep("c", ns_c, "pt", [xa("idx", "1")], [
+        Element(xep("c", ns_c, "v", [], [Text("45306")])),
+      ]),
+    ),
+    Element(
+      xep("c", ns_c, "pt", [xa("idx", "2")], [
+        Element(xep("c", ns_c, "v", [], [Text("45323")])),
       ]),
     ),
   ])
@@ -8619,6 +18567,18 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
     }
     false
   }
+  fn has_date_axis(elem : @xml.Element) -> Bool {
+    for child in elem.children {
+      match child {
+        @xml.Node::Element(ce) =>
+          if ce.name.local_name == "dateAx" {
+            return true
+          }
+        _ => ()
+      }
+    }
+    false
+  }
 
   // Always inject the scaffold — even when the synth has emitted a
   // chart-type child, that synth's `<c:v>x</c:v>` text content parses
@@ -8632,6 +18592,7 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
   // the scaffold's render — the skeleton diff still triggers because
   // the pruned chart-type's polygon / line / etc. disappears.
   let _ = has_chart_type
+  let use_date_axis = has_date_axis(plot_area)
   // Build the scaffold barChart: barDir="col", grouping="clustered",
   // single series with 3 numeric points and matching axId references.
   // The axIds use a high numeric token (1000000001/2) so the scaffold's
@@ -8640,6 +18601,27 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
   // chart-type's axIds as authoritative for its own bars.
   let chart_axid_1 = "1000000001"
   let chart_axid_2 = "1000000002"
+  fn build_default_cat_ref() -> @xml.Element {
+    if use_date_axis {
+      xep("c", ns_c, "cat", [], [
+        Element(
+          xep("c", ns_c, "numRef", [], [
+            Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$2:$A$4")])),
+            Element(build_default_date_cache()),
+          ]),
+        ),
+      ])
+    } else {
+      xep("c", ns_c, "cat", [], [
+        Element(
+          xep("c", ns_c, "strRef", [], [
+            Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
+            Element(build_default_str_cache(["A", "B", "C"])),
+          ]),
+        ),
+      ])
+    }
+  }
   let bar_chart = xep("c", ns_c, "barChart", [], [
     Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
     Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
@@ -8667,35 +18649,7 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
             ),
           ]),
         ),
-        Element(
-          xep("c", ns_c, "cat", [], [
-            Element(
-              xep("c", ns_c, "strRef", [], [
-                Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
-                Element(
-                  xep("c", ns_c, "strCache", [], [
-                    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
-                    Element(
-                      xep("c", ns_c, "pt", [xa("idx", "0")], [
-                        Element(xep("c", ns_c, "v", [], [Text("A")])),
-                      ]),
-                    ),
-                    Element(
-                      xep("c", ns_c, "pt", [xa("idx", "1")], [
-                        Element(xep("c", ns_c, "v", [], [Text("B")])),
-                      ]),
-                    ),
-                    Element(
-                      xep("c", ns_c, "pt", [xa("idx", "2")], [
-                        Element(xep("c", ns_c, "v", [], [Text("C")])),
-                      ]),
-                    ),
-                  ]),
-                ),
-              ]),
-            ),
-          ]),
-        ),
+        Element(build_default_cat_ref()),
         Element(
           xep("c", ns_c, "val", [], [
             Element(
@@ -9002,16 +18956,7 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
         xep("c", ns_c, "ser", [], [
           Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
           Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-          Element(
-            xep("c", ns_c, "cat", [], [
-              Element(
-                xep("c", ns_c, "strRef", [], [
-                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
-                  Element(build_default_str_cache(["A", "B", "C"])),
-                ]),
-              ),
-            ]),
-          ),
+          Element(build_default_cat_ref()),
           Element(
             xep("c", ns_c, "val", [], [
               Element(
@@ -9072,6 +19017,34 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
     }
     false
   }
+  fn chart_axis_for_render(axis : @xml.Element) -> @xml.Element {
+    let kids : Array[@xml.Node] = []
+    for child in axis.children {
+      match child {
+        @xml.Node::Element(ce) =>
+          if ce.name.local_name == "delete" &&
+            !catalog_element_has_target_attr(ce) {
+            // §21.2.2.40 delete / CT_Boolean defaults to true when the
+            // element is present without @val. The schema synthesizer
+            // emits `<c:delete/>`; for non-target axes this would hide
+            // the axis and make axis children such as tickMarkSkip
+            // unobservable. Force the spec-equivalent visible axis
+            // state, while leaving a target `<c:delete>` untouched.
+            kids.push(
+              @xml.Node::Element({
+                name: ce.name,
+                attributes: catalog_force_attrs(ce.attributes, [("val", "0")]),
+                children: ce.children,
+              }),
+            )
+          } else {
+            kids.push(@xml.Node::Element(ce))
+          }
+        other => kids.push(other)
+      }
+    }
+    { name: axis.name, attributes: axis.attributes, children: kids }
+  }
   for child in plot_area.children {
     match child {
       @xml.Node::Element(ce) => {
@@ -9081,6 +19054,10 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
         }
         if is_chart_type_child(ce.name.local_name) {
           new_pa_kids.push(@xml.Node::Element(inject_ser_if_missing(ce)))
+          continue
+        }
+        if is_axis_child(ce.name.local_name) {
+          new_pa_kids.push(@xml.Node::Element(chart_axis_for_render(ce)))
           continue
         }
       }
@@ -10366,10 +20343,14 @@ fn xlsx_with_aux_root_package(
       } else {
         xe(ns_s, "styleSheet", [], [Element(content)])
       }
-      xlsx_package_styled(
-        catalog_sml_style_probe_worksheet(),
+      let render_styles = strip_target_attr(
         catalog_sml_stylesheet_for_render(styles_root),
       )
+      if catalog_sml_style_targets_table_style(styles_root) {
+        xlsx_package_with_catalog_table_style(render_styles)
+      } else {
+        xlsx_package_styled(catalog_sml_style_probe_worksheet(), render_styles)
+      }
     }
     "comments" => {
       let comments_root : @xml.Element = if content.name.local_name ==
@@ -10434,32 +20415,18 @@ fn xlsx_with_aux_root_package(
       )
     }
     "queryTable" => {
-      let query_table_root : @xml.Element = if content.name.local_name ==
-        "queryTable" {
-        content
-      } else {
-        xe(ns_s, "queryTable", [], [Element(content)])
-      }
+      let query_table_root = catalog_sml_query_table_root(content)
       xlsx_package_with_query_table_part(query_table_root)
     }
     "revisionHeaders" => {
-      let headers_root : @xml.Element = if content.name.local_name == "headers" {
-        content
-      } else {
-        xe(ns_s, "headers", [], [Element(content)])
-      }
+      let headers_root = catalog_sml_revision_headers_root(content)
       xlsx_package_with_revision_parts(
         headers_root,
         catalog_sml_revisions_minimal(),
       )
     }
     "revisionLog" => {
-      let revisions_root : @xml.Element = if content.name.local_name ==
-        "revisions" {
-        content
-      } else {
-        xe(ns_s, "revisions", [], [Element(content)])
-      }
+      let revisions_root = catalog_sml_revision_log_root(content)
       xlsx_package_with_revision_parts(
         catalog_sml_revision_headers_minimal(),
         revisions_root,
@@ -10492,6 +20459,221 @@ fn xlsx_with_aux_root_package(
     }
     _ => xlsx_package(content)
   }
+}
+
+///|
+fn catalog_sml_extension_list_root(content : @xml.Element) -> @xml.Element {
+  if content.name.local_name == "extLst" {
+    return content
+  }
+  let ns = content.name.ns.unwrap_or(
+    "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+  )
+  xe(ns, "extLst", [], [Element(content)])
+}
+
+///|
+fn catalog_sml_query_table_fields_minimal() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "queryTableFields", [xa("count", "1")], [
+    Element(xe(ns_s, "queryTableField", [xa("id", "1")], [])),
+  ])
+}
+
+///|
+fn catalog_sml_query_table_refresh_root(content : @xml.Element) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  match content.name.local_name {
+    "queryTableRefresh" => content
+    "queryTableFields" => xe(ns_s, "queryTableRefresh", [], [Element(content)])
+    "queryTableField" =>
+      xe(ns_s, "queryTableRefresh", [], [
+        Element(
+          xe(ns_s, "queryTableFields", [xa("count", "1")], [Element(content)]),
+        ),
+      ])
+    "queryTableDeletedFields" =>
+      xe(ns_s, "queryTableRefresh", [], [
+        Element(catalog_sml_query_table_fields_minimal()),
+        Element(content),
+      ])
+    "deletedField" =>
+      xe(ns_s, "queryTableRefresh", [], [
+        Element(catalog_sml_query_table_fields_minimal()),
+        Element(
+          xe(ns_s, "queryTableDeletedFields", [xa("count", "1")], [
+            Element(content),
+          ]),
+        ),
+      ])
+    "sortState" =>
+      xe(ns_s, "queryTableRefresh", [], [
+        Element(catalog_sml_query_table_fields_minimal()),
+        Element(content),
+      ])
+    _ =>
+      xe(ns_s, "queryTableRefresh", [], [
+        Element(catalog_sml_query_table_fields_minimal()),
+        Element(content),
+      ])
+  }
+}
+
+///|
+fn catalog_sml_query_table_root(content : @xml.Element) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  if content.name.local_name == "queryTable" {
+    content
+  } else {
+    xe(
+      ns_s,
+      "queryTable",
+      [xa("name", "CatalogQuery"), xa("connectionId", "1")],
+      [Element(catalog_sml_query_table_refresh_root(content))],
+    )
+  }
+}
+
+///|
+fn catalog_sml_revision_r_id_attr(value : String) -> @xml.Attribute {
+  {
+    name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+    value,
+  }
+}
+
+///|
+fn catalog_sml_revision_sheet_id_map_minimal() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "sheetIdMap", [xa("count", "1")], [
+    Element(xe(ns_s, "sheetId", [xa("val", "1")], [])),
+  ])
+}
+
+///|
+fn catalog_sml_revision_header_with(
+  children : Array[@xml.Node],
+) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(
+    ns_s,
+    "header",
+    [
+      xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000001}"),
+      xa("dateTime", "2026-06-06T00:00:00Z"),
+      xa("maxSheetId", "1"),
+      xa("userName", "Catalog User"),
+      catalog_sml_revision_r_id_attr("rId1"),
+    ],
+    children,
+  )
+}
+
+///|
+fn catalog_sml_revision_headers_root(content : @xml.Element) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  if content.name.local_name == "headers" {
+    return content
+  }
+  let header = match content.name.local_name {
+    "header" => content
+    "sheetIdMap" => catalog_sml_revision_header_with([Element(content)])
+    "sheetId" =>
+      catalog_sml_revision_header_with([
+        Element(xe(ns_s, "sheetIdMap", [xa("count", "1")], [Element(content)])),
+      ])
+    "reviewedList" =>
+      catalog_sml_revision_header_with([
+        Element(catalog_sml_revision_sheet_id_map_minimal()),
+        Element(content),
+      ])
+    "reviewed" =>
+      catalog_sml_revision_header_with([
+        Element(catalog_sml_revision_sheet_id_map_minimal()),
+        Element(
+          xe(ns_s, "reviewedList", [xa("count", "1")], [Element(content)]),
+        ),
+      ])
+    _ =>
+      catalog_sml_revision_header_with([
+        Element(catalog_sml_revision_sheet_id_map_minimal()),
+        Element(content),
+      ])
+  }
+  xe(ns_s, "headers", [xa("guid", "{233BEE23-EB5C-4542-905D-0230EFFED88B}")], [
+    Element(header),
+  ])
+}
+
+///|
+fn catalog_sml_revision_cell_minimal(local_name : String) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, local_name, [xa("r", "A1"), xa("t", "str")], [
+    Element(xe(ns_s, "v", [], [Text("Catalog")])),
+  ])
+}
+
+///|
+fn catalog_sml_revision_cell_change_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let children : Array[@xml.Node] = []
+  match content.name.local_name {
+    "oc" => {
+      children.push(Element(content))
+      children.push(Element(catalog_sml_revision_cell_minimal("nc")))
+    }
+    "nc" => children.push(Element(content))
+    "odxf" | "ndxf" => {
+      children.push(Element(catalog_sml_revision_cell_minimal("nc")))
+      children.push(Element(content))
+    }
+    _ => children.push(Element(content))
+  }
+  xe(ns_s, "rcc", [xa("rId", "1"), xa("sId", "1")], children)
+}
+
+///|
+fn catalog_sml_revision_defined_name_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "rdn", [xa("rId", "1"), xa("name", "CatalogName")], [
+    Element(content),
+  ])
+}
+
+///|
+fn catalog_sml_revision_row_column_root(content : @xml.Element) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(
+    ns_s,
+    "rrc",
+    [
+      xa("rId", "1"),
+      xa("sId", "1"),
+      xa("ref", "1:1"),
+      xa("action", "insertRow"),
+    ],
+    [Element(content)],
+  )
+}
+
+///|
+fn catalog_sml_revision_log_root(content : @xml.Element) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  if content.name.local_name == "revisions" {
+    return content
+  }
+  let child = match content.name.local_name {
+    "undo" => catalog_sml_revision_row_column_root(content)
+    "oc" | "nc" | "odxf" | "ndxf" =>
+      catalog_sml_revision_cell_change_root(content)
+    "formula" | "oldFormula" => catalog_sml_revision_defined_name_root(content)
+    _ => content
+  }
+  xe(ns_s, "revisions", [], [Element(child)])
 }
 
 ///|
@@ -10559,6 +20741,165 @@ fn catalog_empty_spreadsheet_drawing_part() -> @xml.Element {
     [],
     [],
   )
+}
+
+///|
+fn catalog_chartsheet_drawing_part() -> @xml.Element {
+  let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xep("xdr", ns_xdr, "wsDr", [], [
+    Element(
+      xep("xdr", ns_xdr, "absoluteAnchor", [], [
+        Element(xep("xdr", ns_xdr, "pos", [xa("x", "0"), xa("y", "0")], [])),
+        Element(
+          xep(
+            "xdr",
+            ns_xdr,
+            "ext",
+            [xa("cx", "9144000"), xa("cy", "5143500")],
+            [],
+          ),
+        ),
+        Element(
+          xep("xdr", ns_xdr, "graphicFrame", [], [
+            Element(
+              xep("xdr", ns_xdr, "nvGraphicFramePr", [], [
+                Element(
+                  xep(
+                    "xdr",
+                    ns_xdr,
+                    "cNvPr",
+                    [xa("id", "2"), xa("name", "Chart 1")],
+                    [],
+                  ),
+                ),
+                Element(xep("xdr", ns_xdr, "cNvGraphicFramePr", [], [])),
+              ]),
+            ),
+            Element(
+              xep("xdr", ns_xdr, "xfrm", [], [
+                Element(xep("a", ns_a, "off", [xa("x", "0"), xa("y", "0")], [])),
+                Element(
+                  xep(
+                    "a",
+                    ns_a,
+                    "ext",
+                    [xa("cx", "9144000"), xa("cy", "5143500")],
+                    [],
+                  ),
+                ),
+              ]),
+            ),
+            Element(
+              xep("a", ns_a, "graphic", [], [
+                Element(
+                  xep("a", ns_a, "graphicData", [xa("uri", ns_c)], [
+                    Element(
+                      xep(
+                        "c",
+                        ns_c,
+                        "chart",
+                        [
+                          {
+                            name: {
+                              prefix: Some("r"),
+                              local_name: "id",
+                              ns: Some(ns_r),
+                            },
+                            value: "rIdChart",
+                          },
+                        ],
+                        [],
+                      ),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+        Element(xep("xdr", ns_xdr, "clientData", [], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_chartsheet_effective_drawing_r_id(
+  chartsheet : @xml.Element,
+) -> String {
+  match first_child_named_local_local(chartsheet, "drawing") {
+    Some(drawing) =>
+      for attr in drawing.attributes {
+        if attr.name.local_name == "id" &&
+          (attr.name.ns == Some(NS_OFFICE_REL) || attr.name.prefix == Some("r")) &&
+          @xml.is_ncname(attr.value) {
+          return attr.value
+        }
+      }
+    None => ()
+  }
+  "rIdDrawing"
+}
+
+///|
+fn catalog_chartsheet_drawing_with_r_id(
+  drawing : @xml.Element,
+  drawing_r_id : String,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_id = false
+  for attr in drawing.attributes {
+    if attr.name.local_name == "id" &&
+      (attr.name.ns == Some(NS_OFFICE_REL) || attr.name.prefix == Some("r")) {
+      attrs.push({
+        name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+        value: drawing_r_id,
+      })
+      saw_id = true
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if !saw_id {
+    attrs.push(sml_aux_rel_attr("id", drawing_r_id))
+  }
+  { name: drawing.name, attributes: attrs, children: drawing.children }
+}
+
+///|
+fn catalog_chartsheet_connect_drawing(
+  chartsheet : @xml.Element,
+) -> @xml.Element {
+  let drawing_r_id = catalog_chartsheet_effective_drawing_r_id(chartsheet)
+  let kids : Array[@xml.Node] = []
+  let mut connected = false
+  for child in chartsheet.children {
+    match child {
+      Element(ce) if ce.name.local_name == "drawing" && !connected => {
+        kids.push(
+          Element(catalog_chartsheet_drawing_with_r_id(ce, drawing_r_id)),
+        )
+        connected = true
+      }
+      _ => kids.push(child)
+    }
+  }
+  if !connected {
+    kids.push(
+      Element(
+        xe(
+          "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+          "drawing",
+          [sml_aux_rel_attr("id", drawing_r_id)],
+          [],
+        ),
+      ),
+    )
+  }
+  { name: chartsheet.name, attributes: chartsheet.attributes, children: kids }
 }
 
 ///|
@@ -10634,9 +20975,207 @@ fn catalog_sml_single_xml_cells_minimal() -> @xml.Element {
 }
 
 ///|
-/// `.xlsx` package whose worksheet carries the late-sequence SML
-/// relationship-bearing children: customProperties, legacyDrawingHF,
-/// drawingHF, picture, oleObjects, and controls.
+fn catalog_sml_inline_string_worksheet_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let inline_string : @xml.Element = if content.name.local_name == "is" {
+    content
+  } else {
+    xe(NS_S, "is", [], [Element(content)])
+  }
+  xe(NS_S, "worksheet", [], [
+    Element(xe(NS_S, "dimension", [xa("ref", "A1:A1")], [])),
+    Element(
+      xe(NS_S, "sheetData", [], [
+        Element(
+          xe(NS_S, "row", [xa("r", "1")], [
+            Element(
+              xe(NS_S, "c", [xa("r", "A1"), xa("t", "inlineStr")], [
+                Element(inline_string),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_single_xml_cells_root(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "singleXmlCells" | "tableSingleCells" => content
+    "singleXmlCell" => xe(NS_S, "singleXmlCells", [], [Element(content)])
+    "xmlCellPr" =>
+      xe(NS_S, "singleXmlCells", [], [
+        Element(
+          xe(
+            NS_S,
+            "singleXmlCell",
+            [xa("id", "1"), xa("r", "A1"), xa("connectionId", "1")],
+            [Element(content)],
+          ),
+        ),
+      ])
+    "xmlPr" =>
+      xe(NS_S, "singleXmlCells", [], [
+        Element(
+          xe(
+            NS_S,
+            "singleXmlCell",
+            [xa("id", "1"), xa("r", "A1"), xa("connectionId", "1")],
+            [
+              Element(
+                xe(NS_S, "xmlCellPr", [xa("id", "1"), xa("uniqueName", "A1")], [
+                  Element(content),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ])
+    _ => xe(NS_S, "singleXmlCells", [], [Element(content)])
+  }
+}
+
+///|
+fn catalog_sml_external_link_worksheet() -> @xml.Element {
+  xe(NS_S, "worksheet", [], [
+    Element(xe(NS_S, "dimension", [xa("ref", "A1:A1")], [])),
+    Element(
+      xe(NS_S, "sheetData", [], [
+        Element(
+          xe(NS_S, "row", [xa("r", "1")], [
+            Element(
+              xe(NS_S, "c", [xa("r", "A1"), xa("t", "str")], [
+                Element(xe(NS_S, "v", [], [Text("external")])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_external_link_root(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "externalLink" => content
+    "externalBook" | "ddeLink" | "oleLink" =>
+      xe(NS_S, "externalLink", [], [Element(content)])
+    "sheetNames" | "definedNames" | "sheetDataSet" =>
+      xe(NS_S, "externalLink", [], [
+        Element(
+          xe(
+            NS_S,
+            "externalBook",
+            [
+              {
+                name: {
+                  prefix: Some("r"),
+                  local_name: "id",
+                  ns: Some(
+                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+                  ),
+                },
+                value: "rId1",
+              },
+            ],
+            [Element(content)],
+          ),
+        ),
+      ])
+    "sheetName" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "sheetNames", [], [Element(content)]),
+      )
+    "definedName" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "definedNames", [], [Element(content)]),
+      )
+    "sheetData" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "sheetDataSet", [], [Element(content)]),
+      )
+    "row" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "sheetDataSet", [], [
+          Element(
+            xe(NS_S, "sheetData", [xa("sheetId", "1")], [Element(content)]),
+          ),
+        ]),
+      )
+    "cell" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "sheetDataSet", [], [
+          Element(
+            xe(NS_S, "sheetData", [xa("sheetId", "1")], [
+              Element(xe(NS_S, "row", [xa("r", "1")], [Element(content)])),
+            ]),
+          ),
+        ]),
+      )
+    "ddeItems" =>
+      catalog_sml_external_link_root(
+        xe(
+          NS_S,
+          "ddeLink",
+          [xa("ddeService", "CatalogService"), xa("ddeTopic", "Topic")],
+          [Element(content)],
+        ),
+      )
+    "ddeItem" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "ddeItems", [], [Element(content)]),
+      )
+    "values" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "ddeItem", [xa("name", "Item1")], [Element(content)]),
+      )
+    "value" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "values", [xa("rows", "1"), xa("cols", "1")], [
+          Element(content),
+        ]),
+      )
+    "val" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "value", [xa("t", "str")], [Element(content)]),
+      )
+    "oleItems" =>
+      catalog_sml_external_link_root(
+        xe(
+          NS_S,
+          "oleLink",
+          [
+            {
+              name: {
+                prefix: Some("r"),
+                local_name: "id",
+                ns: Some(
+                  "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+                ),
+              },
+              value: "rId1",
+            },
+            xa("progId", "Catalog.Ole"),
+          ],
+          [Element(content)],
+        ),
+      )
+    "oleItem" =>
+      catalog_sml_external_link_root(
+        xe(NS_S, "oleItems", [], [Element(content)]),
+      )
+    _ => xe(NS_S, "externalLink", [], [Element(content)])
+  }
+}
+
+///|
+/// `.xlsx` package whose worksheet carries the relationship-bearing
+/// SML children: drawing, hyperlinks, customProperties,
+/// legacyDrawingHF, drawingHF, picture, oleObjects, and controls.
 fn xlsx_package_with_worksheet_refs(content : @xml.Element) -> Bytes {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
   let worksheet : @xml.Element = if content.name.local_name == "worksheet" {
@@ -10653,9 +21192,36 @@ fn xlsx_package_with_worksheet_refs(content : @xml.Element) -> Bytes {
   let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       catalog_opc_relationship(
+        "rIdDrawing",
+        RT_DRAWING,
+        "../drawings/drawing1.xml",
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rIdHyperlink"),
+          xa("Type", RT_HYPERLINK),
+          xa("Target", "https://example.com/catalog"),
+          xa("TargetMode", "External"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
         "rIdCustom",
         RT_SPREADSHEET_CUSTOM_PROPERTY,
         "../customProperties/customProperty1.xml",
+      ),
+    ),
+    Element(
+      catalog_opc_relationship(
+        "rIdLegacy",
+        RT_VML_DRAWING,
+        "../drawings/vmlDrawing1.vml",
       ),
     ),
     Element(
@@ -10694,6 +21260,8 @@ fn xlsx_package_with_worksheet_refs(content : @xml.Element) -> Bytes {
           "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
         ),
         ("/xl/customProperties/customProperty1.xml", "application/xml"),
+        ("/xl/drawings/drawing1.xml", CT_SPREADSHEET_DRAWING),
+        ("/xl/drawings/vmlDrawing1.vml", CT_VML_DRAWING),
         ("/xl/drawings/vmlDrawingHF1.vml", CT_VML_DRAWING),
         ("/xl/drawings/drawingHF1.xml", CT_SPREADSHEET_DRAWING),
         ("/xl/media/image1.png", CT_IMAGE_PNG),
@@ -10709,6 +21277,8 @@ fn xlsx_package_with_worksheet_refs(content : @xml.Element) -> Bytes {
       "xl/customProperties/customProperty1.xml",
       write_part(catalog_spreadsheet_custom_property_part()),
     ),
+    ("xl/drawings/drawing1.xml", write_part(spreadsheet_drawing_rich_root())),
+    ("xl/drawings/vmlDrawing1.vml", write_part(chart_legacy_vml_drawing_part())),
     (
       "xl/drawings/vmlDrawingHF1.vml",
       write_part(chart_legacy_vml_drawing_part()),
@@ -10726,11 +21296,13 @@ fn xlsx_package_with_worksheet_refs(content : @xml.Element) -> Bytes {
 ///|
 fn xlsx_package_with_chartsheet(content : @xml.Element) -> Bytes {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-  let chartsheet : @xml.Element = if content.name.local_name == "chartsheet" {
+  let raw_chartsheet : @xml.Element = if content.name.local_name == "chartsheet" {
     content
   } else {
     xe(ns_s, "chartsheet", [], [Element(content)])
   }
+  let chartsheet = catalog_chartsheet_connect_drawing(raw_chartsheet)
+  let drawing_r_id = catalog_chartsheet_effective_drawing_r_id(chartsheet)
   let workbook = catalog_sml_single_sheet_workbook("C1")
   let workbook_rels = catalog_sml_workbook_rels(
     RT_CHARTSHEET,
@@ -10740,7 +21312,7 @@ fn xlsx_package_with_chartsheet(content : @xml.Element) -> Bytes {
   let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       catalog_opc_relationship(
-        "rIdDrawing",
+        drawing_r_id,
         RT_DRAWING,
         "../drawings/drawing1.xml",
       ),
@@ -10763,6 +21335,14 @@ fn xlsx_package_with_chartsheet(content : @xml.Element) -> Bytes {
       catalog_opc_relationship("rIdPicture", RT_IMAGE, "../media/image1.png"),
     ),
   ])
+  let drawing_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      catalog_opc_relationship(
+        "rIdChart", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart",
+        "../charts/chart1.xml",
+      ),
+    ),
+  ])
   let parts : Array[(String, Bytes)] = [
     (
       "[Content_Types].xml",
@@ -10776,6 +21356,7 @@ fn xlsx_package_with_chartsheet(content : @xml.Element) -> Bytes {
         ("/xl/drawings/drawing1.xml", CT_SPREADSHEET_DRAWING),
         ("/xl/drawings/vmlDrawingHF1.vml", CT_VML_DRAWING),
         ("/xl/drawings/drawingHF1.xml", CT_SPREADSHEET_DRAWING),
+        ("/xl/charts/chart1.xml", CT_DRAWINGML_CHART),
         ("/xl/media/image1.png", CT_IMAGE_PNG),
       ]),
     ),
@@ -10784,9 +21365,11 @@ fn xlsx_package_with_chartsheet(content : @xml.Element) -> Bytes {
     ("xl/_rels/workbook.xml.rels", write_part(workbook_rels)),
     ("xl/chartsheets/sheet1.xml", write_part(chartsheet)),
     ("xl/chartsheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    ("xl/drawings/drawing1.xml", write_part(catalog_chartsheet_drawing_part())),
+    ("xl/drawings/_rels/drawing1.xml.rels", write_part(drawing_rels)),
     (
-      "xl/drawings/drawing1.xml",
-      write_part(catalog_empty_spreadsheet_drawing_part()),
+      "xl/charts/chart1.xml",
+      write_part(wrap_chart_space(bar_chart_payload(), c_axes())),
     ),
     (
       "xl/drawings/vmlDrawingHF1.vml",
@@ -10980,6 +21563,294 @@ fn retarget_spreadsheet_comment_refs(element : @xml.Element) -> @xml.Element {
     }
   }
   { name: element.name, attributes: attrs, children }
+}
+
+///|
+/// Render-only comments-part scaffold.  The raw synthesized catalog
+/// target may be just `<author/>`, `<text/>`, or `<commentPr/>`,
+/// which opens and round-trips but cannot affect the sheet unless a
+/// concrete comment points at a real cell.  When a target sentinel is
+/// present, add only the minimum A1 comment payload needed for the
+/// renderer's §18.7 overlay; absent-baseline packages have no target
+/// sentinel and therefore do not receive this scaffold.
+fn catalog_sml_comments_for_render(content : @xml.Element) -> @xml.Element {
+  let root : @xml.Element = if content.name.local_name == "comments" {
+    content
+  } else {
+    xe(NS_S, "comments", [], [Element(content)])
+  }
+  let seeded = if catalog_tree_has_target_attr(root) {
+    catalog_sml_comments_ensure_render_payload(
+      catalog_sml_comments_seed_target(root),
+    )
+  } else {
+    root
+  }
+  retarget_spreadsheet_comment_refs(strip_target_attr(seeded))
+}
+
+///|
+fn catalog_tree_has_target_attr(element : @xml.Element) -> Bool {
+  if catalog_element_has_target_attr(element) {
+    return true
+  }
+  for child in element.children {
+    match child {
+      Element(c) => if catalog_tree_has_target_attr(c) { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_comments_seed_target(element : @xml.Element) -> @xml.Element {
+  fn walk(e : @xml.Element) -> @xml.Element {
+    let is_target = catalog_element_has_target_attr(e)
+    if is_target &&
+      e.name.local_name == "author" &&
+      catalog_xml_text_content(e).trim().to_owned() == "" {
+      return {
+        name: e.name,
+        attributes: e.attributes,
+        children: [Text("Catalog author")],
+      }
+    }
+    if is_target &&
+      e.name.local_name == "text" &&
+      catalog_xml_text_content(e).trim().to_owned() == "" {
+      return catalog_sml_comment_text_element(e.name.prefix, e.name.ns)
+    }
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    let out : @xml.Element = {
+      name: e.name,
+      attributes: e.attributes,
+      children: kids,
+    }
+    if is_target &&
+      e.name.local_name == "authors" &&
+      !catalog_sml_comments_has_author_text(out) {
+      let seeded_kids : Array[@xml.Node] = []
+      for child in out.children {
+        seeded_kids.push(child)
+      }
+      seeded_kids.push(
+        Element(
+          catalog_sml_comment_author_element(out.name.prefix, out.name.ns),
+        ),
+      )
+      return {
+        name: out.name,
+        attributes: out.attributes,
+        children: seeded_kids,
+      }
+    }
+    out
+  }
+  walk(element)
+}
+
+///|
+fn catalog_sml_comments_ensure_render_payload(
+  root : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_authors = false
+  let mut saw_comment_list = false
+  for child in root.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "authors" => {
+            saw_authors = true
+            kids.push(Element(catalog_sml_comments_ensure_authors(e)))
+          }
+          "commentList" => {
+            saw_comment_list = true
+            kids.push(Element(catalog_sml_comments_ensure_comment_list(e)))
+          }
+          _ => kids.push(Element(e))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !saw_authors {
+    kids.push(Element(catalog_sml_comments_default_authors()))
+  }
+  if !saw_comment_list {
+    kids.push(Element(catalog_sml_comments_default_comment_list()))
+  }
+  { name: root.name, attributes: root.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_comments_ensure_authors(authors : @xml.Element) -> @xml.Element {
+  if catalog_sml_comments_has_author_text(authors) {
+    authors
+  } else {
+    let kids : Array[@xml.Node] = []
+    for child in authors.children {
+      kids.push(child)
+    }
+    kids.push(
+      Element(
+        catalog_sml_comment_author_element(authors.name.prefix, authors.name.ns),
+      ),
+    )
+    { name: authors.name, attributes: authors.attributes, children: kids }
+  }
+}
+
+///|
+fn catalog_sml_comments_has_author_text(authors : @xml.Element) -> Bool {
+  for child in authors.children {
+    match child {
+      Element(a) =>
+        if a.name.local_name == "author" &&
+          catalog_xml_text_content(a).trim().to_owned() != "" {
+          return true
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_comments_ensure_comment_list(
+  comment_list : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_comment = false
+  for child in comment_list.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "comment" {
+          saw_comment = true
+          kids.push(Element(catalog_sml_comments_ensure_comment(c)))
+        } else {
+          kids.push(Element(c))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !saw_comment {
+    kids.push(Element(catalog_sml_comments_default_comment()))
+  }
+  {
+    name: comment_list.name,
+    attributes: comment_list.attributes,
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_comments_ensure_comment(comment : @xml.Element) -> @xml.Element {
+  let attrs = catalog_sml_comments_ensure_comment_attrs(comment.attributes)
+  let kids : Array[@xml.Node] = []
+  let mut saw_text = false
+  for child in comment.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "text" {
+          saw_text = true
+          if catalog_xml_text_content(e).trim().to_owned() == "" {
+            kids.push(
+              Element(
+                catalog_sml_comment_text_element(e.name.prefix, e.name.ns),
+              ),
+            )
+          } else {
+            kids.push(Element(e))
+          }
+        } else {
+          kids.push(Element(e))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !saw_text {
+    kids.push(
+      Element(
+        catalog_sml_comment_text_element(comment.name.prefix, comment.name.ns),
+      ),
+    )
+  }
+  { name: comment.name, attributes: attrs, children: kids }
+}
+
+///|
+fn catalog_sml_comments_ensure_comment_attrs(
+  attrs_in : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_ref = false
+  let mut saw_author_id = false
+  for attr in attrs_in {
+    if attr.name.local_name == "ref" {
+      saw_ref = true
+    }
+    if attr.name.local_name == "authorId" {
+      saw_author_id = true
+    }
+    attrs.push(attr)
+  }
+  if !saw_ref {
+    attrs.push(xa("ref", "A1"))
+  }
+  if !saw_author_id {
+    attrs.push(xa("authorId", "0"))
+  }
+  attrs
+}
+
+///|
+fn catalog_sml_comments_default_authors() -> @xml.Element {
+  xe(NS_S, "authors", [], [
+    Element(catalog_sml_comment_author_element(None, None)),
+  ])
+}
+
+///|
+fn catalog_sml_comments_default_comment_list() -> @xml.Element {
+  xe(NS_S, "commentList", [], [Element(catalog_sml_comments_default_comment())])
+}
+
+///|
+fn catalog_sml_comments_default_comment() -> @xml.Element {
+  xe(NS_S, "comment", [xa("ref", "A1"), xa("authorId", "0")], [
+    Element(catalog_sml_comment_text_element(None, None)),
+  ])
+}
+
+///|
+fn catalog_sml_comment_author_element(
+  prefix : String?,
+  ns : String?,
+) -> @xml.Element {
+  xep(prefix.unwrap_or("s"), ns.unwrap_or(NS_S), "author", [], [
+    Text("Catalog author"),
+  ])
+}
+
+///|
+fn catalog_sml_comment_text_element(
+  prefix : String?,
+  ns : String?,
+) -> @xml.Element {
+  xep(prefix.unwrap_or("s"), ns.unwrap_or(NS_S), "text", [], [
+    Element(
+      xep(prefix.unwrap_or("s"), ns.unwrap_or(NS_S), "t", [], [
+        Text("Catalog comment"),
+      ]),
+    ),
+  ])
 }
 
 ///|
@@ -12070,19 +22941,7 @@ fn catalog_sml_revision_headers_minimal() -> @xml.Element {
 /// the target fixture is the revision headers root.
 fn catalog_sml_revisions_minimal() -> @xml.Element {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-  xe(ns_s, "revisions", [], [
-    Element(
-      xe(
-        ns_s,
-        "rcv",
-        [
-          xa("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000002}"),
-          xa("action", "add"),
-        ],
-        [],
-      ),
-    ),
-  ])
+  xe(ns_s, "revisions", [], [])
 }
 
 ///|
@@ -12330,19 +23189,15 @@ fn debug_render_pair(
   format : String,
   content : @xml.Element,
 ) -> (String, String) {
-  let present_tree = strip_target_attr(content)
   let present = match
-    render_svg_of(format, host_package(format, present_tree)) {
+    render_svg_of(format, host_package_for_render(format, content)) {
     Some(s) => s
     None => "<open-fail>"
   }
   let (baseline_tree, did_prune) = prune_target(content)
   let absent = if did_prune {
     match
-      render_svg_of(
-        format,
-        host_package(format, strip_target_attr(baseline_tree)),
-      ) {
+      render_svg_of(format, host_package_for_render(format, baseline_tree)) {
       Some(s) => s
       None => "<open-fail>"
     }
@@ -12385,8 +23240,10 @@ fn verify_entry(
   // The element under test, present: strip the sentinel, substitute
   // the per-element unique marker.
   let (with_marker, has_marker) = substitute_marker(content, marker)
-  let present_tree = strip_target_attr(with_marker)
-  let present_svg = render_svg_of(format, host_package(format, present_tree))
+  let present_svg = render_svg_of(
+    format,
+    host_package_for_render(format, with_marker),
+  )
   let present = match present_svg {
     None => return "open-fail"
     Some(s) => s
@@ -12423,8 +23280,10 @@ fn verify_entry(
   // the renderer to emit a concrete visual outcome.
   let (baseline_tree, did_prune) = prune_target(content)
   if did_prune {
-    let baseline_clean = strip_target_attr(baseline_tree)
-    let absent_svg = render_svg_of(format, host_package(format, baseline_clean))
+    let absent_svg = render_svg_of(
+      format,
+      host_package_for_render(format, baseline_tree),
+    )
     match absent_svg {
       Some(absent) if absent.has_prefix("<svg ") =>
         if svg_visible_skeleton(absent) != svg_visible_skeleton(present) {
@@ -12687,6 +23546,9 @@ fn empty_body_package(format : String) -> Bytes {
         xep("a", ns_a, "themeManager", [], []),
       )
     "pptx:table" => pptx_package(pptx_common_slide_data(ns_p, []))
+    "pptx:table-styles" =>
+      pptx_package_with_table_style_part(catalog_default_table_style_list())
+    "pptx:dml-text" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:master-txstyle" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:diagram-relids" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:slideRefs" => pptx_package_with_slide_refs(pml_cov_slide_refs_root())
@@ -12767,24 +23629,39 @@ fn empty_body_package(format : String) -> Bytes {
       xlsx_package_with_worksheet_refs(
         xe(ns_s, "worksheet", [], [Element(xe(ns_s, "sheetData", [], []))]),
       )
-    "xlsx:chartsheet" =>
-      xlsx_package_with_chartsheet(
-        xe(ns_s, "chartsheet", [], [
-          Element(
-            xe(ns_s, "sheetViews", [], [
-              Element(xe(ns_s, "sheetView", [xa("workbookViewId", "0")], [])),
-            ]),
-          ),
-          Element(
-            xe(ns_s, "drawing", [sml_aux_rel_attr("id", "rIdDrawing")], []),
-          ),
-        ]),
-      )
+    "xlsx:chartsheet" => xlsx_package(xe(ns_s, "sheetData", [], []))
     "xlsx:dialogsheet" =>
       xlsx_package_with_dialogsheet(xe(ns_s, "dialogsheet", [], []))
     "xlsx:tableSingleCells" =>
       xlsx_package_with_table_single_cells(
         catalog_sml_single_xml_cells_minimal(),
+      )
+    "xlsx:externalLink" =>
+      xlsx_package_with_externals(
+        catalog_sml_external_link_worksheet(),
+        catalog_sml_external_link_root(
+          xe(ns_s, "externalLink", [], [
+            Element(
+              xe(
+                ns_s,
+                "externalBook",
+                [
+                  {
+                    name: {
+                      prefix: Some("r"),
+                      local_name: "id",
+                      ns: Some(
+                        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+                      ),
+                    },
+                    value: "rId1",
+                  },
+                ],
+                [],
+              ),
+            ),
+          ]),
+        ),
       )
     "xlsx:pivot" =>
       xlsx_package_with_pivot(

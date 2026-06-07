@@ -485,6 +485,16 @@ fn is_non_visual_property_name(name : String) -> Bool {
     | "origin"
     | "clrMap"
     | "clrMapOvr"
+    // §21.4.4 DrawingML diagram color-definition lists — these
+    // select color application metadata for SmartArt nodes/text/
+    // effects. The actual visible fill/line/text paint is emitted by
+    // the resolved diagram shape, not by the list wrapper itself.
+    | "effectClrLst"
+    | "fillClrLst"
+    | "linClrLst"
+    | "txEffectClrLst"
+    | "txFillClrLst"
+    | "txLinClrLst"
     // §18.1 / §18.2 / §21.2 DrawingML chart non-visual references —
     // `<c:externalData>` / `<c:userShapes>` / `<c:chart>` etc. hold
     // relationships to satellite parts; the renderer surfaces the

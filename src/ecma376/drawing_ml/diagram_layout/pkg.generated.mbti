@@ -54,6 +54,8 @@ pub fn decode_point(@xml.Element) -> DiagramPoint raise @errors.SchemaViolation
 
 pub fn decode_pres_of(@xml.Element) -> PresOfSpec raise @errors.SchemaViolation
 
+pub fn decode_rule_list(@xml.Element, Array[Constraint]) -> Unit raise @errors.SchemaViolation
+
 pub fn decode_shape(@xml.Element) -> Shape raise @errors.SchemaViolation
 
 pub fn definition_has_geometric_constraints(DiagramDefinition) -> Bool
@@ -232,6 +234,7 @@ pub(all) struct DiagramPoint {
   text : String?
   pr_set : @xml.Element?
   sp_pr : @xml.Element?
+  layout_vars : Array[(String, String)]
 } derive(Eq, @debug.Debug)
 
 pub(all) enum ElementType {
@@ -253,6 +256,7 @@ pub(all) struct EvalContext {
   depth : Int
   results : Array[NodeBounds]
   node_bounds_by_name : Map[String, BoundsRect]
+  layout_vars : Array[(String, String)]
 }
 
 pub(all) struct ExpandedChild {
@@ -306,6 +310,7 @@ pub(all) struct LayoutNode {
   shape : Shape?
   pres_of : PresOfSpec?
   constraints : Array[Constraint]
+  layout_vars : Array[(String, String)]
   children : Array[LayoutChild]
 } derive(Eq, @debug.Debug)
 
@@ -313,6 +318,8 @@ pub(all) struct NodeBounds {
   point_id : String
   bounds : BoundsRect
   shape : @preset_geometry.PresetShape
+  hide_geom : Bool
+  adjustments : Array[@preset_geometry.Adjustment]
   style_lbl : String?
 } derive(Eq, @debug.Debug)
 
@@ -327,6 +334,7 @@ pub(all) struct PresOfSpec {
 pub(all) struct Shape {
   preset : @preset_geometry.PresetShape?
   hide_geom : Bool
+  adjustments : Array[@preset_geometry.Adjustment]
 } derive(Eq, @debug.Debug)
 
 // Type aliases

@@ -5300,6 +5300,104 @@ test "render_svg applies settings mathPr mathFont to inline OMML" {
 }
 
 ///|
+test "render_svg exposes document settings metadata on root svg" {
+  let child = fn(tag : String, attrs : Array[@xml.Attribute]) -> @xml.Node {
+    @xml.Node::Element({ name: name(tag), attributes: attrs, children: [] })
+  }
+  let child_with = fn(
+    tag : String,
+    attrs : Array[@xml.Attribute],
+    children : Array[@xml.Node],
+  ) -> @xml.Node {
+    @xml.Node::Element({ name: name(tag), attributes: attrs, children })
+  }
+  let settings = try! @domain.CT_Settings::new({
+    name: name("settings"),
+    attributes: [],
+    children: [
+      child("writeProtection", [attr("recommended", "1")]),
+      child("zoom", [attr("val", "fullPage"), attr("percent", "125")]),
+      child("displayBackgroundShape", []),
+      child("proofState", [attr("spelling", "clean"), attr("grammar", "dirty")]),
+      child("revisionView", [attr("markup", "1"), attr("comments", "0")]),
+      child("updateFields", []),
+      child_with("compat", [], [
+        child("spaceForUL", [attr("val", "1")]),
+        child("compatSetting", [
+          attr("name", "compatibilityMode"),
+          attr("uri", "urn:schemas-microsoft-com:office:word"),
+          attr("val", "15"),
+        ]),
+      ]),
+      child_with("docVars", [], [
+        child("docVar", [attr("name", "Project"), attr("val", "OOXML")]),
+      ]),
+      child_with("rsids", [], [
+        child("rsidRoot", [attr("val", "00112233")]),
+        child("rsid", [attr("val", "44556677")]),
+      ]),
+      child_with("schemaLibrary", [], [
+        child("schema", [
+          attr("uri", "urn:test"),
+          attr("manifestLocation", "manifest.xml"),
+          attr("schemaLocation", "schema.xsd"),
+        ]),
+      ]),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [child_with("t", [], [@xml.Node::Text("body")])],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document, settings=Some(settings)).pages[0].svg
+  assert_true(svg.contains("data-ooxml-settings-write-protection=\"1\""))
+  assert_true(svg.contains("data-ooxml-settings-zoom=\"125\""))
+  assert_true(svg.contains("data-ooxml-settings-zoom-val=\"fullPage\""))
+  assert_true(
+    svg.contains("data-ooxml-settings-display-background-shape=\"1\""),
+  )
+  assert_true(
+    svg.contains("data-ooxml-settings-proof-state-spelling=\"clean\""),
+  )
+  assert_true(svg.contains("data-ooxml-settings-proof-state-grammar=\"dirty\""))
+  assert_true(svg.contains("data-ooxml-settings-revision-view-markup=\"1\""))
+  assert_true(svg.contains("data-ooxml-settings-revision-view-comments=\"0\""))
+  assert_true(svg.contains("data-ooxml-settings-update-fields=\"1\""))
+  assert_true(svg.contains("data-ooxml-settings-compat=\"1\""))
+  assert_true(svg.contains("data-ooxml-settings-compat-space-for-ul=\"1\""))
+  assert_true(svg.contains("data-ooxml-settings-compat-setting-0-val=\"15\""))
+  assert_true(svg.contains("data-ooxml-settings-doc-vars-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-settings-doc-var-0-name=\"Project\""))
+  assert_true(svg.contains("data-ooxml-settings-rsids-root=\"00112233\""))
+  assert_true(svg.contains("data-ooxml-settings-rsids-0=\"44556677\""))
+  assert_true(svg.contains("data-ooxml-settings-schema-library-count=\"1\""))
+  assert_true(
+    svg.contains(
+      "data-ooxml-settings-schema-library-0-schema-0-uri=\"urn:test\"",
+    ),
+  )
+}
+
+///|
 /// §22.1.2.78 `<m:oMathPara>` — a paragraph-level math wrapper is
 /// rendered: each nested `<m:oMath>` becomes its own SVG `<g>`.
 test "render_svg renders OMML paragraph wrapper as pure SVG" {

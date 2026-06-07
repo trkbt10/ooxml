@@ -171,8 +171,49 @@ test "ofPieChart aggregates secondary points into one Other wedge" {
   assert_eq(ofp_count(svg, "M 100,150"), 4)
   // Secondary wedges begin "M 300,150" (2 of them: 5,5).
   assert_eq(ofp_count(svg, "M 300,150"), 2)
-  // A connector line links the Other wedge to the secondary plot.
-  assert_true(svg.contains("stroke-dasharray=\"4,3\""))
+  // No <c:serLines> means no connector line was requested.
+  assert_true(!svg.contains("data-ooxml=\"chart-ser-lines\""))
+}
+
+///|
+test "ofPieChart serLines emits connector only when requested" {
+  let without_ser_lines = ofp_pie_chart([
+    ofp_cn("splitType", [("val", "pos")], []),
+    ofp_cn("splitPos", [("val", "2")], []),
+  ])
+  let without_svg = ofp_render(without_ser_lines)
+  assert_true(!without_svg.contains("data-ooxml=\"chart-ser-lines\""))
+
+  let with_ser_lines = ofp_pie_chart([
+    ofp_cn("splitType", [("val", "pos")], []),
+    ofp_cn("splitPos", [("val", "2")], []),
+    ofp_cn("serLines", [], []),
+  ])
+  let with_svg = ofp_render(with_ser_lines)
+  assert_true(with_svg.contains("data-ooxml=\"chart-ser-lines\""))
+  assert_true(with_svg.contains("<line"))
+}
+
+///|
+test "ofPieChart serLines spPr drives connector stroke" {
+  let chart = ofp_pie_chart([
+    ofp_cn("splitType", [("val", "pos")], []),
+    ofp_cn("splitPos", [("val", "2")], []),
+    ofp_cn("serLines", [], [
+      ofp_cn("spPr", [], [
+        ofp_a("ln", [("w", "19050"), ("cap", "rnd")], [
+          ofp_a("solidFill", [], [ofp_a("srgbClr", [("val", "8090A0")], [])]),
+          ofp_a("prstDash", [("val", "dash")], []),
+        ]),
+      ]),
+    ]),
+  ])
+  let svg = ofp_render(chart)
+  assert_true(svg.contains("data-ooxml=\"chart-ser-lines\""))
+  assert_true(svg.contains("stroke=\"#8090a0\""))
+  assert_true(svg.contains("stroke-width=\"2\""))
+  assert_true(svg.contains("stroke-dasharray=\"8 6\""))
+  assert_true(svg.contains("stroke-linecap=\"round\""))
 }
 
 ///|

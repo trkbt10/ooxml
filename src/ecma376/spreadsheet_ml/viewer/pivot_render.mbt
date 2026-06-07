@@ -52,9 +52,8 @@
 //     font override is applied to the cell.
 //
 //   * `<pageFields>` (§18.10.1.62) — the records are filtered by
-//     `apply_page_filter` and the active per-field selection is surfaced
-//     as `data-ooxml-pivot-page-field="Field=Value"` metadata for a
-//     consumer to render the page-field / dropdown chrome.
+//     `apply_page_filter` and the active per-field selection is rendered
+//     in the page-field area reserved by `location/@rowPageCount`.
 //   * `@compact` / `@outline` are display-layout flags; the renderer
 //     emits the content-equivalent TABULAR layout (one column per row
 //     field) — the cell values and grouping are identical, only the
@@ -93,6 +92,7 @@ fn render_pivot_overlay(
     Some(r) => r
     None => return []
   }
+  let grid_start_row = start_row + location.first_header_row
   let row_keys = pivot.materialization.row_keys
   let col_keys = pivot.materialization.col_keys
   let data_field_count = pivot.materialization.data_field_count
@@ -111,7 +111,7 @@ fn render_pivot_overlay(
       theme_map,
       theme_fonts,
       start_col,
-      start_row,
+      grid_start_row,
       row_keys,
       col_keys,
       data_field_count,
@@ -192,7 +192,7 @@ fn render_pivot_overlay(
   let ys : Array[Double] = []
   let hs : Array[Double] = []
   for ri in 0..<total_rows {
-    let absolute_row = start_row + ri
+    let absolute_row = grid_start_row + ri
     let (y, h) = pivot_row_geometry(layout, options, absolute_row)
     ys.push(y)
     hs.push(h)
@@ -202,6 +202,17 @@ fn render_pivot_overlay(
   let row_grand_idx = pivot_grand_index(row_keys)
   let col_grand_idx = pivot_grand_index(col_keys)
   let nodes : Array[@xml.Node] = []
+  for
+    n in render_pivot_page_fields(
+      pivot,
+      layout,
+      options,
+      start_col,
+      start_row,
+      max_digit_width_px~,
+    ) {
+    nodes.push(n)
+  }
   // ---- 1. Header band: column-axis captions ---------------------
   for ax in 0..<col_axis_count {
     // Cell at (leading_cols-1, ax) carries the axis name in the
@@ -472,10 +483,23 @@ fn render_pivot_overlay(
         // worksheet `<conditionalFormatting>` block over the pivot
         // region).  The sheet position is the pivot origin plus the
         // cell's grid offset.
+        let (format_fill, format_font) = match found {
+          Some(_) =>
+            pivot_value_format_style(
+              pivot,
+              row_keys[ri],
+              col_keys[ci],
+              options,
+              styles,
+              theme_map,
+              theme_fonts,
+            )
+          None => (None, None)
+        }
         let (cf_fill, cf_font) = match found {
           Some(rc) =>
             pivot_value_cf_style(
-              start_row + body_top + ri,
+              grid_start_row + body_top + ri,
               start_col + base_col + d,
               rc.aggregated_value,
               options,
@@ -487,6 +511,14 @@ fn render_pivot_overlay(
               theme_fonts,
             )
           None => (None, None)
+        }
+        let fill = match cf_fill {
+          Some(_) => cf_fill
+          None => format_fill
+        }
+        let font = match cf_font {
+          Some(_) => cf_font
+          None => format_font
         }
         nodes.push(
           pivot_cell(
@@ -500,8 +532,8 @@ fn render_pivot_overlay(
             top_border,
             left_border,
             overall,
-            fill_override=cf_fill,
-            text_font=cf_font,
+            fill_override=fill,
+            text_font=font,
           ),
         )
       }
@@ -602,6 +634,21 @@ fn render_pivot_overlay_data_on_rows(
   let row_grand_idx = pivot_grand_index(row_keys)
   let col_grand_idx = pivot_grand_index(col_keys)
   let nodes : Array[@xml.Node] = []
+  let page_start_row = match pivot.definition.location {
+    Some(loc) => start_row - loc.first_header_row
+    None => start_row
+  }
+  for
+    n in render_pivot_page_fields(
+      pivot,
+      layout,
+      options,
+      start_col,
+      page_start_row,
+      max_digit_width_px~,
+    ) {
+    nodes.push(n)
+  }
   for ax in 0..<col_axis_count {
     nodes.push(
       pivot_cell(
@@ -810,6 +857,19 @@ fn render_pivot_overlay_data_on_rows(
         let top_border = (is_row_grand || is_row_subtotal) && d == 0
         let left_border = is_col_grand
         let overall = is_row_grand && is_col_grand
+        let (format_fill, format_font) = match found {
+          Some(_) =>
+            pivot_value_format_style(
+              pivot,
+              row_keys[ri],
+              col_keys[ci],
+              options,
+              styles,
+              theme_map,
+              theme_fonts,
+            )
+          None => (None, None)
+        }
         let (cf_fill, cf_font) = match found {
           Some(rc) =>
             pivot_value_cf_style(
@@ -826,6 +886,14 @@ fn render_pivot_overlay_data_on_rows(
             )
           None => (None, None)
         }
+        let fill = match cf_fill {
+          Some(_) => cf_fill
+          None => format_fill
+        }
+        let font = match cf_font {
+          Some(_) => cf_font
+          None => format_font
+        }
         nodes.push(
           pivot_cell(
             xs[base_col],
@@ -838,8 +906,8 @@ fn render_pivot_overlay_data_on_rows(
             top_border,
             left_border,
             overall,
-            fill_override=cf_fill,
-            text_font=cf_font,
+            fill_override=fill,
+            text_font=font,
           ),
         )
       }
@@ -847,6 +915,132 @@ fn render_pivot_overlay_data_on_rows(
   }
   push_pivot_outer_border(nodes, xs, ys, ws, hs)
   [svg_elem("g", pivot_group_attrs(pivot), nodes)]
+}
+
+///|
+fn render_pivot_page_fields(
+  pivot : @pivot_table.MaterializedPivotTable,
+  layout : SheetLayout,
+  options : SheetRenderOptions,
+  start_col : Int,
+  start_row : Int,
+  max_digit_width_px~ : Double,
+) -> Array[@xml.Node] {
+  let location = match pivot.definition.location {
+    Some(loc) => loc
+    None => return []
+  }
+  if pivot.definition.page_fields.length() == 0 || location.row_page_count <= 0 {
+    return []
+  }
+  let nodes : Array[@xml.Node] = []
+  let mut row_offset = 0
+  for pf in pivot.definition.page_fields {
+    if row_offset >= location.row_page_count {
+      break
+    }
+    let (label_x, label_w) = pivot_column_geometry(
+      layout,
+      options,
+      start_col,
+      max_digit_width_px~,
+    )
+    let (value_x, value_w) = pivot_column_geometry(
+      layout,
+      options,
+      start_col + 1,
+      max_digit_width_px~,
+    )
+    let (row_y, row_h) = pivot_row_geometry(
+      layout,
+      options,
+      start_row + row_offset,
+    )
+    nodes.push(
+      pivot_cell(
+        label_x,
+        row_y,
+        label_w,
+        row_h,
+        pivot_page_field_label(pivot, pf),
+        options,
+        true,
+        false,
+        false,
+        false,
+      ),
+    )
+    nodes.push(
+      pivot_cell(
+        value_x,
+        row_y,
+        value_w,
+        row_h,
+        pivot_page_field_selection(pivot, pf),
+        options,
+        false,
+        false,
+        false,
+        false,
+      ),
+    )
+    for
+      arrow in render_autofilter_arrow(
+        (value_x, row_y, value_w, row_h),
+        pivot_page_field_is_filtered(pf),
+      ) {
+      nodes.push(arrow)
+    }
+    row_offset = row_offset + 1
+  }
+  if nodes.length() == 0 {
+    []
+  } else {
+    [svg_elem("g", [svg_attr("class", "pivot-page-fields")], nodes)]
+  }
+}
+
+///|
+fn pivot_page_field_label(
+  pivot : @pivot_table.MaterializedPivotTable,
+  pf : @pivot_table.PageFieldDef,
+) -> String {
+  match pf.caption {
+    Some(caption) => caption
+    None =>
+      match pf.name {
+        Some(name) => name
+        None =>
+          if pf.fld >= 0 && pf.fld < pivot.cache.cache_fields.length() {
+            let field = pivot.cache.cache_fields[pf.fld]
+            match field.caption {
+              Some(caption) => caption
+              None => field.name
+            }
+          } else {
+            ""
+          }
+      }
+  }
+}
+
+///|
+fn pivot_page_field_selection(
+  pivot : @pivot_table.MaterializedPivotTable,
+  pf : @pivot_table.PageFieldDef,
+) -> String {
+  match pf.item {
+    Some(idx) => pivot_shared_item_caption(pivot.cache, pf.fld, idx)
+    None => "(All)"
+  }
+}
+
+///|
+fn pivot_page_field_is_filtered(pf : @pivot_table.PageFieldDef) -> Bool {
+  match pf.item {
+    Some(_) => true
+    None => false
+  }
 }
 
 ///|
@@ -924,6 +1118,10 @@ fn pivot_group_attrs(
     }
     None => ()
   }
+  emit_pivot_field_metadata_attrs(pivot.definition, group_attrs)
+  emit_pivot_format_metadata_attrs(pivot.definition, group_attrs)
+  emit_pivot_hierarchy_metadata_attrs(pivot.definition, group_attrs)
+  emit_pivot_cache_metadata_attrs(pivot.cache, group_attrs)
   // §18.10.1.62 pageFields — the active page-field filters (the data is
   // already filtered by `apply_page_filter`; surface the current
   // selection per field as metadata, e.g. "Region=East", so a consumer
@@ -946,6 +1144,1005 @@ fn pivot_group_attrs(
     }
   }
   group_attrs
+}
+
+///|
+fn emit_pivot_field_metadata_attrs(
+  definition : @pivot_table.PivotTableDefinition,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  if definition.pivot_fields.length() == 0 {
+    return
+  }
+  out.push(
+    svg_attr(
+      "data-ooxml-pivot-fields-count",
+      definition.pivot_fields.length().to_string(),
+    ),
+  )
+  for i, field in definition.pivot_fields {
+    let prefix = "data-ooxml-pivot-field-" + i.to_string()
+    match field.axis {
+      None => ()
+      Some(axis) => out.push(svg_attr(prefix + "-axis", pivot_axis_attr(axis)))
+    }
+    out.push(svg_attr(prefix + "-data-field", bool_data_attr(field.data_field)))
+    out.push(
+      svg_attr(
+        prefix + "-include-new-items-in-filter",
+        bool_data_attr(field.include_new_items_in_filter),
+      ),
+    )
+    push_data_attr_opt(out, prefix + "-name", field.name)
+    push_data_attr_opt(
+      out,
+      prefix + "-subtotal-caption",
+      field.subtotal_caption,
+    )
+    out.push(svg_attr(prefix + "-outline", bool_data_attr(field.outline)))
+    out.push(
+      svg_attr(prefix + "-subtotal-top", bool_data_attr(field.subtotal_top)),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-default-subtotal",
+        bool_data_attr(field.default_subtotal),
+      ),
+    )
+    out.push(
+      svg_attr(prefix + "-items-count", field.items.length().to_string()),
+    )
+    push_data_attr_int_opt(
+      out,
+      prefix + "-items-declared-count",
+      field.items_declared_count,
+    )
+    match field.auto_sort_scope {
+      None => ()
+      Some(scope) => {
+        emit_source_element_attrs(
+          prefix + "-auto-sort-scope",
+          scope.element,
+          out,
+        )
+        emit_pivot_area_attrs(
+          scope.pivot_area,
+          prefix + "-auto-sort-scope-area",
+          out,
+        )
+      }
+    }
+  }
+}
+
+///|
+fn pivot_axis_attr(axis : @pivot_table.PivotAxis) -> String {
+  match axis {
+    AxisRow => "axisRow"
+    AxisCol => "axisCol"
+    AxisPage => "axisPage"
+    AxisValues => "axisValues"
+  }
+}
+
+///|
+fn emit_pivot_format_metadata_attrs(
+  definition : @pivot_table.PivotTableDefinition,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match definition.formats {
+    None => ()
+    Some(formats) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-formats-count",
+          formats.format.length().to_string(),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-formats-declared-count",
+          formats.count.to_string(),
+        ),
+      )
+      for i, format in formats.format {
+        let prefix = "data-ooxml-pivot-format-" + i.to_string()
+        out.push(svg_attr(prefix + "-action", format.action))
+        push_data_attr_int_opt(out, prefix + "-dxf-id", format.dxf_id)
+        emit_pivot_area_attrs(format.pivot_area, prefix + "-area", out)
+      }
+    }
+  }
+  match definition.conditional_formats {
+    None => ()
+    Some(formats) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-conditional-formats-count",
+          formats.conditional_format.length().to_string(),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-conditional-formats-declared-count",
+          formats.count.to_string(),
+        ),
+      )
+      for i, format in formats.conditional_format {
+        let prefix = "data-ooxml-pivot-conditional-format-" + i.to_string()
+        out.push(svg_attr(prefix + "-scope", format.scope))
+        out.push(svg_attr(prefix + "-type", format.type_))
+        out.push(svg_attr(prefix + "-priority", format.priority.to_string()))
+        match format.pivot_areas {
+          None => ()
+          Some(areas) => {
+            out.push(
+              svg_attr(
+                prefix + "-areas-count",
+                areas.pivot_areas.length().to_string(),
+              ),
+            )
+            push_data_attr_int_opt(
+              out,
+              prefix + "-areas-declared-count",
+              areas.count,
+            )
+            for j, area in areas.pivot_areas {
+              emit_pivot_area_attrs(
+                area,
+                prefix + "-area-" + j.to_string(),
+                out,
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+  match definition.chart_formats {
+    None => ()
+    Some(formats) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-chart-formats-count",
+          formats.chart_format.length().to_string(),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-chart-formats-declared-count",
+          formats.count.to_string(),
+        ),
+      )
+      for i, format in formats.chart_format {
+        let prefix = "data-ooxml-pivot-chart-format-" + i.to_string()
+        out.push(svg_attr(prefix + "-chart", format.chart.to_string()))
+        out.push(svg_attr(prefix + "-format", format.format.to_string()))
+        out.push(svg_attr(prefix + "-series", bool_data_attr(format.series)))
+        match format.pivot_area {
+          None => ()
+          Some(area) => emit_pivot_area_attrs(area, prefix + "-area", out)
+        }
+      }
+    }
+  }
+}
+
+///|
+fn emit_pivot_area_attrs(
+  area : @domain.CT_PivotArea,
+  prefix : String,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  push_data_attr_int_opt(out, prefix + "-field", area.field)
+  out.push(svg_attr(prefix + "-type", area.type_))
+  out.push(svg_attr(prefix + "-data-only", bool_data_attr(area.data_only)))
+  out.push(svg_attr(prefix + "-label-only", bool_data_attr(area.label_only)))
+  out.push(svg_attr(prefix + "-grand-row", bool_data_attr(area.grand_row)))
+  out.push(svg_attr(prefix + "-grand-col", bool_data_attr(area.grand_col)))
+  out.push(svg_attr(prefix + "-cache-index", bool_data_attr(area.cache_index)))
+  out.push(svg_attr(prefix + "-outline", bool_data_attr(area.outline)))
+  push_data_attr_opt(out, prefix + "-offset", area.offset)
+  out.push(
+    svg_attr(
+      prefix + "-collapsed-levels-are-subtotals",
+      bool_data_attr(area.collapsed_levels_are_subtotals),
+    ),
+  )
+  push_data_attr_opt(out, prefix + "-axis", area.axis)
+  push_data_attr_int_opt(out, prefix + "-field-position", area.field_position)
+  match area.references {
+    None => ()
+    Some(refs) => {
+      out.push(
+        svg_attr(
+          prefix + "-references-count",
+          refs.reference.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        prefix + "-references-declared-count",
+        refs.count,
+      )
+      for i, reference in refs.reference {
+        let ref_prefix = prefix + "-reference-" + i.to_string()
+        push_data_attr_int_opt(out, ref_prefix + "-field", reference.field)
+        push_data_attr_int_opt(
+          out,
+          ref_prefix + "-declared-count",
+          reference.count,
+        )
+        out.push(
+          svg_attr(ref_prefix + "-selected", bool_data_attr(reference.selected)),
+        )
+        out.push(
+          svg_attr(ref_prefix + "-x-count", reference.x.length().to_string()),
+        )
+        for j, index in reference.x {
+          let index_prefix = ref_prefix + "-x-" + j.to_string()
+          emit_source_element_attrs(index_prefix, index.element, out)
+          out.push(svg_attr(index_prefix + "-v", index.v.to_string()))
+        }
+      }
+    }
+  }
+}
+
+///|
+fn emit_pivot_hierarchy_metadata_attrs(
+  definition : @pivot_table.PivotTableDefinition,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match definition.pivot_hierarchies {
+    None => ()
+    Some(hierarchies) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-hierarchies-count",
+          hierarchies.pivot_hierarchies.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-pivot-hierarchies-declared-count",
+        hierarchies.count,
+      )
+      for i, hierarchy in hierarchies.pivot_hierarchies {
+        let prefix = "data-ooxml-pivot-hierarchy-" + i.to_string()
+        push_data_attr_opt(out, prefix + "-caption", hierarchy.caption)
+        out.push(
+          svg_attr(prefix + "-outline", bool_data_attr(hierarchy.outline)),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-multiple-item-selection-allowed",
+            bool_data_attr(hierarchy.multiple_item_selection_allowed),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-show-in-field-list",
+            bool_data_attr(hierarchy.show_in_field_list),
+          ),
+        )
+        match hierarchy.mps {
+          None => ()
+          Some(mps) => {
+            out.push(
+              svg_attr(prefix + "-mps-count", mps.mp.length().to_string()),
+            )
+            push_data_attr_int_opt(
+              out,
+              prefix + "-mps-declared-count",
+              mps.count,
+            )
+            for j, mp in mps.mp {
+              let mp_prefix = prefix + "-mp-" + j.to_string()
+              out.push(svg_attr(mp_prefix + "-field", mp.field.to_string()))
+              push_data_attr_opt(out, mp_prefix + "-name", mp.name)
+              out.push(
+                svg_attr(mp_prefix + "-show-cell", bool_data_attr(mp.show_cell)),
+              )
+              out.push(
+                svg_attr(mp_prefix + "-show-tip", bool_data_attr(mp.show_tip)),
+              )
+              out.push(
+                svg_attr(
+                  mp_prefix + "-show-as-caption",
+                  bool_data_attr(mp.show_as_caption),
+                ),
+              )
+            }
+          }
+        }
+        out.push(
+          svg_attr(
+            prefix + "-members-groups-count",
+            hierarchy.members.length().to_string(),
+          ),
+        )
+        for j, members in hierarchy.members {
+          let members_prefix = prefix + "-members-" + j.to_string()
+          push_data_attr_int_opt(
+            out,
+            members_prefix + "-declared-count",
+            members.count,
+          )
+          push_data_attr_int_opt(out, members_prefix + "-level", members.level)
+          out.push(
+            svg_attr(
+              members_prefix + "-member-count",
+              members.member_entries.length().to_string(),
+            ),
+          )
+          for k, member_entry in members.member_entries {
+            out.push(
+              svg_attr(
+                members_prefix + "-member-" + k.to_string() + "-name",
+                member_entry.name,
+              ),
+            )
+          }
+        }
+      }
+    }
+  }
+  match definition.row_hierarchies_usage {
+    None => ()
+    Some(usages) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-row-hierarchies-usage-count",
+          usages.row_hierarchy_usages.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-pivot-row-hierarchies-usage-declared-count",
+        usages.count,
+      )
+      for i, usage in usages.row_hierarchy_usages {
+        out.push(
+          svg_attr(
+            "data-ooxml-pivot-row-hierarchy-usage-" +
+            i.to_string() +
+            "-hierarchy-usage",
+            usage.hierarchy_usage.to_string(),
+          ),
+        )
+      }
+    }
+  }
+  match definition.col_hierarchies_usage {
+    None => ()
+    Some(usages) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-col-hierarchies-usage-count",
+          usages.col_hierarchy_usage.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-pivot-col-hierarchies-usage-declared-count",
+        usages.count,
+      )
+      for i, usage in usages.col_hierarchy_usage {
+        out.push(
+          svg_attr(
+            "data-ooxml-pivot-col-hierarchy-usage-" +
+            i.to_string() +
+            "-hierarchy-usage",
+            usage.hierarchy_usage.to_string(),
+          ),
+        )
+      }
+    }
+  }
+}
+
+///|
+fn emit_pivot_cache_metadata_attrs(
+  cache : @pivot_table.PivotCacheDefinition,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match cache.cache_hierarchies {
+    None => ()
+    Some(value) =>
+      emit_sml_pivot_cache_hierarchies_metadata_attrs(
+        "data-ooxml-pivot-cache-hierarchies", value, out,
+      )
+  }
+  match cache.kpis {
+    None => ()
+    Some(value) =>
+      emit_sml_pivot_kpis_metadata_attrs(
+        "data-ooxml-pivot-cache-kpis", value, out,
+      )
+  }
+  match cache.tuple_cache {
+    None => ()
+    Some(value) =>
+      emit_sml_pivot_tuple_cache_metadata_attrs(
+        "data-ooxml-pivot-cache-tuple-cache", value, out,
+      )
+  }
+  match cache.calculated_items {
+    None => ()
+    Some(value) =>
+      emit_sml_pivot_calculated_items_metadata_attrs(
+        "data-ooxml-pivot-cache-calculated-items", value, out,
+      )
+  }
+  match cache.calculated_members {
+    None => ()
+    Some(value) =>
+      emit_sml_pivot_calculated_members_metadata_attrs(
+        "data-ooxml-pivot-cache-calculated-members", value, out,
+      )
+  }
+  match cache.dimensions {
+    None => ()
+    Some(dimensions) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-cache-dimensions-count",
+          dimensions.dimension.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-pivot-cache-dimensions-declared-count",
+        dimensions.count,
+      )
+      for i, dimension in dimensions.dimension {
+        let prefix = "data-ooxml-pivot-cache-dimension-" + i.to_string()
+        out.push(svg_attr(prefix + "-name", dimension.name))
+        out.push(svg_attr(prefix + "-unique-name", dimension.unique_name))
+        out.push(svg_attr(prefix + "-caption", dimension.caption))
+        out.push(
+          svg_attr(prefix + "-measure", bool_data_attr(dimension.measure)),
+        )
+      }
+    }
+  }
+  match cache.measure_groups {
+    None => ()
+    Some(groups) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-cache-measure-groups-count",
+          groups.measure_group.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-pivot-cache-measure-groups-declared-count",
+        groups.count,
+      )
+      for i, group in groups.measure_group {
+        let prefix = "data-ooxml-pivot-cache-measure-group-" + i.to_string()
+        out.push(svg_attr(prefix + "-name", group.name))
+        out.push(svg_attr(prefix + "-caption", group.caption))
+      }
+    }
+  }
+  match cache.maps {
+    None => ()
+    Some(maps) => {
+      out.push(
+        svg_attr(
+          "data-ooxml-pivot-cache-maps-count",
+          maps.map.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-pivot-cache-maps-declared-count",
+        maps.count,
+      )
+      for i, map in maps.map {
+        let prefix = "data-ooxml-pivot-cache-map-" + i.to_string()
+        push_data_attr_int_opt(
+          out,
+          prefix + "-measure-group",
+          map.measure_group,
+        )
+        push_data_attr_int_opt(out, prefix + "-dimension", map.dimension)
+      }
+    }
+  }
+}
+
+///|
+fn emit_sml_pivot_cache_hierarchies_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_CacheHierarchies,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(
+    svg_attr(prefix + "-count", value.cache_hierarchies.length().to_string()),
+  )
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, hierarchy in value.cache_hierarchies {
+    let hierarchy_prefix = prefix + "-hierarchy-" + i.to_string()
+    emit_sml_pivot_cache_hierarchy_metadata_attrs(
+      hierarchy_prefix, hierarchy, out,
+    )
+  }
+}
+
+///|
+fn emit_sml_pivot_cache_hierarchy_metadata_attrs(
+  prefix : String,
+  hierarchy : @domain.CT_CacheHierarchy,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, hierarchy.element, out)
+  out.push(svg_attr(prefix + "-unique-name", hierarchy.unique_name))
+  push_data_attr_opt(out, prefix + "-caption", hierarchy.caption)
+  out.push(svg_attr(prefix + "-measure", bool_data_attr(hierarchy.measure)))
+  out.push(svg_attr(prefix + "-set", bool_data_attr(hierarchy.set_)))
+  push_data_attr_int_opt(out, prefix + "-parent-set", hierarchy.parent_set)
+  out.push(svg_attr(prefix + "-icon-set", hierarchy.icon_set.to_string()))
+  out.push(svg_attr(prefix + "-attribute", bool_data_attr(hierarchy.attribute)))
+  out.push(svg_attr(prefix + "-time", bool_data_attr(hierarchy.time)))
+  out.push(
+    svg_attr(prefix + "-key-attribute", bool_data_attr(hierarchy.key_attribute)),
+  )
+  push_data_attr_opt(
+    out,
+    prefix + "-default-member-unique-name",
+    hierarchy.default_member_unique_name,
+  )
+  push_data_attr_opt(
+    out,
+    prefix + "-all-unique-name",
+    hierarchy.all_unique_name,
+  )
+  push_data_attr_opt(out, prefix + "-all-caption", hierarchy.all_caption)
+  push_data_attr_opt(
+    out,
+    prefix + "-dimension-unique-name",
+    hierarchy.dimension_unique_name,
+  )
+  push_data_attr_opt(out, prefix + "-display-folder", hierarchy.display_folder)
+  push_data_attr_opt(out, prefix + "-measure-group", hierarchy.measure_group)
+  out.push(svg_attr(prefix + "-measures", bool_data_attr(hierarchy.measures)))
+  out.push(svg_attr(prefix + "-count", hierarchy.count.to_string()))
+  out.push(svg_attr(prefix + "-one-field", bool_data_attr(hierarchy.one_field)))
+  push_data_attr_int_opt(
+    out,
+    prefix + "-member-value-datatype",
+    hierarchy.member_value_datatype,
+  )
+  push_data_attr_bool_opt(out, prefix + "-unbalanced", hierarchy.unbalanced)
+  push_data_attr_bool_opt(
+    out,
+    prefix + "-unbalanced-group",
+    hierarchy.unbalanced_group,
+  )
+  out.push(svg_attr(prefix + "-hidden", bool_data_attr(hierarchy.hidden)))
+  match hierarchy.fields_usage {
+    None => ()
+    Some(fields_usage) =>
+      emit_sml_pivot_fields_usage_metadata_attrs(
+        prefix + "-fields-usage",
+        fields_usage,
+        out,
+      )
+  }
+  match hierarchy.group_levels {
+    None => ()
+    Some(group_levels) =>
+      emit_sml_pivot_group_levels_metadata_attrs(
+        prefix + "-group-levels",
+        group_levels,
+        out,
+      )
+  }
+}
+
+///|
+fn emit_sml_pivot_fields_usage_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_FieldsUsage,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(svg_attr(prefix + "-count", value.field_usage.length().to_string()))
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, usage in value.field_usage {
+    let usage_prefix = prefix + "-field-usage-" + i.to_string()
+    emit_source_element_attrs(usage_prefix, usage.element, out)
+    out.push(svg_attr(usage_prefix + "-x", usage.x.to_string()))
+  }
+}
+
+///|
+fn emit_sml_pivot_group_levels_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_GroupLevels,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(svg_attr(prefix + "-count", value.group_level.length().to_string()))
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, level in value.group_level {
+    emit_sml_pivot_group_level_metadata_attrs(
+      prefix + "-group-level-" + i.to_string(),
+      level,
+      out,
+    )
+  }
+}
+
+///|
+fn emit_sml_pivot_group_level_metadata_attrs(
+  prefix : String,
+  level : @domain.CT_GroupLevel,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, level.element, out)
+  out.push(svg_attr(prefix + "-unique-name", level.unique_name))
+  out.push(svg_attr(prefix + "-caption", level.caption))
+  out.push(svg_attr(prefix + "-user", bool_data_attr(level.user)))
+  out.push(
+    svg_attr(prefix + "-custom-roll-up", bool_data_attr(level.custom_roll_up)),
+  )
+  match level.groups {
+    None => ()
+    Some(groups) =>
+      emit_sml_pivot_groups_metadata_attrs(prefix + "-groups", groups, out)
+  }
+}
+
+///|
+fn emit_sml_pivot_groups_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_Groups,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(svg_attr(prefix + "-count", value.group.length().to_string()))
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, group in value.group {
+    emit_sml_pivot_level_group_metadata_attrs(
+      prefix + "-group-" + i.to_string(),
+      group,
+      out,
+    )
+  }
+}
+
+///|
+fn emit_sml_pivot_level_group_metadata_attrs(
+  prefix : String,
+  group : @domain.CT_LevelGroup,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, group.element, out)
+  out.push(svg_attr(prefix + "-name", group.name))
+  out.push(svg_attr(prefix + "-unique-name", group.unique_name))
+  out.push(svg_attr(prefix + "-caption", group.caption))
+  push_data_attr_opt(out, prefix + "-unique-parent", group.unique_parent)
+  push_data_attr_int_opt(out, prefix + "-id", group.id)
+  emit_sml_pivot_group_members_metadata_attrs(
+    prefix + "-group-members",
+    group.group_members,
+    out,
+  )
+}
+
+///|
+fn emit_sml_pivot_group_members_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_GroupMembers,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(
+    svg_attr(prefix + "-count", value.group_members.length().to_string()),
+  )
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, group_member in value.group_members {
+    let member_prefix = prefix + "-member-" + i.to_string()
+    emit_source_element_attrs(member_prefix, group_member.element, out)
+    out.push(svg_attr(member_prefix + "-unique-name", group_member.unique_name))
+    out.push(
+      svg_attr(member_prefix + "-group", bool_data_attr(group_member.group)),
+    )
+  }
+}
+
+///|
+fn emit_sml_pivot_kpis_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_PCDKPIs,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(svg_attr(prefix + "-count", value.kpis.length().to_string()))
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, kpi in value.kpis {
+    let kpi_prefix = prefix + "-kpi-" + i.to_string()
+    emit_source_element_attrs(kpi_prefix, kpi.element, out)
+    out.push(svg_attr(kpi_prefix + "-unique-name", kpi.unique_name))
+    out.push(svg_attr(kpi_prefix + "-value", kpi.value))
+    push_data_attr_opt(out, kpi_prefix + "-caption", kpi.caption)
+    push_data_attr_opt(out, kpi_prefix + "-display-folder", kpi.display_folder)
+    push_data_attr_opt(out, kpi_prefix + "-measure-group", kpi.measure_group)
+    push_data_attr_opt(out, kpi_prefix + "-parent", kpi.parent)
+    push_data_attr_opt(out, kpi_prefix + "-goal", kpi.goal)
+    push_data_attr_opt(out, kpi_prefix + "-status", kpi.status)
+    push_data_attr_opt(out, kpi_prefix + "-trend", kpi.trend)
+    push_data_attr_opt(out, kpi_prefix + "-weight", kpi.weight)
+    push_data_attr_opt(out, kpi_prefix + "-time", kpi.time)
+  }
+}
+
+///|
+fn emit_sml_pivot_tuple_cache_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_TupleCache,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  match value.entries {
+    None => ()
+    Some(entries) =>
+      emit_sml_pivot_tuple_entries_metadata_attrs(
+        prefix + "-entries",
+        entries,
+        out,
+      )
+  }
+  match value.sets {
+    None => ()
+    Some(sets) =>
+      emit_sml_pivot_sets_metadata_attrs(prefix + "-sets", sets, out)
+  }
+  match value.query_cache {
+    None => ()
+    Some(cache) =>
+      emit_sml_pivot_query_cache_metadata_attrs(
+        prefix + "-query-cache",
+        cache,
+        out,
+      )
+  }
+  match value.server_formats {
+    None => ()
+    Some(formats) =>
+      emit_sml_pivot_server_formats_metadata_attrs(
+        prefix + "-server-formats",
+        formats,
+        out,
+      )
+  }
+}
+
+///|
+fn emit_sml_pivot_tuple_entries_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_PCDSDTCEntries,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  out.push(
+    svg_attr(prefix + "-missing-count", value.missings.length().to_string()),
+  )
+  out.push(
+    svg_attr(prefix + "-number-count", value.numbers.length().to_string()),
+  )
+  out.push(svg_attr(prefix + "-error-count", value.errors.length().to_string()))
+  out.push(
+    svg_attr(prefix + "-string-count", value.strings.length().to_string()),
+  )
+  for i, missing in value.missings {
+    emit_source_element_attrs(
+      prefix + "-missing-" + i.to_string(),
+      missing.element,
+      out,
+    )
+  }
+  for i, number in value.numbers {
+    emit_source_element_attrs(
+      prefix + "-number-" + i.to_string(),
+      number.element,
+      out,
+    )
+  }
+  for i, error in value.errors {
+    emit_source_element_attrs(
+      prefix + "-error-" + i.to_string(),
+      error.element,
+      out,
+    )
+  }
+  for i, string in value.strings {
+    emit_source_element_attrs(
+      prefix + "-string-" + i.to_string(),
+      string.element,
+      out,
+    )
+  }
+}
+
+///|
+fn emit_sml_pivot_sets_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_Sets,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(svg_attr(prefix + "-count", value.sets.length().to_string()))
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, set in value.sets {
+    emit_sml_pivot_set_metadata_attrs(
+      prefix + "-set-" + i.to_string(),
+      set,
+      out,
+    )
+  }
+}
+
+///|
+fn emit_sml_pivot_set_metadata_attrs(
+  prefix : String,
+  set : @domain.CT_Set,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, set.element, out)
+  push_data_attr_int_opt(out, prefix + "-count", set.count)
+  out.push(svg_attr(prefix + "-max-rank", set.max_rank.to_string()))
+  out.push(svg_attr(prefix + "-set-definition", set.set_definition))
+  push_data_attr_opt(out, prefix + "-sort-type", set.sort_type)
+  out.push(svg_attr(prefix + "-query-failed", bool_data_attr(set.query_failed)))
+  out.push(svg_attr(prefix + "-tpls-count", set.tpls.length().to_string()))
+  for i, tuples in set.tpls {
+    emit_sml_pivot_tuples_metadata_attrs(
+      prefix + "-tpls-" + i.to_string(),
+      tuples,
+      out,
+    )
+  }
+  match set.sort_by_tuple {
+    None => ()
+    Some(tuples) =>
+      emit_sml_pivot_tuples_metadata_attrs(
+        prefix + "-sort-by-tuple",
+        tuples,
+        out,
+      )
+  }
+}
+
+///|
+fn emit_sml_pivot_tuples_metadata_attrs(
+  prefix : String,
+  tuples : @domain.CT_Tuples,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, tuples.element, out)
+  push_data_attr_int_opt(out, prefix + "-declared-count", tuples.c)
+  out.push(svg_attr(prefix + "-tuple-count", tuples.tpls.length().to_string()))
+  for i, tuple in tuples.tpls {
+    let tuple_prefix = prefix + "-tuple-" + i.to_string()
+    emit_source_element_attrs(tuple_prefix, tuple.element, out)
+    push_data_attr_int_opt(out, tuple_prefix + "-field", tuple.fld)
+    push_data_attr_int_opt(out, tuple_prefix + "-hierarchy", tuple.hier)
+    out.push(svg_attr(tuple_prefix + "-item", tuple.item.to_string()))
+  }
+}
+
+///|
+fn emit_sml_pivot_query_cache_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_QueryCache,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(svg_attr(prefix + "-count", value.queries.length().to_string()))
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, query in value.queries {
+    let query_prefix = prefix + "-query-" + i.to_string()
+    emit_source_element_attrs(query_prefix, query.element, out)
+    out.push(svg_attr(query_prefix + "-mdx", query.mdx))
+    match query.tpls {
+      None => ()
+      Some(tuples) =>
+        emit_sml_pivot_tuples_metadata_attrs(
+          query_prefix + "-tpls",
+          tuples,
+          out,
+        )
+    }
+  }
+}
+
+///|
+fn emit_sml_pivot_server_formats_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_ServerFormats,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(
+    svg_attr(prefix + "-count", value.server_format.length().to_string()),
+  )
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, format in value.server_format {
+    let format_prefix = prefix + "-server-format-" + i.to_string()
+    emit_source_element_attrs(format_prefix, format.element, out)
+    push_data_attr_opt(out, format_prefix + "-culture", format.culture)
+    push_data_attr_opt(out, format_prefix + "-format", format.format)
+  }
+}
+
+///|
+fn emit_sml_pivot_calculated_items_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_CalculatedItems,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(
+    svg_attr(prefix + "-count", value.calculated_items.length().to_string()),
+  )
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, item in value.calculated_items {
+    let item_prefix = prefix + "-item-" + i.to_string()
+    emit_source_element_attrs(item_prefix, item.element, out)
+    push_data_attr_int_opt(out, item_prefix + "-field", item.field)
+    push_data_attr_opt(out, item_prefix + "-formula", item.formula)
+    match item.pivot_area {
+      None => ()
+      Some(area) => emit_pivot_area_attrs(area, item_prefix + "-area", out)
+    }
+  }
+}
+
+///|
+fn emit_sml_pivot_calculated_members_metadata_attrs(
+  prefix : String,
+  value : @domain.CT_CalculatedMembers,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  emit_source_element_attrs(prefix, value.element, out)
+  out.push(
+    svg_attr(prefix + "-count", value.calculated_members.length().to_string()),
+  )
+  push_data_attr_int_opt(out, prefix + "-declared-count", value.count)
+  for i, calculated_member in value.calculated_members {
+    let member_prefix = prefix + "-member-" + i.to_string()
+    emit_source_element_attrs(member_prefix, calculated_member.element, out)
+    out.push(svg_attr(member_prefix + "-name", calculated_member.name))
+    out.push(svg_attr(member_prefix + "-mdx", calculated_member.mdx))
+    push_data_attr_opt(
+      out,
+      member_prefix + "-member-name",
+      calculated_member.member_name,
+    )
+    push_data_attr_opt(
+      out,
+      member_prefix + "-hierarchy",
+      calculated_member.hierarchy,
+    )
+    push_data_attr_opt(out, member_prefix + "-parent", calculated_member.parent)
+    out.push(
+      svg_attr(
+        member_prefix + "-solve-order",
+        calculated_member.solve_order.to_string(),
+      ),
+    )
+    out.push(
+      svg_attr(member_prefix + "-set", bool_data_attr(calculated_member.set_)),
+    )
+  }
 }
 
 ///|
@@ -1018,6 +2215,189 @@ fn pivot_value_cf_style(
     Some(styled.font)
   }
   (fill, font)
+}
+
+///|
+/// §18.10.1.30 / §18.10.1.65 / §18.10.1.66 — PivotTable `<format>`
+/// entries apply a stylesheet `<dxf>` to cells selected by their
+/// `<pivotArea>`.  This renderer supports the data-area path used by
+/// value cells: a `type="data"` area optionally narrows the match with
+/// `<reference field="…"><x v="…"/></reference>` constraints whose
+/// `v` values are the same shared-item indices carried by
+/// `PivotAxisKey::Items`.
+fn pivot_value_format_style(
+  pivot : @pivot_table.MaterializedPivotTable,
+  row_key : @pivot_table.PivotAxisKey,
+  col_key : @pivot_table.PivotAxisKey,
+  options : SheetRenderOptions,
+  styles : @domain.CT_Stylesheet?,
+  theme_map : SmlThemeColorMap,
+  theme_fonts : SmlThemeFontMap,
+) -> (String?, ResolvedFont?) {
+  let formats = match pivot.definition.formats {
+    Some(value) => value
+    None => return (None, None)
+  }
+  let dxfs = match styles {
+    Some(sheet_styles) =>
+      match sheet_styles.dxfs {
+        Some(value) => value
+        None => return (None, None)
+      }
+    None => return (None, None)
+  }
+  let base = default_cell_style(options)
+  let mut styled = base
+  let mut changed = false
+  for format in formats.format {
+    if format.action != "formatting" {
+      continue
+    }
+    let dxf_id = match format.dxf_id {
+      Some(value) => value
+      None => continue
+    }
+    if dxf_id < 0 || dxf_id >= dxfs.dxf.length() {
+      continue
+    }
+    if !pivot_format_area_matches_value_cell(
+        format.pivot_area,
+        pivot.definition,
+        row_key,
+        col_key,
+      ) {
+      continue
+    }
+    styled = overlay_dxf_on_style(
+      styled,
+      dxfs.dxf[dxf_id],
+      theme_map~,
+      theme_fonts~,
+    )
+    changed = true
+  }
+  if !changed {
+    return (None, None)
+  }
+  let fill = match styled.fill {
+    FillSolid(color) => Some(color)
+    _ => None
+  }
+  let font = if resolved_font_eq(styled.font, base.font) {
+    None
+  } else {
+    Some(styled.font)
+  }
+  (fill, font)
+}
+
+///|
+fn pivot_format_area_matches_value_cell(
+  area : @domain.CT_PivotArea,
+  definition : @pivot_table.PivotTableDefinition,
+  row_key : @pivot_table.PivotAxisKey,
+  col_key : @pivot_table.PivotAxisKey,
+) -> Bool {
+  if area.type_ != "data" {
+    return false
+  }
+  match area.references {
+    None => true
+    Some(refs) => {
+      if refs.reference.length() == 0 {
+        return true
+      }
+      for reference in refs.reference {
+        if !pivot_format_reference_matches_value_cell(
+            reference, definition, row_key, col_key,
+          ) {
+          return false
+        }
+      }
+      true
+    }
+  }
+}
+
+///|
+fn pivot_format_reference_matches_value_cell(
+  reference : @domain.CT_PivotAreaReference,
+  definition : @pivot_table.PivotTableDefinition,
+  row_key : @pivot_table.PivotAxisKey,
+  col_key : @pivot_table.PivotAxisKey,
+) -> Bool {
+  let field = match reference.field {
+    Some(value) => value
+    None => return true
+  }
+  let item = match
+    pivot_axis_field_item(definition.row_fields, field, row_key) {
+    Some(value) => Some(value)
+    None => pivot_axis_field_item(definition.col_fields, field, col_key)
+  }
+  match item {
+    Some(value) =>
+      if reference.x.length() == 0 {
+        reference.count.unwrap_or(0) == 0
+      } else {
+        pivot_reference_indexes_contain(reference.x, value)
+      }
+    None => false
+  }
+}
+
+///|
+fn pivot_axis_field_item(
+  axis_fields : Array[Int],
+  field : Int,
+  key : @pivot_table.PivotAxisKey,
+) -> Int? {
+  let mut position = 0
+  for axis_field in axis_fields {
+    if axis_field == -2 {
+      continue
+    }
+    if axis_field == field {
+      return pivot_axis_key_item_at(key, position)
+    }
+    position = position + 1
+  }
+  None
+}
+
+///|
+fn pivot_axis_key_item_at(
+  key : @pivot_table.PivotAxisKey,
+  position : Int,
+) -> Int? {
+  match key {
+    @pivot_table.PivotAxisKey::Items(indices) =>
+      if position >= 0 && position < indices.length() {
+        Some(indices[position])
+      } else {
+        None
+      }
+    @pivot_table.PivotAxisKey::RowSubtotal(prefix) =>
+      if position >= 0 && position < prefix.length() {
+        Some(prefix[position])
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn pivot_reference_indexes_contain(
+  indexes : Array[@domain.CT_Index],
+  value : Int,
+) -> Bool {
+  for index in indexes {
+    if index.v == value {
+      return true
+    }
+  }
+  false
 }
 
 ///|

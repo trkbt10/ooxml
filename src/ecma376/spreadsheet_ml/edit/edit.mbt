@@ -79,8 +79,16 @@ pub fn edit_worksheet(
         value: new_value,
         drawing: ws.drawing,
         drawing_part: ws.drawing_part,
+        legacy_drawing: ws.legacy_drawing,
+        legacy_drawing_part: ws.legacy_drawing_part,
+        legacy_drawing_hf: ws.legacy_drawing_hf,
+        legacy_drawing_hf_part: ws.legacy_drawing_hf_part,
         tables: ws.tables,
         comments: ws.comments,
+        query_tables: ws.query_tables,
+        single_xml_cells: ws.single_xml_cells,
+        control_parts: ws.control_parts,
+        custom_property_parts: ws.custom_property_parts,
       })
     } else {
       new_worksheets.push(ws)
@@ -1574,8 +1582,16 @@ pub fn append_sheet(
     value: new_ws,
     drawing: None,
     drawing_part: None,
+    legacy_drawing: None,
+    legacy_drawing_part: None,
+    legacy_drawing_hf: None,
+    legacy_drawing_hf_part: None,
     tables: [],
     comments: None,
+    query_tables: [],
+    single_xml_cells: [],
+    control_parts: [],
+    custom_property_parts: [],
   })
   {
     ..workbook,

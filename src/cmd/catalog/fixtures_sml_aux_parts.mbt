@@ -62,6 +62,106 @@ fn sml_aux_font_run_properties() -> @xml.Element {
 }
 
 ///|
+fn is_sml_shared_string_rich_text_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "spreadsheetml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match local_name {
+    "rPr" => type_local == "CT_RPrElt"
+    "rFont" => type_local == "CT_FontName"
+    "charset" | "family" => type_local == "CT_IntProperty"
+    "b" | "i" | "strike" | "outline" | "shadow" | "condense" | "extend" =>
+      type_local == "CT_BooleanProperty"
+    "color" => type_local == "CT_Color"
+    "sz" => type_local == "CT_FontSize"
+    "u" => type_local == "CT_UnderlineProperty"
+    "vertAlign" => type_local == "CT_VerticalAlignFontProperty"
+    _ => false
+  }
+}
+
+///|
+fn sml_aux_target_with_attrs(
+  target : @xml.Element,
+  attrs : Array[(String, String)],
+) -> @xml.Element {
+  {
+    name: target.name,
+    attributes: catalog_force_attrs(target.attributes, attrs),
+    children: target.children,
+  }
+}
+
+///|
+fn sml_aux_target_with_children(
+  target : @xml.Element,
+  children : Array[@xml.Node],
+) -> @xml.Element {
+  { name: target.name, attributes: target.attributes, children }
+}
+
+///|
+fn sml_aux_ns_val(ns : String, name : String, value : String) -> @xml.Element {
+  xe(ns, name, [xa("val", value)], [])
+}
+
+///|
+fn sml_aux_ns_color(ns : String, hex : String) -> @xml.Element {
+  xe(ns, "color", [xa("rgb", hex)], [])
+}
+
+///|
+fn sml_aux_shared_string_rich_root(
+  ns : String,
+  rpr : @xml.Element,
+) -> @xml.Element {
+  xe(ns, "sst", [xa("count", "1"), xa("uniqueCount", "1")], [
+    Element(
+      xe(ns, "si", [], [
+        Element(
+          xe(ns, "r", [], [
+            Element(rpr),
+            Element(xe(ns, "t", [], [Text("Catalog rich")])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_shared_string_rich_text_root(
+  target : @xml.Element,
+) -> @xml.Element {
+  let ns = target.name.ns.unwrap_or(NS_S)
+  let child = match target.name.local_name {
+    "rFont" => sml_aux_target_with_attrs(target, [("val", "Catalog Mono")])
+    "charset" => sml_aux_target_with_attrs(target, [("val", "128")])
+    "family" => sml_aux_target_with_attrs(target, [("val", "3")])
+    "b" | "i" | "strike" | "outline" | "shadow" | "condense" | "extend" | "u" =>
+      sml_aux_target_with_attrs(target, [("val", "1")])
+    "color" => sml_aux_target_with_attrs(target, [("rgb", "FFFF0000")])
+    "sz" => sml_aux_target_with_attrs(target, [("val", "18")])
+    "vertAlign" => sml_aux_target_with_attrs(target, [("val", "superscript")])
+    _ => target
+  }
+  let rpr = if target.name.local_name == "rPr" {
+    sml_aux_target_with_children(target, [
+      Element(sml_aux_ns_val(ns, "b", "1")),
+      Element(sml_aux_ns_color(ns, "FFFF0000")),
+    ])
+  } else {
+    xe(ns, "rPr", [], [Element(child)])
+  }
+  sml_aux_shared_string_rich_root(ns, rpr)
+}
+
+///|
 fn sml_aux_font() -> @xml.Element {
   sml_aux_el("font", [], [
     sml_aux_val("name", "Catalog Sans"),

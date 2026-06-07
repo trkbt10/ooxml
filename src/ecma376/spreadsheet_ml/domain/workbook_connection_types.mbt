@@ -1546,7 +1546,7 @@ pub fn CT_Number::new(
       }
     }
   }
-  let v = attr_double_schema(element, "v", 0.0)
+  let v = attr_double_schema_at(element, "v", 0.0, "Part 1 §18.10.1.67", "n")
   let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.69", "n")
   let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.69", "n")
   let c = attr(element, "c")

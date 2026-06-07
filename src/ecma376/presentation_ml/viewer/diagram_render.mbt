@@ -138,6 +138,8 @@ fn render_diagram_svg(
   frame_h : Double,
   part_resolver : (String) -> @xml.Element?,
   ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
   let (dm_rid, lo_rid, qs_rid, cs_rid) = match extract_diagram_rel_ids(frame) {
     Some(t) => t
@@ -205,6 +207,15 @@ fn render_diagram_svg(
       }
     None => None
   }
+  let colors_def_typed = match colors_def_root {
+    Some(root) =>
+      try @dgm.CT_ColorTransform::new(root) catch {
+        _ => None
+      } noraise {
+        typed => Some(typed)
+      }
+    None => None
+  }
 
   // §21.4.2.16 CT_DiagramDefinition — real-world SmartArt layouts
   // carry geometric `<dgm:constr>` elements (`w`, `h`, `l`, `t`,
@@ -258,6 +269,11 @@ fn render_diagram_svg(
   // §21.4.2.10 `<dgm:bg>` — a whole-diagram background fill renders
   // first, behind the connectors and node shapes.
   let bg_node = emit_diagram_background(data_model_root, frame_w, frame_h, ctx)
+  // §21.4.3.9 `<dgm:whole>/<a:ln>` — whole-diagram line formatting
+  // draws a frame outline around the SmartArt canvas.
+  let whole_node = emit_diagram_whole_outline(
+    data_model_root, frame_w, frame_h, ctx,
+  )
   let palette = colors_palette(colors_def_root, ctx)
   // §21.4.4.10 — per-style-label fill lists, so each node uses the
   // colour list of the style label its layout node carries.  Nodes
@@ -272,12 +288,53 @@ fn render_diagram_svg(
     list_name="txFillClrLst",
   )
   let text_counts : Map[String, Int] = Map([], capacity=0)
+  let text_line_palettes = colors_by_style_label(
+    colors_def_root,
+    ctx,
+    list_name="txLinClrLst",
+  )
+  let text_line_counts : Map[String, Int] = Map([], capacity=0)
   // §21.4.5.10 `<dgm:styleLbl>/<a:style>/<a:lnRef>` — quickStyle
   // supplies per-style-label shape style. Fill/text colours remain
   // driven by colorsDef; line colour comes from styleDef.
   let line_colors = style_line_colors_by_style_label(style_def_typed, ctx)
+  let line_palettes = colors_by_style_label(
+    colors_def_root,
+    ctx,
+    list_name="linClrLst",
+  )
+  let line_counts : Map[String, Int] = Map([], capacity=0)
+  // §21.4.4.10 `<dgm:effectClrLst>` supplies the colour list for
+  // shape effects selected by the matching quickStyle
+  // `<dgm:styleLbl>/<a:style>/<a:effectRef>`. The actual effect
+  // geometry still comes from the DrawingML theme effectStyleLst and
+  // is emitted by the existing §20.1.8 SVG filter pipeline.
+  let effect_palettes = colors_by_style_label(
+    colors_def_root,
+    ctx,
+    list_name="effectClrLst",
+  )
+  let effect_counts : Map[String, Int] = Map([], capacity=0)
+  let effect_templates = style_effect_templates_by_style_label(
+    style_def_typed, theme,
+  )
+  // §21.4.4.10 `<dgm:txEffectClrLst>` supplies the colour list for
+  // text effects declared by the matching quickStyle
+  // `<dgm:styleLbl>/<dgm:txPr>`. The effect geometry remains owned
+  // by quickStyle; colorsDef only provides the style-label colour.
+  let tx_effect_palettes = colors_by_style_label(
+    colors_def_root,
+    ctx,
+    list_name="txEffectClrLst",
+  )
+  let tx_effect_counts : Map[String, Int] = Map([], capacity=0)
+  let text_effects = style_text_effects_by_style_label(style_def_typed)
   let svg_nodes : Array[@xml.Node] = []
   match bg_node {
+    Some(n) => svg_nodes.push(n)
+    None => ()
+  }
+  match whole_node {
     Some(n) => svg_nodes.push(n)
     None => ()
   }
@@ -298,10 +355,15 @@ fn render_diagram_svg(
   let mut palette_index = 0
   for nb in node_bounds {
     let text = lookup_point_text(data_model, nb.point_id)
+    let style_lbl = effective_point_style_label(
+      data_model,
+      nb.point_id,
+      nb.style_lbl,
+    )
     // §21.4.4.10 — prefer the node's own style-label colour list; fall
     // back to the default cycle when the node carries no label or the
     // colorsDef has no matching styleLbl.
-    let fill = match nb.style_lbl {
+    let fill = match style_lbl {
       Some(lbl) =>
         match label_palettes.get(lbl) {
           Some(colors) if colors.length() > 0 => {
@@ -314,15 +376,37 @@ fn render_diagram_svg(
       None => palette_pick(palette, palette_index)
     }
     palette_index = palette_index + 1
-    let stroke = match nb.style_lbl {
+    let stroke = match style_lbl {
       Some(lbl) =>
-        match line_colors.get(lbl) {
-          Some(color) => color
-          None => "#333333"
+        match line_palettes.get(lbl) {
+          Some(colors) if colors.length() > 0 => {
+            let i = line_counts.get(lbl).unwrap_or(0)
+            line_counts[lbl] = i + 1
+            colors[i % colors.length()]
+          }
+          _ =>
+            match line_colors.get(lbl) {
+              Some(color) => color
+              None => "#333333"
+            }
         }
       None => "#333333"
     }
-    let shape_nodes = emit_node_shape(nb, fill, stroke~)
+    let shape_extra_attrs = diagram_effect_filter_attrs_for_style_label(
+      style_lbl,
+      effect_templates,
+      effect_palettes,
+      effect_counts,
+      ctx,
+      defs,
+      "diagram-" + nb.point_id,
+    )
+    let shape_nodes = emit_node_shape(
+      nb,
+      fill,
+      stroke~,
+      extra_attrs=shape_extra_attrs,
+    )
     for n in shape_nodes {
       svg_nodes.push(n)
     }
@@ -331,7 +415,7 @@ fn render_diagram_svg(
         if label.length() > 0 {
           // §21.4.4 — text colour from the node's style label's
           // txFillClrLst, defaulting to black when absent.
-          let text_color = match nb.style_lbl {
+          let text_color = match style_lbl {
             Some(lbl) =>
               match text_palettes.get(lbl) {
                 Some(colors) if colors.length() > 0 => {
@@ -343,7 +427,24 @@ fn render_diagram_svg(
               }
             None => "#000000"
           }
-          svg_nodes.push(emit_node_label(nb, label, text_color~))
+          let text_stroke = match style_lbl {
+            Some(lbl) =>
+              match text_line_palettes.get(lbl) {
+                Some(colors) if colors.length() > 0 => {
+                  let i = text_line_counts.get(lbl).unwrap_or(0)
+                  text_line_counts[lbl] = i + 1
+                  colors[i % colors.length()]
+                }
+                _ => ""
+              }
+            None => ""
+          }
+          let text_effect = diagram_text_effect_for_style_label(
+            style_lbl, text_effects, tx_effect_palettes, tx_effect_counts,
+          )
+          svg_nodes.push(
+            emit_node_label(nb, label, text_color~, text_stroke~, text_effect~),
+          )
         }
       None => ()
     }
@@ -364,10 +465,190 @@ fn render_diagram_svg(
     @markup.elem_ns(
       "g",
       @markup.svg_ns,
-      [@markup.attr("data-ooxml", "diagram")],
+      diagram_group_attrs(
+        dm_rid,
+        lo_rid,
+        qs_rid,
+        cs_rid,
+        data_model_typed,
+        definition_typed,
+        data_model,
+        definition,
+        style_def_typed,
+        colors_def_typed,
+        node_bounds.length(),
+      ),
       svg_nodes,
     ),
   ]
+}
+
+///|
+/// Root metadata for the rendered SmartArt group. These attributes
+/// expose §21.4 part identities and definition sizes without adding
+/// fake geometry for catalog-only metadata such as category lists,
+/// sample data, style labels, or color transform labels.
+fn diagram_group_attrs(
+  dm_rid : String,
+  lo_rid : String,
+  qs_rid : String,
+  cs_rid : String,
+  data_model_typed : @dgm.CT_DataModel,
+  definition_typed : @dgm.CT_DiagramDefinition,
+  data_model : @diagram_layout.DataModel,
+  definition : @diagram_layout.DiagramDefinition,
+  style_def_typed : @dgm.CT_StyleDefinition?,
+  colors_def_typed : @dgm.CT_ColorTransform?,
+  rendered_node_count : Int,
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("data-ooxml", "diagram"),
+    @markup.attr("data-ooxml-diagram-dm-rid", dm_rid),
+    @markup.attr("data-ooxml-diagram-lo-rid", lo_rid),
+    @markup.attr("data-ooxml-diagram-qs-rid", qs_rid),
+    @markup.attr("data-ooxml-diagram-cs-rid", cs_rid),
+    @markup.attr(
+      "data-ooxml-diagram-point-count",
+      data_model.points.length().to_string(),
+    ),
+    @markup.attr(
+      "data-ooxml-diagram-connection-count",
+      data_model.connections.length().to_string(),
+    ),
+    @markup.attr(
+      "data-ooxml-diagram-rendered-node-count",
+      rendered_node_count.to_string(),
+    ),
+  ]
+  match data_model_typed.bg {
+    Some(_) => attrs.push(@markup.attr("data-ooxml-diagram-bg", "1"))
+    None => ()
+  }
+  match data_model_typed.whole {
+    Some(_) => attrs.push(@markup.attr("data-ooxml-diagram-whole", "1"))
+    None => ()
+  }
+  match definition.unique_id {
+    Some(id) => attrs.push(@markup.attr("data-ooxml-diagram-layout-id", id))
+    None => ()
+  }
+  match definition.min_ver {
+    Some(v) => attrs.push(@markup.attr("data-ooxml-diagram-layout-min-ver", v))
+    None => ()
+  }
+  match definition.def_style {
+    Some(v) =>
+      attrs.push(@markup.attr("data-ooxml-diagram-layout-def-style", v))
+    None => ()
+  }
+  match definition.root.algorithm {
+    Some(alg) =>
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-diagram-layout-alg",
+          diagram_algorithm_type_name(alg.kind),
+        ),
+      )
+    None => ()
+  }
+  attrs.push(
+    @markup.attr(
+      "data-ooxml-diagram-layout-title-count",
+      definition_typed.title.length().to_string(),
+    ),
+  )
+  attrs.push(
+    @markup.attr(
+      "data-ooxml-diagram-layout-desc-count",
+      definition_typed.desc.length().to_string(),
+    ),
+  )
+  match definition_typed.cat_lst {
+    Some(_) =>
+      attrs.push(@markup.attr("data-ooxml-diagram-layout-cat-lst", "1"))
+    None => ()
+  }
+  match definition_typed.samp_data {
+    Some(_) =>
+      attrs.push(@markup.attr("data-ooxml-diagram-layout-samp-data", "1"))
+    None => ()
+  }
+  match definition_typed.style_data {
+    Some(_) =>
+      attrs.push(@markup.attr("data-ooxml-diagram-layout-style-data", "1"))
+    None => ()
+  }
+  match definition_typed.clr_data {
+    Some(_) =>
+      attrs.push(@markup.attr("data-ooxml-diagram-layout-clr-data", "1"))
+    None => ()
+  }
+  attrs.push(
+    @markup.attr(
+      "data-ooxml-diagram-layout-node-count",
+      definition_typed.layout_node.length().to_string(),
+    ),
+  )
+  match style_def_typed {
+    Some(style_def) => {
+      attrs.push(
+        @markup.attr("data-ooxml-diagram-style-id", style_def.unique_id),
+      )
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-diagram-style-label-count",
+          style_def.style_lbl.length().to_string(),
+        ),
+      )
+      match style_def.scene3d {
+        Some(_) =>
+          attrs.push(@markup.attr("data-ooxml-diagram-style-scene3d", "1"))
+        None => ()
+      }
+      match style_def.cat_lst {
+        Some(_) =>
+          attrs.push(@markup.attr("data-ooxml-diagram-style-cat-lst", "1"))
+        None => ()
+      }
+    }
+    None => ()
+  }
+  match colors_def_typed {
+    Some(colors_def) => {
+      attrs.push(
+        @markup.attr("data-ooxml-diagram-colors-id", colors_def.unique_id),
+      )
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-diagram-colors-style-label-count",
+          colors_def.style_lbl.length().to_string(),
+        ),
+      )
+      match colors_def.cat_lst {
+        Some(_) =>
+          attrs.push(@markup.attr("data-ooxml-diagram-colors-cat-lst", "1"))
+        None => ()
+      }
+    }
+    None => ()
+  }
+  attrs
+}
+
+///|
+fn diagram_algorithm_type_name(kind : @diagram_layout.AlgorithmType) -> String {
+  match kind {
+    @diagram_layout.AlgComposite => "composite"
+    @diagram_layout.AlgConn => "conn"
+    @diagram_layout.AlgCycle => "cycle"
+    @diagram_layout.AlgHierChild => "hierChild"
+    @diagram_layout.AlgHierRoot => "hierRoot"
+    @diagram_layout.AlgLin => "lin"
+    @diagram_layout.AlgPyra => "pyra"
+    @diagram_layout.AlgSnake => "snake"
+    @diagram_layout.AlgSp => "sp"
+    @diagram_layout.AlgTx => "tx"
+  }
 }
 
 ///|
@@ -538,6 +819,33 @@ fn lookup_point_text(
 }
 
 ///|
+/// §21.4.3.4 CT_ElemPropSet — a data-model point can name the
+/// presentation style label to apply through `prSet@presStyleLbl`.
+/// That point-local label overrides the layout node's
+/// `layoutNode@styleLbl` when selecting colorsDef / quickStyle
+/// entries for the rendered node.
+fn effective_point_style_label(
+  data_model : @diagram_layout.DataModel,
+  point_id : String,
+  layout_style_lbl : String?,
+) -> String? {
+  for p in data_model.points {
+    if p.id == point_id {
+      match p.pr_set {
+        Some(pr_set) =>
+          match attr_value(pr_set, "presStyleLbl") {
+            Some(lbl) if lbl.length() > 0 => return Some(lbl)
+            _ => ()
+          }
+        None => ()
+      }
+      break
+    }
+  }
+  layout_style_lbl
+}
+
+///|
 /// Emit the SVG shape (or shapes) for one laid-out diagram node.
 /// The preset shape is taken from the engine's `NodeBounds.shape`:
 /// ellipse / roundRect / triangle use dedicated SVG primitives, and
@@ -548,7 +856,11 @@ fn emit_node_shape(
   nb : @diagram_layout.NodeBounds,
   fill : String,
   stroke? : String = "#333333",
+  extra_attrs? : Array[@xml.Attribute] = [],
 ) -> Array[@xml.Node] {
+  if nb.hide_geom {
+    return []
+  }
   let x = nb.bounds.x
   let y = nb.bounds.y
   let w = nb.bounds.width
@@ -561,6 +873,9 @@ fn emit_node_shape(
     @markup.attr("stroke", stroke),
     @markup.attr("stroke-width", "1"),
   ]
+  for a in extra_attrs {
+    common_attrs.push(a)
+  }
   // §20.1.10.56 ST_ShapeType — render the preset shape that the
   // engine attached to this point. We pick the spec-faithful
   // primitive for the common SmartArt shapes (rect / ellipse /
@@ -630,7 +945,12 @@ fn emit_node_shape(
       // a degenerate empty result keeps the bounding rect.
       let iw = (w + 0.5).to_int()
       let ih = (h + 0.5).to_int()
-      let d = @preset_geometry.render_preset_shape_path(nb.shape, iw, ih, [])
+      let d = @preset_geometry.render_preset_shape_path(
+        nb.shape,
+        iw,
+        ih,
+        nb.adjustments,
+      )
       if d == "" {
         let attrs : Array[@xml.Attribute] = [
           @markup.attr("x", format_double(x)),
@@ -716,10 +1036,79 @@ fn emit_diagram_background(
 }
 
 ///|
+/// §21.4.3.9 `<dgm:whole>` — render the whole-diagram line formatting
+/// carried by `<a:ln>` as an SVG rectangle stroke around the diagram
+/// canvas. Effects are preserved by the domain round-trip but are not
+/// emitted here until the SmartArt bridge has a full effect pipeline.
+fn emit_diagram_whole_outline(
+  data_model_root : @xml.Element,
+  frame_w : Double,
+  frame_h : Double,
+  ctx : ColorResolveContext,
+) -> @xml.Node? {
+  let whole = match first_child_named(data_model_root, "whole") {
+    Some(w) => w
+    None => return None
+  }
+  let ln = match first_child_named(whole, "ln") {
+    Some(l) => l
+    None => return None
+  }
+  if first_child_named(ln, "noFill") is Some(_) {
+    return None
+  }
+  let color = match @paint.resolve_solid_fill(ln, ctx~) {
+    Some(rc) => @paint.format_resolved_color(rc)
+    None => "#595959"
+  }
+  let stroke_width = match attr_value(ln, "w") {
+    Some(w) =>
+      try @string.parse_double(w) catch {
+        _ => 9525.0
+      } noraise {
+        v => v
+      }
+    None => 9525.0
+  }
+  let half = stroke_width / 2.0
+  Some(
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("x", format_double(half)),
+        @markup.attr("y", format_double(half)),
+        @markup.attr("width", format_double(frame_w - stroke_width)),
+        @markup.attr("height", format_double(frame_h - stroke_width)),
+        @markup.attr("fill", "none"),
+        @markup.attr("stroke", color),
+        @markup.attr("stroke-width", format_double(stroke_width)),
+      ],
+      [],
+    ),
+  )
+}
+
+///|
+priv struct DiagramText3DStyle {
+  sp3d : @xml.Element
+  scene3d : @xml.Element?
+}
+
+///|
+priv struct DiagramTextRenderEffect {
+  sp3d : @xml.Element
+  scene3d : @xml.Element?
+  palette_color : String?
+}
+
+///|
 fn emit_node_label(
   nb : @diagram_layout.NodeBounds,
   label : String,
   text_color? : String = "#000000",
+  text_stroke? : String = "",
+  text_effect? : DiagramTextRenderEffect? = None,
 ) -> @xml.Node {
   let cx = nb.bounds.x + nb.bounds.width * 0.5
   let cy = nb.bounds.y + nb.bounds.height * 0.5
@@ -729,6 +1118,40 @@ fn emit_node_label(
   let short_side = double_min_local(nb.bounds.width, nb.bounds.height)
   let raw_size = short_side / 5.0
   let font_size = if raw_size > 180000.0 { 180000.0 } else { raw_size }
+  let text_node = diagram_label_text_node(
+    cx, cy, font_size, label, text_color, text_stroke,
+  )
+  let effect = match text_effect {
+    Some(e) => e
+    None => return text_node
+  }
+  let effect_children = diagram_text_effect_nodes(
+    effect, cx, cy, font_size, label,
+  )
+  if effect_children.length() == 0 {
+    return text_node
+  }
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("class", "diagram-text-effect"),
+    @markup.attr("color", text_color),
+  ]
+  for a in diagram_text_effect_transform_attrs(effect) {
+    attrs.push(a)
+  }
+  effect_children.push(text_node)
+  @markup.elem_ns("g", @markup.svg_ns, attrs, effect_children)
+}
+
+///|
+fn diagram_label_text_node(
+  cx : Double,
+  cy : Double,
+  font_size : Double,
+  label : String,
+  fill : String,
+  stroke : String,
+  extra_attrs? : Array[@xml.Attribute] = [],
+) -> @xml.Node {
   let attrs : Array[@xml.Attribute] = [
     @markup.attr("x", format_double(cx)),
     @markup.attr("y", format_double(cy)),
@@ -736,9 +1159,248 @@ fn emit_node_label(
     @markup.attr("dominant-baseline", "central"),
     @markup.attr("font-family", "sans-serif"),
     @markup.attr("font-size", format_double(font_size)),
-    @markup.attr("fill", text_color),
+    @markup.attr("fill", fill),
   ]
+  if stroke.length() > 0 {
+    attrs.push(@markup.attr("stroke", stroke))
+    attrs.push(@markup.attr("stroke-width", format_double(font_size * 0.04)))
+    attrs.push(@markup.attr("paint-order", "stroke fill"))
+  }
+  for a in extra_attrs {
+    attrs.push(a)
+  }
   @markup.elem_ns("text", @markup.svg_ns, attrs, [@markup.text(label)])
+}
+
+///|
+fn diagram_text_effect_nodes(
+  effect : DiagramTextRenderEffect,
+  cx : Double,
+  cy : Double,
+  font_size : Double,
+  label : String,
+) -> Array[@xml.Node] {
+  let nodes : Array[@xml.Node] = []
+  match diagram_text_extrusion_node(effect, cx, cy, font_size, label) {
+    Some(n) => nodes.push(n)
+    None => ()
+  }
+  match diagram_text_contour_node(effect, cx, cy, font_size, label) {
+    Some(n) => nodes.push(n)
+    None => ()
+  }
+  nodes
+}
+
+///|
+fn diagram_text_extrusion_node(
+  effect : DiagramTextRenderEffect,
+  cx : Double,
+  cy : Double,
+  font_size : Double,
+  label : String,
+) -> @xml.Node? {
+  let extrusion_emu = attr_emu_d(effect.sp3d, "extrusionH", 0.0)
+  if extrusion_emu <= 0.0 {
+    return None
+  }
+  let extrusion_h = extrusion_emu / 9525.0
+  let (offset_x, offset_y) = extrusion_offset(
+    diagram_text_effect_camera_preset(effect),
+    extrusion_h,
+  )
+  let raw_layers = (extrusion_h / 2.0 + 0.999).to_int()
+  let layers = if raw_layers > 10 { 10 } else { raw_layers }
+  if layers <= 0 {
+    return None
+  }
+  let color = diagram_text_effect_color(effect, "extrusionClr")
+  let children : Array[@xml.Node] = []
+  for i = layers; i > 0; i = i - 1 {
+    let layer_offset = i.to_double() / layers.to_double()
+    let x = offset_x * layer_offset
+    let y = offset_y * layer_offset
+    let opacity = 0.5 + 0.5 * (1.0 - layer_offset)
+    children.push(
+      diagram_label_text_node(cx, cy, font_size, label, color, "", extra_attrs=[
+        @markup.attr("class", "diagram-text-extrusion-layer"),
+        @markup.attr(
+          "transform",
+          "translate(" +
+          format_double_for_filter(x) +
+          ", " +
+          format_double_for_filter(y) +
+          ")",
+        ),
+        @markup.attr("fill-opacity", format_opacity(opacity)),
+        @markup.attr("stroke", "none"),
+      ]),
+    )
+  }
+  Some(
+    @markup.elem_ns(
+      "g",
+      @markup.svg_ns,
+      [@markup.attr("class", "diagram-text-extrusion-effect")],
+      children,
+    ),
+  )
+}
+
+///|
+fn diagram_text_contour_node(
+  effect : DiagramTextRenderEffect,
+  cx : Double,
+  cy : Double,
+  font_size : Double,
+  label : String,
+) -> @xml.Node? {
+  let contour_emu = attr_emu_d(effect.sp3d, "contourW", 0.0)
+  if contour_emu <= 0.0 {
+    return None
+  }
+  let color = diagram_text_effect_color(effect, "contourClr")
+  let contour_w = contour_emu / 9525.0
+  Some(
+    diagram_label_text_node(cx, cy, font_size, label, "none", "", extra_attrs=[
+      @markup.attr("class", "diagram-text-contour-effect"),
+      @markup.attr("stroke", color),
+      @markup.attr("stroke-width", format_double_for_filter(contour_w)),
+      @markup.attr("stroke-linejoin", "round"),
+      @markup.attr("paint-order", "stroke fill"),
+    ]),
+  )
+}
+
+///|
+fn diagram_text_effect_color(
+  effect : DiagramTextRenderEffect,
+  sp3d_color_child : String,
+) -> String {
+  match effect.palette_color {
+    Some(c) => c
+    None => resolve_sp3d_color(effect.sp3d, sp3d_color_child)
+  }
+}
+
+///|
+fn diagram_text_effect_camera_preset(
+  effect : DiagramTextRenderEffect,
+) -> String {
+  match diagram_text_effect_camera(effect) {
+    Some(camera) =>
+      match attr_value(camera, "prst") {
+        Some(p) => p
+        None => "orthographicFront"
+      }
+    None => "orthographicFront"
+  }
+}
+
+///|
+fn diagram_text_effect_transform_attrs(
+  effect : DiagramTextRenderEffect,
+) -> Array[@xml.Attribute] {
+  let camera = match diagram_text_effect_camera(effect) {
+    Some(c) => c
+    None => return []
+  }
+  let preset = match attr_value(camera, "prst") {
+    Some(p) => p
+    None => "orthographicFront"
+  }
+  let transform = apply_camera_zoom_rot(
+    calculate_camera_transform(preset),
+    camera,
+  )
+  if transform3d_is_identity(transform) {
+    []
+  } else {
+    [@markup.attr("transform", compose_transform3d_attr(transform))]
+  }
+}
+
+///|
+fn diagram_text_effect_camera(
+  effect : DiagramTextRenderEffect,
+) -> @xml.Element? {
+  match effect.scene3d {
+    Some(scene) => first_child_named(scene, "camera")
+    None => None
+  }
+}
+
+///|
+fn style_text_effects_by_style_label(
+  style_def : @dgm.CT_StyleDefinition?,
+) -> Map[String, DiagramText3DStyle] {
+  let map : Map[String, DiagramText3DStyle] = Map([], capacity=0)
+  let sd = match style_def {
+    Some(s) => s
+    None => return map
+  }
+  for label in sd.style_lbl {
+    let tx_pr = match label.tx_pr {
+      Some(t) => t
+      None => continue
+    }
+    let sp3d = match text_props_sp3d(tx_pr) {
+      Some(s) => s
+      None => continue
+    }
+    let scene3d = match label.scene3d {
+      Some(s) => Some(s)
+      None => sd.scene3d
+    }
+    map[label.name] = { sp3d, scene3d }
+  }
+  map
+}
+
+///|
+fn text_props_sp3d(tx_pr : @dgm.CT_TextProps) -> @xml.Element? {
+  for child in tx_pr.text3d {
+    if child.name.local_name == "sp3d" {
+      return Some(child)
+    }
+  }
+  None
+}
+
+///|
+fn diagram_text_effect_for_style_label(
+  style_lbl : String?,
+  text_effects : Map[String, DiagramText3DStyle],
+  tx_effect_palettes : Map[String, Array[String]],
+  tx_effect_counts : Map[String, Int],
+) -> DiagramTextRenderEffect? {
+  let lbl = match style_lbl {
+    Some(value) => value
+    None => return None
+  }
+  let spec = match text_effects.get(lbl) {
+    Some(value) => value
+    None => return None
+  }
+  let palette_color = diagram_text_effect_palette_color(
+    lbl, tx_effect_palettes, tx_effect_counts,
+  )
+  Some({ sp3d: spec.sp3d, scene3d: spec.scene3d, palette_color })
+}
+
+///|
+fn diagram_text_effect_palette_color(
+  lbl : String,
+  tx_effect_palettes : Map[String, Array[String]],
+  tx_effect_counts : Map[String, Int],
+) -> String? {
+  let colors = match tx_effect_palettes.get(lbl) {
+    Some(values) if values.length() > 0 => values
+    _ => return None
+  }
+  let i = tx_effect_counts.get(lbl).unwrap_or(0)
+  tx_effect_counts[lbl] = i + 1
+  Some(colors[i % colors.length()])
 }
 
 ///|
@@ -851,6 +1513,139 @@ fn style_line_colors_by_style_label(
     }
   }
   map
+}
+
+///|
+/// §21.4.5.10 `<dgm:styleLbl>/<a:style>/<a:effectRef>` — resolve
+/// quickStyle effect references to the theme's DrawingML
+/// `<a:effectStyle>` template. The template is later coloured from
+/// colorsDef `<dgm:effectClrLst>` and emitted through the shared
+/// §20.1.8 SVG filter path.
+fn style_effect_templates_by_style_label(
+  style_def : @dgm.CT_StyleDefinition?,
+  theme : @theme.CT_OfficeStyleSheet?,
+) -> Map[String, @xml.Element] {
+  let map : Map[String, @xml.Element] = Map([], capacity=0)
+  let sd = match style_def {
+    Some(s) => s
+    None => return map
+  }
+  let t = match theme {
+    Some(value) => value
+    None => return map
+  }
+  for label in sd.style_lbl {
+    let style = match label.style {
+      Some(s) => s
+      None => continue
+    }
+    let effect_ref = match first_child_named(style, "effectRef") {
+      Some(e) => e
+      None => continue
+    }
+    match resolve_effect_ref_template(effect_ref, t) {
+      Some(template) => map[label.name] = template
+      None => ()
+    }
+  }
+  map
+}
+
+///|
+fn diagram_effect_filter_attrs_for_style_label(
+  style_lbl : String?,
+  effect_templates : Map[String, @xml.Element],
+  effect_palettes : Map[String, Array[String]],
+  effect_counts : Map[String, Int],
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  shape_id : String,
+) -> Array[@xml.Attribute] {
+  let lbl = match style_lbl {
+    Some(value) => value
+    None => return []
+  }
+  let template = match effect_templates.get(lbl) {
+    Some(value) => value
+    None => return []
+  }
+  let coloured_template = match
+    diagram_effect_hex_for_label(lbl, effect_palettes, effect_counts) {
+    Some(hex) => diagram_effect_template_with_color(template, hex)
+    None => template
+  }
+  render_effects_filter_attr(coloured_template, shape_id, ctx, defs)
+}
+
+///|
+fn diagram_effect_hex_for_label(
+  lbl : String,
+  effect_palettes : Map[String, Array[String]],
+  effect_counts : Map[String, Int],
+) -> String? {
+  let colors = match effect_palettes.get(lbl) {
+    Some(values) if values.length() > 0 => values
+    _ => return None
+  }
+  let i = effect_counts.get(lbl).unwrap_or(0)
+  effect_counts[lbl] = i + 1
+  let color = colors[i % colors.length()]
+  if color.length() > 0 && color.code_unit_at(0).to_int() == 0x23 {
+    Some(strip_hash(color))
+  } else {
+    None
+  }
+}
+
+///|
+fn diagram_effect_template_with_color(
+  template : @xml.Element,
+  hex : String,
+) -> @xml.Element {
+  diagram_rewrite_effect_color(template, hex)
+}
+
+///|
+fn diagram_rewrite_effect_color(
+  element : @xml.Element,
+  hex : String,
+) -> @xml.Element {
+  if diagram_is_color_choice_element(element) {
+    let attrs : Array[@xml.Attribute] = []
+    for a in element.attributes {
+      if a.name.local_name != "val" && a.name.local_name != "lastClr" {
+        attrs.push(a)
+      }
+    }
+    attrs.push(@markup.attr("val", hex))
+    return {
+      name: {
+        prefix: element.name.prefix,
+        local_name: "srgbClr",
+        ns: element.name.ns,
+      },
+      attributes: attrs,
+      children: element.children,
+    }
+  }
+  let kids : Array[@xml.Node] = []
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) =>
+        kids.push(@xml.Node::Element(diagram_rewrite_effect_color(e, hex)))
+      other => kids.push(other)
+    }
+  }
+  { name: element.name, attributes: element.attributes, children: kids }
+}
+
+///|
+fn diagram_is_color_choice_element(element : @xml.Element) -> Bool {
+  match element.name.local_name {
+    "srgbClr" | "schemeClr" | "sysClr" | "hslClr" | "scrgbClr" | "prstClr" =>
+      true
+    _ => false
+  }
 }
 
 ///|

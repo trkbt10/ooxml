@@ -536,7 +536,424 @@ fn settings_data_attrs(
       )
     }
   }
+  settings_extended_data_attrs(attrs, s)
   attrs
+}
+
+///|
+/// Project the §17.15 settings fields whose semantics are document /
+/// editor metadata rather than immediate SVG paint. These are still
+/// observable in the viewer surface through root `data-ooxml-settings-*`
+/// attributes so catalog and interop checks can distinguish preserved
+/// settings from dropped settings without inventing visual output.
+fn settings_extended_data_attrs(
+  attrs : Array[@xml.Attribute],
+  s : @domain.CT_Settings,
+) -> Unit {
+  match s.write_protection {
+    Some(wp) => {
+      settings_attr(attrs, "write-protection", "1")
+      optional_bool_settings_attr(
+        attrs,
+        "write-protection-recommended",
+        wp.recommended,
+      )
+    }
+    None => ()
+  }
+  match s.zoom {
+    Some(z) => {
+      settings_attr(attrs, "zoom", z.percent.to_string())
+      match z.val {
+        Some(v) => settings_attr(attrs, "zoom-val", v.to_string())
+        None => ()
+      }
+    }
+    None => ()
+  }
+  on_off_attr(
+    attrs,
+    s.remove_personal_information,
+    "remove-personal-information",
+  )
+  on_off_attr(attrs, s.remove_date_and_time, "remove-date-and-time")
+  on_off_attr(
+    attrs,
+    s.do_not_display_page_boundaries,
+    "do-not-display-page-boundaries",
+  )
+  on_off_attr(attrs, s.display_background_shape, "display-background-shape")
+  on_off_attr(
+    attrs,
+    s.print_post_script_over_text,
+    "print-post-script-over-text",
+  )
+  on_off_attr(
+    attrs,
+    s.print_fractional_character_width,
+    "print-fractional-character-width",
+  )
+  on_off_attr(attrs, s.print_forms_data, "print-forms-data")
+  on_off_attr(attrs, s.save_forms_data, "save-forms-data")
+  on_off_attr(attrs, s.align_borders_and_edges, "align-borders-and-edges")
+  on_off_attr(
+    attrs,
+    s.borders_do_not_surround_header,
+    "borders-do-not-surround-header",
+  )
+  on_off_attr(
+    attrs,
+    s.borders_do_not_surround_footer,
+    "borders-do-not-surround-footer",
+  )
+  on_off_attr(attrs, s.hide_spelling_errors, "hide-spelling-errors")
+  on_off_attr(attrs, s.hide_grammatical_errors, "hide-grammatical-errors")
+  if s.active_writing_style.length() > 0 {
+    settings_attr(
+      attrs,
+      "active-writing-style-count",
+      s.active_writing_style.length().to_string(),
+    )
+    for i, aw in s.active_writing_style {
+      let prefix = "active-writing-style-" + i.to_string()
+      settings_attr(attrs, prefix + "-lang", aw.lang)
+      settings_attr(attrs, prefix + "-vendor-id", aw.vendor_id)
+      settings_attr(attrs, prefix + "-dll-version", aw.dll_version)
+      optional_bool_settings_attr(attrs, prefix + "-nl-check", aw.nl_check)
+      settings_attr(attrs, prefix + "-check-style", bool01(aw.check_style))
+      settings_attr(attrs, prefix + "-app-name", aw.app_name)
+    }
+  }
+  match s.proof_state {
+    Some(p) => {
+      settings_attr(attrs, "proof-state", "1")
+      match p.spelling {
+        Some(v) => settings_attr(attrs, "proof-state-spelling", v.to_string())
+        None => ()
+      }
+      match p.grammar {
+        Some(v) => settings_attr(attrs, "proof-state-grammar", v.to_string())
+        None => ()
+      }
+    }
+    None => ()
+  }
+  on_off_attr(attrs, s.forms_design, "forms-design")
+  on_off_attr(attrs, s.link_styles, "link-styles")
+  match s.document_type {
+    Some(d) => settings_attr(attrs, "document-type", d.val.to_string())
+    None => ()
+  }
+  match s.revision_view {
+    Some(rv) => {
+      settings_attr(attrs, "revision-view", "1")
+      optional_bool_settings_attr(attrs, "revision-view-markup", rv.markup)
+      optional_bool_settings_attr(attrs, "revision-view-comments", rv.comments)
+      optional_bool_settings_attr(attrs, "revision-view-ins-del", rv.ins_del)
+      optional_bool_settings_attr(
+        attrs,
+        "revision-view-formatting",
+        rv.formatting,
+      )
+      optional_bool_settings_attr(
+        attrs,
+        "revision-view-ink-annotations",
+        rv.ink_annotations,
+      )
+    }
+    None => ()
+  }
+  on_off_attr(attrs, s.do_not_track_moves, "do-not-track-moves")
+  on_off_attr(attrs, s.do_not_track_formatting, "do-not-track-formatting")
+  on_off_attr(attrs, s.auto_format_override, "auto-format-override")
+  on_off_attr(attrs, s.style_lock_theme, "style-lock-theme")
+  on_off_attr(attrs, s.style_lock_qf_set, "style-lock-qf-set")
+  on_off_attr(attrs, s.show_envelope, "show-envelope")
+  match s.summary_length {
+    Some(v) => settings_attr(attrs, "summary-length", v.val.to_string())
+    None => ()
+  }
+  match s.click_and_type_style {
+    Some(v) => settings_attr(attrs, "click-and-type-style", v.val)
+    None => ()
+  }
+  match s.default_table_style {
+    Some(v) => settings_attr(attrs, "default-table-style", v.val)
+    None => ()
+  }
+  match s.drawing_grid_horizontal_spacing {
+    Some(v) => settings_attr(attrs, "drawing-grid-horizontal-spacing", v.val)
+    None => ()
+  }
+  match s.drawing_grid_vertical_spacing {
+    Some(v) => settings_attr(attrs, "drawing-grid-vertical-spacing", v.val)
+    None => ()
+  }
+  match s.display_horizontal_drawing_grid_every {
+    Some(v) =>
+      settings_attr(
+        attrs,
+        "display-horizontal-drawing-grid-every",
+        v.val.to_string(),
+      )
+    None => ()
+  }
+  match s.display_vertical_drawing_grid_every {
+    Some(v) =>
+      settings_attr(
+        attrs,
+        "display-vertical-drawing-grid-every",
+        v.val.to_string(),
+      )
+    None => ()
+  }
+  match s.drawing_grid_horizontal_origin {
+    Some(v) => settings_attr(attrs, "drawing-grid-horizontal-origin", v.val)
+    None => ()
+  }
+  match s.drawing_grid_vertical_origin {
+    Some(v) => settings_attr(attrs, "drawing-grid-vertical-origin", v.val)
+    None => ()
+  }
+  on_off_attr(attrs, s.do_not_shade_form_data, "do-not-shade-form-data")
+  on_off_attr(attrs, s.no_punctuation_kerning, "no-punctuation-kerning")
+  on_off_attr(attrs, s.print_two_on_one, "print-two-on-one")
+  on_off_attr(
+    attrs,
+    s.strict_first_and_last_chars,
+    "strict-first-and-last-chars",
+  )
+  match s.no_line_breaks_after {
+    Some(v) => {
+      settings_attr(attrs, "no-line-breaks-after", v.val)
+      settings_attr(attrs, "no-line-breaks-after-lang", v.lang)
+    }
+    None => ()
+  }
+  match s.no_line_breaks_before {
+    Some(v) => {
+      settings_attr(attrs, "no-line-breaks-before", v.val)
+      settings_attr(attrs, "no-line-breaks-before-lang", v.lang)
+    }
+    None => ()
+  }
+  on_off_attr(attrs, s.save_preview_picture, "save-preview-picture")
+  on_off_attr(
+    attrs,
+    s.always_show_placeholder_text,
+    "always-show-placeholder-text",
+  )
+  on_off_attr(
+    attrs,
+    s.do_not_demarcate_invalid_xml,
+    "do-not-demarcate-invalid-xml",
+  )
+  on_off_attr(attrs, s.show_xml_tags, "show-xml-tags")
+  on_off_attr(
+    attrs,
+    s.always_merge_empty_namespace,
+    "always-merge-empty-namespace",
+  )
+  on_off_attr(attrs, s.update_fields, "update-fields")
+  match s.footnote_pr {
+    Some(fp) => {
+      settings_attr(attrs, "footnote-pr", "1")
+      settings_attr(
+        attrs,
+        "footnote-pr-separator-count",
+        fp.footnotes.length().to_string(),
+      )
+    }
+    None => ()
+  }
+  match s.endnote_pr {
+    Some(ep) => {
+      settings_attr(attrs, "endnote-pr", "1")
+      settings_attr(
+        attrs,
+        "endnote-pr-separator-count",
+        ep.endnotes.length().to_string(),
+      )
+    }
+    None => ()
+  }
+  match s.compat {
+    Some(c) => {
+      settings_attr(attrs, "compat", "1")
+      on_off_attr(attrs, c.space_for_ul, "compat-space-for-ul")
+      on_off_attr(
+        attrs,
+        c.balance_single_byte_double_byte_width,
+        "compat-balance-single-byte-double-byte-width",
+      )
+      on_off_attr(
+        attrs,
+        c.do_not_leave_backslash_alone,
+        "compat-do-not-leave-backslash-alone",
+      )
+      on_off_attr(attrs, c.ul_trail_space, "compat-ul-trail-space")
+      on_off_attr(
+        attrs,
+        c.do_not_expand_shift_return,
+        "compat-do-not-expand-shift-return",
+      )
+      on_off_attr(
+        attrs,
+        c.adjust_line_height_in_table,
+        "compat-adjust-line-height-in-table",
+      )
+      on_off_attr(attrs, c.apply_breaking_rules, "compat-apply-breaking-rules")
+      if c.compat_setting.length() > 0 {
+        settings_attr(
+          attrs,
+          "compat-setting-count",
+          c.compat_setting.length().to_string(),
+        )
+        for i, cs in c.compat_setting {
+          let prefix = "compat-setting-" + i.to_string()
+          match cs.name {
+            Some(v) => settings_attr(attrs, prefix + "-name", v)
+            None => ()
+          }
+          match cs.uri {
+            Some(v) => settings_attr(attrs, prefix + "-uri", v)
+            None => ()
+          }
+          match cs.val {
+            Some(v) => settings_attr(attrs, prefix + "-val", v)
+            None => ()
+          }
+        }
+      }
+    }
+    None => ()
+  }
+  match s.doc_vars {
+    Some(dv) => {
+      settings_attr(attrs, "doc-vars", "1")
+      settings_attr(attrs, "doc-vars-count", dv.doc_var.length().to_string())
+      for i, v in dv.doc_var {
+        let prefix = "doc-var-" + i.to_string()
+        settings_attr(attrs, prefix + "-name", v.name)
+        settings_attr(attrs, prefix + "-val", v.val)
+      }
+    }
+    None => ()
+  }
+  match s.rsids {
+    Some(r) => {
+      settings_attr(attrs, "rsids", "1")
+      match r.rsid_root {
+        Some(root) => settings_attr(attrs, "rsids-root", root.val.to_string())
+        None => ()
+      }
+      settings_attr(attrs, "rsids-count", r.rsid.length().to_string())
+      for i, v in r.rsid {
+        settings_attr(attrs, "rsids-" + i.to_string(), v.val.to_string())
+      }
+    }
+    None => ()
+  }
+  if s.math_pr.length() > 0 {
+    settings_attr(attrs, "math-pr-count", s.math_pr.length().to_string())
+  }
+  on_off_attr(
+    attrs,
+    s.do_not_include_subdocs_in_stats,
+    "do-not-include-subdocs-in-stats",
+  )
+  on_off_attr(
+    attrs,
+    s.do_not_auto_compress_pictures,
+    "do-not-auto-compress-pictures",
+  )
+  match s.force_upgrade {
+    Some(_) => settings_attr(attrs, "force-upgrade", "1")
+    None => ()
+  }
+  match s.read_mode_ink_lock_down {
+    Some(r) => {
+      settings_attr(attrs, "read-mode-ink-lock-down", "1")
+      settings_attr(
+        attrs,
+        "read-mode-ink-lock-down-actual-pg",
+        bool01(r.actual_pg),
+      )
+      settings_attr(attrs, "read-mode-ink-lock-down-w", r.w.to_string())
+      settings_attr(attrs, "read-mode-ink-lock-down-h", r.h.to_string())
+      settings_attr(
+        attrs,
+        "read-mode-ink-lock-down-font-sz",
+        r.font_sz.to_string(),
+      )
+    }
+    None => ()
+  }
+  if s.smart_tag_type.length() > 0 {
+    settings_attr(
+      attrs,
+      "smart-tag-type-count",
+      s.smart_tag_type.length().to_string(),
+    )
+    for i, st in s.smart_tag_type {
+      let prefix = "smart-tag-type-" + i.to_string()
+      match st.namespaceuri {
+        Some(v) => settings_attr(attrs, prefix + "-namespaceuri", v)
+        None => ()
+      }
+      match st.name {
+        Some(v) => settings_attr(attrs, prefix + "-name", v)
+        None => ()
+      }
+      match st.url {
+        Some(v) => settings_attr(attrs, prefix + "-url", v)
+        None => ()
+      }
+    }
+  }
+  if s.schema_library.length() > 0 {
+    settings_attr(
+      attrs,
+      "schema-library-count",
+      s.schema_library.length().to_string(),
+    )
+    for i, lib in s.schema_library {
+      let prefix = "schema-library-" + i.to_string()
+      settings_attr(
+        attrs,
+        prefix + "-schema-count",
+        lib.schemas.length().to_string(),
+      )
+      for j, schema in lib.schemas {
+        let sprefix = prefix + "-schema-" + j.to_string()
+        match schema.uri {
+          Some(v) => settings_attr(attrs, sprefix + "-uri", v)
+          None => ()
+        }
+        match schema.manifest_location {
+          Some(v) => settings_attr(attrs, sprefix + "-manifest-location", v)
+          None => ()
+        }
+        match schema.schema_location {
+          Some(v) => settings_attr(attrs, sprefix + "-schema-location", v)
+          None => ()
+        }
+        match schema.schema_language {
+          Some(v) => settings_attr(attrs, sprefix + "-schema-language", v)
+          None => ()
+        }
+      }
+    }
+  }
+  on_off_attr(attrs, s.do_not_embed_smart_tags, "do-not-embed-smart-tags")
+  match s.decimal_symbol {
+    Some(v) => settings_attr(attrs, "decimal-symbol", v.val)
+    None => ()
+  }
+  match s.list_separator {
+    Some(v) => settings_attr(attrs, "list-separator", v.val)
+    None => ()
+  }
 }
 
 ///|
@@ -1187,6 +1604,38 @@ fn element_val_or_one(el : @xml.Element) -> String {
     }
   }
   "1"
+}
+
+///|
+/// Append a document-settings root attribute under the renderer's
+/// stable `data-ooxml-settings-*` namespace.
+fn settings_attr(
+  attrs : Array[@xml.Attribute],
+  suffix : String,
+  value : String,
+) -> Unit {
+  attrs.push(@markup.attr("data-ooxml-settings-" + suffix, value))
+}
+
+///|
+fn bool01(value : Bool) -> String {
+  if value {
+    "1"
+  } else {
+    "0"
+  }
+}
+
+///|
+fn optional_bool_settings_attr(
+  attrs : Array[@xml.Attribute],
+  suffix : String,
+  value : Bool?,
+) -> Unit {
+  match value {
+    Some(v) => settings_attr(attrs, suffix, bool01(v))
+    None => ()
+  }
 }
 
 ///|

@@ -1891,6 +1891,36 @@ test "viewer §19.5.93 timing tnLst surfaces as data attribute" {
 }
 
 ///|
+/// §19.5 timing/media — nested leaf behaviours and media leaves
+/// (anim / audio / video) are exposed on the SVG root as structured
+/// metadata for downstream animation players.
+test "viewer §19.5 timing leaves and media nodes surface as data attributes" {
+  let timing = pml_parse_element(
+    "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"2\"/><tgtEl><spTgt spid=\"7\"/></tgtEl>" +
+    "<attrNameLst><attrName>style.opacity</attrName></attrNameLst></cBhvr></anim>" +
+    "<audio><cMediaNode vol=\"50000\"><cTn id=\"3\"/>" +
+    "<tgtEl><spTgt spid=\"8\"/></tgtEl></cMediaNode></audio>" +
+    "<video><cMediaNode><cTn id=\"4\"/>" +
+    "<tgtEl><spTgt spid=\"9\"/></tgtEl></cMediaNode></video>" +
+    "</childTnLst></cTn></par></tnLst></timing>",
+  )
+  let slide_root = slide_like_with_shapes("sld", [])
+  let slide_with_timing : @xml.Element = {
+    ..slide_root,
+    children: slide_root.children + [@xml.Node::Element(timing)],
+  }
+  let slide = @domain.CT_Slide::new(slide_with_timing)
+  let svg = render_svg(slide)
+  assert_true(svg.contains("data-ooxml-timing-tnLst=\"par\""))
+  assert_true(svg.contains("data-ooxml-timing-leaves=\"anim audio video\""))
+  assert_true(svg.contains("data-ooxml-timing-leaf-count=\"3\""))
+  assert_true(svg.contains("data-ooxml-timing-media=\"audio video\""))
+  assert_true(svg.contains("data-ooxml-timing-media-count=\"2\""))
+  assert_true(svg.contains("data-ooxml-timing-target-spids=\"7 8 9\""))
+}
+
+///|
 /// §20.1.9.8 `<a:stCxn id idx/>` / `<a:endCxn id idx/>` — the
 /// connector endpoint metadata MUST surface as
 /// `data-ooxml-cxn-st-id` / `-st-idx` / `-end-id` / `-end-idx`

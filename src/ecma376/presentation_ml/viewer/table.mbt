@@ -51,9 +51,10 @@ pub fn render_graphic_frame_table_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   hyperlink_resolver? : (String) -> String? = _ => None,
+  table_style_list? : @a.CT_TableStyleList? = None,
 ) -> Array[@xml.Node] {
   render_graphic_frame_table_nodes(
-    frame, width, height, ctx, defs, hyperlink_resolver,
+    frame, width, height, ctx, defs, hyperlink_resolver, table_style_list,
   )
 }
 
@@ -68,6 +69,7 @@ fn render_graphic_frame_table_nodes(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
 ) -> Array[@xml.Node] {
   // <p:graphicFrame> children:
   //   <p:nvGraphicFramePr> ... <p:xfrm/> <a:graphic>
@@ -83,7 +85,10 @@ fn render_graphic_frame_table_nodes(
   }
   match tbl {
     None => []
-    Some(t) => render_table_svg(t, width, height, ctx, defs, hyperlink_resolver)
+    Some(t) =>
+      render_table_svg(
+        t, width, height, ctx, defs, hyperlink_resolver, table_style_list,
+      )
   }
 }
 
@@ -98,7 +103,10 @@ fn render_table_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
 ) -> Array[@xml.Node] {
+  let tbl_pr = first_child_named(tbl, "tblPr")
+  let table_style = resolve_table_style(tbl_pr, table_style_list)
   let tbl_grid = first_child_named(tbl, "tblGrid")
   // Column widths in EMU per §20.1.4.2.10. When the sums don't match
   // the frame width we scale uniformly to fit.
@@ -111,24 +119,64 @@ fn render_table_svg(
     raw_heights.push(attr_double_or(r, "h", 0.0))
   }
   let row_heights = scale_to_fit(raw_heights, height)
+  let table_attrs = table_svg_attrs(tbl_pr, table_style)
   let cell_nodes : Array[@xml.Node] = []
+  let (table_bg_fill, table_bg_source) = match tbl_pr {
+    Some(pr) =>
+      match find_fill_child(pr) {
+        Some(f) => (Some(f), "tblPr")
+        None => (table_style_background_fill(table_style), "style")
+      }
+    None => (table_style_background_fill(table_style), "style")
+  }
+  match table_bg_fill {
+    Some(fill) => {
+      let r = render_fill_attr(
+        fill,
+        defs,
+        ctx,
+        shape_width=width,
+        shape_height=height,
+      )
+      cell_nodes.push(
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", "0"),
+            @markup.attr("y", "0"),
+            @markup.attr("width", format_double(width)),
+            @markup.attr("height", format_double(height)),
+            @markup.attr("fill", r.attr_value),
+            @markup.attr("data-ooxml-table-bg-source", table_bg_source),
+          ],
+          [],
+        ),
+      )
+    }
+    None => ()
+  }
   let mut y = 0.0
   for i in 0..<rows.length() {
     let row = rows[i]
     let row_h = row_heights[i]
     render_row(
-      row, col_widths, y, row_h, ctx, defs, hyperlink_resolver, cell_nodes,
+      row,
+      i,
+      rows.length(),
+      col_widths,
+      y,
+      row_h,
+      ctx,
+      defs,
+      hyperlink_resolver,
+      table_style,
+      tbl_pr,
+      cell_nodes,
     )
     y = y + row_h
   }
-  [
-    @markup.elem_ns(
-      "g",
-      @markup.svg_ns,
-      [@markup.attr("class", "tbl")],
-      cell_nodes,
-    ),
-  ]
+  [@markup.elem_ns("g", @markup.svg_ns, table_attrs, cell_nodes)]
 }
 
 ///|
@@ -188,15 +236,464 @@ fn scale_to_fit(values : Array[Double], target : Double) -> Array[Double] {
 }
 
 ///|
+/// Resolve the table style declared by `<a:tblPr>`. Inline
+/// `<a:tableStyle>` wins; otherwise `<a:tableStyleId>` looks up the
+/// presentation part's `/ppt/tableStyles.xml` projection supplied by
+/// the context layer.
+fn resolve_table_style(
+  tbl_pr : @xml.Element?,
+  table_style_list : @a.CT_TableStyleList?,
+) -> @xml.Element? {
+  let pr = match tbl_pr {
+    Some(p) => p
+    None => return None
+  }
+  match first_child_named(pr, "tableStyle") {
+    Some(style) => return Some(style)
+    None => ()
+  }
+  let style_id = match first_child_named(pr, "tableStyleId") {
+    Some(id_el) => text_content(id_el).trim(chars=" \t\r\n").to_owned()
+    None =>
+      match table_style_list {
+        Some(list) => list.def
+        None => return None
+      }
+  }
+  find_table_style_by_id(table_style_list, style_id)
+}
+
+///|
+fn find_table_style_by_id(
+  table_style_list : @a.CT_TableStyleList?,
+  style_id : String,
+) -> @xml.Element? {
+  let list = match table_style_list {
+    Some(l) => l
+    None => return None
+  }
+  for style in list.tbl_style {
+    if style.style_id == style_id {
+      return Some(style.element)
+    }
+  }
+  None
+}
+
+///|
+fn table_svg_attrs(
+  tbl_pr : @xml.Element?,
+  table_style : @xml.Element?,
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = [@markup.attr("class", "tbl")]
+  match table_style {
+    Some(style) => {
+      match attr_value(style, "styleId") {
+        Some(v) => attrs.push(@markup.attr("data-ooxml-table-style-id", v))
+        None => ()
+      }
+      match attr_value(style, "styleName") {
+        Some(v) => attrs.push(@markup.attr("data-ooxml-table-style-name", v))
+        None => ()
+      }
+      match first_child_named(style, "tblBg") {
+        Some(bg) =>
+          match first_child_named(bg, "effect") {
+            Some(effect) =>
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-table-bg-effect",
+                  element_child_local_names(effect),
+                ),
+              )
+            None => ()
+          }
+        None => ()
+      }
+    }
+    None =>
+      match tbl_pr {
+        Some(pr) =>
+          match first_child_named(pr, "tableStyleId") {
+            Some(id_el) =>
+              attrs.push(
+                @markup.attr("data-ooxml-table-style-id", text_content(id_el)),
+              )
+            None => ()
+          }
+        None => ()
+      }
+  }
+  attrs
+}
+
+///|
+fn table_prop_bool(tbl_pr : @xml.Element?, attr_name : String) -> Bool {
+  match tbl_pr {
+    Some(pr) => parse_xsd_boolean_or(attr_value(pr, attr_name), false)
+    None => false
+  }
+}
+
+///|
+fn push_style_part_if_present(
+  out : Array[@xml.Element],
+  table_style : @xml.Element,
+  local_name : String,
+) -> Unit {
+  match first_child_named(table_style, local_name) {
+    Some(part) => out.push(part)
+    None => ()
+  }
+}
+
+///|
+/// §20.1.4.2.26 table style conditional buckets. Later buckets in
+/// this array override earlier ones for the same property.
+fn table_style_parts_for_cell(
+  table_style : @xml.Element?,
+  tbl_pr : @xml.Element?,
+  row_idx : Int,
+  col_idx : Int,
+  row_count : Int,
+  col_count : Int,
+) -> Array[@xml.Element] {
+  let style = match table_style {
+    Some(s) => s
+    None => return []
+  }
+  let parts : Array[@xml.Element] = []
+  push_style_part_if_present(parts, style, "wholeTbl")
+  if table_prop_bool(tbl_pr, "bandRow") {
+    if row_idx % 2 == 0 {
+      push_style_part_if_present(parts, style, "band1H")
+    } else {
+      push_style_part_if_present(parts, style, "band2H")
+    }
+  }
+  if table_prop_bool(tbl_pr, "bandCol") {
+    if col_idx % 2 == 0 {
+      push_style_part_if_present(parts, style, "band1V")
+    } else {
+      push_style_part_if_present(parts, style, "band2V")
+    }
+  }
+  if table_prop_bool(tbl_pr, "firstCol") && col_idx == 0 {
+    push_style_part_if_present(parts, style, "firstCol")
+  }
+  if table_prop_bool(tbl_pr, "lastCol") && col_idx == col_count - 1 {
+    push_style_part_if_present(parts, style, "lastCol")
+  }
+  if table_prop_bool(tbl_pr, "firstRow") && row_idx == 0 {
+    push_style_part_if_present(parts, style, "firstRow")
+  }
+  if table_prop_bool(tbl_pr, "lastRow") && row_idx == row_count - 1 {
+    push_style_part_if_present(parts, style, "lastRow")
+  }
+  if row_idx == 0 && col_idx == 0 {
+    push_style_part_if_present(parts, style, "nwCell")
+  }
+  if row_idx == 0 && col_idx == col_count - 1 {
+    push_style_part_if_present(parts, style, "neCell")
+  }
+  if row_idx == row_count - 1 && col_idx == 0 {
+    push_style_part_if_present(parts, style, "swCell")
+  }
+  if row_idx == row_count - 1 && col_idx == col_count - 1 {
+    push_style_part_if_present(parts, style, "seCell")
+  }
+  parts
+}
+
+///|
+fn table_part_tc_style(part : @xml.Element) -> @xml.Element? {
+  first_child_named(part, "tcStyle")
+}
+
+///|
+fn table_part_tx_style(part : @xml.Element) -> @xml.Element? {
+  first_child_named(part, "tcTxStyle")
+}
+
+///|
+fn table_style_fill(parts : Array[@xml.Element]) -> @xml.Element? {
+  let mut result : @xml.Element? = None
+  for part in parts {
+    match table_part_tc_style(part) {
+      Some(tc_style) =>
+        match first_child_named(tc_style, "fill") {
+          Some(fill_wrapper) =>
+            match find_fill_child(fill_wrapper) {
+              Some(fill) => result = Some(fill)
+              None => ()
+            }
+          None => ()
+        }
+      None => ()
+    }
+  }
+  result
+}
+
+///|
+fn table_style_background_fill(table_style : @xml.Element?) -> @xml.Element? {
+  let style = match table_style {
+    Some(s) => s
+    None => return None
+  }
+  match first_child_named(style, "tblBg") {
+    Some(bg) =>
+      match first_child_named(bg, "fill") {
+        Some(fill_wrapper) => find_fill_child(fill_wrapper)
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+fn table_style_border_wrapper_for_edge(
+  local_name : String,
+  row_idx : Int,
+  col_idx : Int,
+  row_count : Int,
+  col_count : Int,
+) -> String {
+  match local_name {
+    "lnT" => if row_idx == 0 { "top" } else { "insideH" }
+    "lnB" => if row_idx == row_count - 1 { "bottom" } else { "insideH" }
+    "lnL" => if col_idx == 0 { "left" } else { "insideV" }
+    "lnR" => if col_idx == col_count - 1 { "right" } else { "insideV" }
+    "lnTlToBr" => "tl2br"
+    "lnBlToTr" => "tr2bl"
+    _ => ""
+  }
+}
+
+///|
+fn table_style_border_line(
+  parts : Array[@xml.Element],
+  wrapper_name : String,
+) -> @xml.Element? {
+  if wrapper_name.length() == 0 {
+    return None
+  }
+  let mut result : @xml.Element? = None
+  for part in parts {
+    match table_part_tc_style(part) {
+      Some(tc_style) =>
+        match first_child_named(tc_style, "tcBdr") {
+          Some(tc_bdr) =>
+            match first_child_named(tc_bdr, wrapper_name) {
+              Some(wrapper) =>
+                match first_child_named(wrapper, "ln") {
+                  Some(ln) => result = Some(ln)
+                  None => ()
+                }
+              None => ()
+            }
+          None => ()
+        }
+      None => ()
+    }
+  }
+  result
+}
+
+///|
+fn table_style_effective_tx_style(parts : Array[@xml.Element]) -> @xml.Element? {
+  let mut result : @xml.Element? = None
+  for part in parts {
+    match table_part_tx_style(part) {
+      Some(tx) => result = Some(tx)
+      None => ()
+    }
+  }
+  result
+}
+
+///|
+fn table_style_text_attrs(parts : Array[@xml.Element]) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  match table_style_effective_tx_style(parts) {
+    Some(tx) => {
+      match attr_value(tx, "b") {
+        Some(v) => attrs.push(@markup.attr("data-ooxml-table-tx-b", v))
+        None => ()
+      }
+      match attr_value(tx, "i") {
+        Some(v) => attrs.push(@markup.attr("data-ooxml-table-tx-i", v))
+        None => ()
+      }
+      match first_color_choice_child(tx) {
+        Some(c) =>
+          attrs.push(
+            @markup.attr("data-ooxml-table-tx-color", c.name.local_name),
+          )
+        None => ()
+      }
+      match first_child_named(tx, "font") {
+        Some(font) =>
+          attrs.push(
+            @markup.attr(
+              "data-ooxml-table-tx-font-children",
+              element_child_local_names(font),
+            ),
+          )
+        None => ()
+      }
+    }
+    None => ()
+  }
+  attrs
+}
+
+///|
+fn table_cell_metadata_attrs_from_tc_style(
+  parts : Array[@xml.Element],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let mut has_cell3d = false
+  for part in parts {
+    match table_part_tc_style(part) {
+      Some(tc_style) =>
+        match first_child_named(tc_style, "cell3D") {
+          Some(cell3d) => {
+            has_cell3d = true
+            match attr_value(cell3d, "prstMaterial") {
+              Some(v) =>
+                attrs.push(@markup.attr("data-ooxml-table-cell3d-material", v))
+              None => ()
+            }
+          }
+          None => ()
+        }
+      None => ()
+    }
+  }
+  if has_cell3d {
+    attrs.push(@markup.attr("data-ooxml-table-cell3d-source", "style"))
+  }
+  attrs
+}
+
+///|
+fn table_cell_metadata_attrs_from_tc_pr(
+  tc_pr : @xml.Element?,
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let pr = match tc_pr {
+    Some(p) => p
+    None => return attrs
+  }
+  match first_child_named(pr, "cell3D") {
+    Some(cell3d) => {
+      attrs.push(@markup.attr("data-ooxml-table-cell3d-source", "cell"))
+      match attr_value(cell3d, "prstMaterial") {
+        Some(v) =>
+          attrs.push(@markup.attr("data-ooxml-table-cell3d-material", v))
+        None => ()
+      }
+    }
+    None => ()
+  }
+  match first_child_named(pr, "headers") {
+    Some(headers) =>
+      attrs.push(
+        @markup.attr("data-ooxml-table-headers", text_content(headers)),
+      )
+    None => ()
+  }
+  attrs
+}
+
+///|
+fn on_off_style_attr_value(value : String?) -> String? {
+  match value {
+    Some("on") | Some("1") | Some("true") => Some("1")
+    Some("off") | Some("0") | Some("false") => Some("0")
+    _ => None
+  }
+}
+
+///|
+fn table_style_text_lst_style(parts : Array[@xml.Element]) -> @xml.Element? {
+  let tx = match table_style_effective_tx_style(parts) {
+    Some(t) => t
+    None => return None
+  }
+  let attrs : Array[@xml.Attribute] = []
+  match on_off_style_attr_value(attr_value(tx, "b")) {
+    Some(v) => attrs.push(@markup.attr("b", v))
+    None => ()
+  }
+  match on_off_style_attr_value(attr_value(tx, "i")) {
+    Some(v) => attrs.push(@markup.attr("i", v))
+    None => ()
+  }
+  let r_pr_children : Array[@xml.Node] = []
+  match first_color_choice_child(tx) {
+    Some(color) =>
+      r_pr_children.push(
+        Element({
+          name: synthetic_a_qname("solidFill"),
+          attributes: [],
+          children: [Element(color)],
+        }),
+      )
+    None => ()
+  }
+  match first_child_named(tx, "font") {
+    Some(font) => {
+      match first_child_named(font, "latin") {
+        Some(latin) => r_pr_children.push(Element(latin))
+        None => ()
+      }
+      match first_child_named(font, "ea") {
+        Some(ea) => r_pr_children.push(Element(ea))
+        None => ()
+      }
+      match first_child_named(font, "cs") {
+        Some(cs) => r_pr_children.push(Element(cs))
+        None => ()
+      }
+    }
+    None => ()
+  }
+  if attrs.length() == 0 && r_pr_children.length() == 0 {
+    return None
+  }
+  let def_r_pr : @xml.Element = {
+    name: synthetic_a_qname("defRPr"),
+    attributes: attrs,
+    children: r_pr_children,
+  }
+  let def_p_pr : @xml.Element = {
+    name: synthetic_a_qname("defPPr"),
+    attributes: [],
+    children: [Element(def_r_pr)],
+  }
+  Some({
+    name: synthetic_a_qname("lstStyle"),
+    attributes: [],
+    children: [Element(def_p_pr)],
+  })
+}
+
+///|
 /// Render every `<a:tc>` cell in a row at the given vertical band.
 fn render_row(
   row : @xml.Element,
+  row_idx : Int,
+  row_count : Int,
   col_widths : Array[Double],
   y : Double,
   row_height : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   hyperlink_resolver : (String) -> String?,
+  table_style : @xml.Element?,
+  tbl_pr : @xml.Element?,
   out : Array[@xml.Node],
 ) -> Unit {
   let mut x = 0.0
@@ -228,7 +725,21 @@ fn render_row(
           }
           if !h_merge && !v_merge {
             render_cell(
-              elt, x, y, span_w, row_height, ctx, defs, hyperlink_resolver, out,
+              elt,
+              x,
+              y,
+              span_w,
+              row_height,
+              row_idx,
+              col_idx,
+              row_count,
+              col_widths.length(),
+              ctx,
+              defs,
+              hyperlink_resolver,
+              table_style,
+              tbl_pr,
+              out,
             )
           }
           x = x + span_w
@@ -247,45 +758,66 @@ fn render_cell(
   y : Double,
   w : Double,
   h : Double,
+  row_idx : Int,
+  col_idx : Int,
+  row_count : Int,
+  col_count : Int,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   hyperlink_resolver : (String) -> String?,
+  table_style : @xml.Element?,
+  tbl_pr : @xml.Element?,
   out : Array[@xml.Node],
 ) -> Unit {
   let tc_pr = first_child_named(cell, "tcPr")
+  let style_parts = table_style_parts_for_cell(
+    table_style, tbl_pr, row_idx, col_idx, row_count, col_count,
+  )
   // Cell fill — `<a:tcPr>/<a:fill>` per §20.1.4.2.18.
-  let fill_value = match tc_pr {
-    None => "none"
-    Some(pr) =>
-      match find_fill_child(pr) {
-        None => "none"
-        Some(f) => {
-          let r = render_fill_attr(f, defs, ctx, shape_width=w, shape_height=h)
-          r.attr_value
-        }
+  let fill_value = {
+    let direct_fill = match tc_pr {
+      Some(pr) => find_fill_child(pr)
+      None => None
+    }
+    let resolved_fill = match direct_fill {
+      Some(f) => Some(f)
+      None => table_style_fill(style_parts)
+    }
+    match resolved_fill {
+      None => "none"
+      Some(f) => {
+        let r = render_fill_attr(f, defs, ctx, shape_width=w, shape_height=h)
+        r.attr_value
       }
+    }
   }
   // Background rect.
-  out.push(
-    @markup.elem_ns(
-      "rect",
-      @markup.svg_ns,
-      [
-        @markup.attr("x", format_double(x)),
-        @markup.attr("y", format_double(y)),
-        @markup.attr("width", format_double(w)),
-        @markup.attr("height", format_double(h)),
-        @markup.attr("fill", fill_value),
-      ],
-      [],
-    ),
-  )
+  let rect_attrs : Array[@xml.Attribute] = [
+    @markup.attr("x", format_double(x)),
+    @markup.attr("y", format_double(y)),
+    @markup.attr("width", format_double(w)),
+    @markup.attr("height", format_double(h)),
+    @markup.attr("fill", fill_value),
+  ]
+  let direct_cell3d = match tc_pr {
+    Some(pr) => first_child_named(pr, "cell3D") is Some(_)
+    None => false
+  }
+  if !direct_cell3d {
+    for attr in table_cell_metadata_attrs_from_tc_style(style_parts) {
+      rect_attrs.push(attr)
+    }
+  }
+  for attr in table_cell_metadata_attrs_from_tc_pr(tc_pr) {
+    rect_attrs.push(attr)
+  }
+  out.push(@markup.elem_ns("rect", @markup.svg_ns, rect_attrs, []))
   // Borders — lnL / lnR / lnT / lnB (CT_TableCellProperties Annex A.4.1
   // lines 2347..2369). Diagonals lnTlToBr / lnBlToTr also emitted.
-  match tc_pr {
-    None => ()
-    Some(pr) => emit_cell_borders(pr, x, y, w, h, ctx, defs, out)
-  }
+  emit_cell_borders(
+    tc_pr, style_parts, row_idx, col_idx, row_count, col_count, x, y, w, h, ctx,
+    defs, out,
+  )
   // Cell text — `<a:txBody>` is a §21.1.2 text body.  §20.1.4.2.18
   // CT_TableCellProperties: `@marL`/`@marR`/`@marT`/`@marB` inset
   // the txBody region from the cell border (default 91440/91440/
@@ -323,13 +855,24 @@ fn render_cell(
       if anchor.length() > 0 {
         g_attrs.push(@markup.attr("data-ooxml-cell-anchor", anchor))
       }
+      for attr in table_style_text_attrs(style_parts) {
+        g_attrs.push(attr)
+      }
+      let table_text_style = table_style_text_lst_style(style_parts)
       out.push(
         @markup.elem_ns(
           "g",
           @markup.svg_ns,
           g_attrs,
           render_shape_text_svg(
-            cell, inner_w, inner_h, ctx, defs, hyperlink_resolver,
+            cell,
+            inner_w,
+            inner_h,
+            ctx,
+            defs,
+            _ => None,
+            hyperlink_resolver,
+            master_lst_style=table_text_style,
           ),
         ),
       )
@@ -388,7 +931,12 @@ fn read_cell_margins(
 /// are stored as `<a:lnL>` / `<a:lnR>` / `<a:lnT>` / `<a:lnB>` /
 /// `<a:lnTlToBr>` / `<a:lnBlToTr>` under `<a:tcPr>` (CT_TableCellProperties).
 fn emit_cell_borders(
-  tc_pr : @xml.Element,
+  tc_pr : @xml.Element?,
+  style_parts : Array[@xml.Element],
+  row_idx : Int,
+  col_idx : Int,
+  row_count : Int,
+  col_count : Int,
   x : Double,
   y : Double,
   w : Double,
@@ -397,12 +945,102 @@ fn emit_cell_borders(
   defs : SvgDefsCollector,
   out : Array[@xml.Node],
 ) -> Unit {
-  emit_border_line(tc_pr, "lnT", x, y, x + w, y, ctx, defs, out)
-  emit_border_line(tc_pr, "lnB", x, y + h, x + w, y + h, ctx, defs, out)
-  emit_border_line(tc_pr, "lnL", x, y, x, y + h, ctx, defs, out)
-  emit_border_line(tc_pr, "lnR", x + w, y, x + w, y + h, ctx, defs, out)
-  emit_border_line(tc_pr, "lnTlToBr", x, y, x + w, y + h, ctx, defs, out)
-  emit_border_line(tc_pr, "lnBlToTr", x, y + h, x + w, y, ctx, defs, out)
+  emit_border_line(
+    tc_pr,
+    style_parts,
+    "lnT",
+    row_idx,
+    col_idx,
+    row_count,
+    col_count,
+    x,
+    y,
+    x + w,
+    y,
+    ctx,
+    defs,
+    out,
+  )
+  emit_border_line(
+    tc_pr,
+    style_parts,
+    "lnB",
+    row_idx,
+    col_idx,
+    row_count,
+    col_count,
+    x,
+    y + h,
+    x + w,
+    y + h,
+    ctx,
+    defs,
+    out,
+  )
+  emit_border_line(
+    tc_pr,
+    style_parts,
+    "lnL",
+    row_idx,
+    col_idx,
+    row_count,
+    col_count,
+    x,
+    y,
+    x,
+    y + h,
+    ctx,
+    defs,
+    out,
+  )
+  emit_border_line(
+    tc_pr,
+    style_parts,
+    "lnR",
+    row_idx,
+    col_idx,
+    row_count,
+    col_count,
+    x + w,
+    y,
+    x + w,
+    y + h,
+    ctx,
+    defs,
+    out,
+  )
+  emit_border_line(
+    tc_pr,
+    style_parts,
+    "lnTlToBr",
+    row_idx,
+    col_idx,
+    row_count,
+    col_count,
+    x,
+    y,
+    x + w,
+    y + h,
+    ctx,
+    defs,
+    out,
+  )
+  emit_border_line(
+    tc_pr,
+    style_parts,
+    "lnBlToTr",
+    row_idx,
+    col_idx,
+    row_count,
+    col_count,
+    x,
+    y + h,
+    x + w,
+    y,
+    ctx,
+    defs,
+    out,
+  )
 }
 
 ///|
@@ -410,8 +1048,13 @@ fn emit_cell_borders(
 /// `<line>` when present. The fill resolution mirrors what
 /// `build_line_attrs` does for shapes.
 fn emit_border_line(
-  tc_pr : @xml.Element,
+  tc_pr : @xml.Element?,
+  style_parts : Array[@xml.Element],
   local_name : String,
+  row_idx : Int,
+  col_idx : Int,
+  row_count : Int,
+  col_count : Int,
   x1 : Double,
   y1 : Double,
   x2 : Double,
@@ -420,7 +1063,20 @@ fn emit_border_line(
   defs : SvgDefsCollector,
   out : Array[@xml.Node],
 ) -> Unit {
-  match first_child_named(tc_pr, local_name) {
+  let direct = match tc_pr {
+    Some(pr) => first_child_named(pr, local_name)
+    None => None
+  }
+  let (ln_opt, source) = match direct {
+    Some(ln) => (Some(ln), "cell")
+    None => {
+      let wrapper = table_style_border_wrapper_for_edge(
+        local_name, row_idx, col_idx, row_count, col_count,
+      )
+      (table_style_border_line(style_parts, wrapper), "style")
+    }
+  }
+  match ln_opt {
     None => ()
     Some(ln) => {
       // noFill on the line → skip.
@@ -458,6 +1114,7 @@ fn emit_border_line(
       if w_missing {
         attrs.push(@markup.attr("data-ooxml-ln-w-source", "missing"))
       }
+      attrs.push(@markup.attr("data-ooxml-table-border-source", source))
       out.push(@markup.elem_ns("line", @markup.svg_ns, attrs, []))
     }
   }

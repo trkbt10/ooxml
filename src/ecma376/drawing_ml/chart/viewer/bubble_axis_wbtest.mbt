@@ -181,3 +181,26 @@ test "bubble chart renders every series, not only the first ser" {
   assert_true(svg.contains("fill=\"#4472c4\""))
   assert_true(svg.contains("fill=\"#ed7d31\""))
 }
+
+///|
+test "bubble chart data labels consume showBubbleSize" {
+  let plot_area = bcx_elem("plotArea", [], [
+    bcx_node("valAx", [], [bcx_node("axPos", [("val", "b")], [])]),
+    bcx_node("valAx", [], [bcx_node("axPos", [("val", "l")], [])]),
+  ])
+  let ser = bcx_node("ser", [], [
+    bcx_node("xVal", [], [bcx_numlit(["1", "2"])]),
+    bcx_node("yVal", [], [bcx_numlit(["10", "20"])]),
+    bcx_node("bubbleSize", [], [bcx_numlit(["7", "11"])]),
+  ])
+  let bubble = bcx_elem("bubbleChart", [], [
+    ser,
+    bcx_node("dLbls", [], [
+      bcx_node("showBubbleSize", [("val", "1")], []),
+      bcx_node("showVal", [("val", "0")], []),
+    ]),
+  ])
+  let svg = bcx_render_chart(plot_area, bubble)
+  assert_true(svg.contains(">7<"))
+  assert_true(svg.contains(">11<"))
+}

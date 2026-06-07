@@ -1585,8 +1585,8 @@ pub fn CT_Dialogsheet::new(
 /// `<printOptions>`, `<pageMargins>`, `<pageSetup>`, `<headerFooter>`,
 /// `<rowBreaks>`, `<colBreaks>`, `<customProperties>`, `<cellWatches>`
 /// (CT_CellWatches), `<ignoredErrors>`, `<smartTags>` (CT_SmartTags),
-/// `<drawing>`, `<drawingHF>`, `<picture>`, `<oleObjects>`, `<controls>`,
-/// `<webPublishItems>` (CT_WebPublishItems), `<tableParts>`
+/// `<drawing>`, `<legacyDrawing>`, `<legacyDrawingHF>`, `<drawingHF>`,
+/// `<picture>`, `<oleObjects>`, `<controls>`, `<webPublishItems>` (CT_WebPublishItems), `<tableParts>`
 /// (CT_TableParts), `<extLst>`.
 pub(all) struct CT_Worksheet {
   /// Preserve source XML element for byte-identical round-trip.
@@ -1629,6 +1629,8 @@ pub(all) struct CT_Worksheet {
   ignored_errors : CT_IgnoredErrors?
   smart_tags : CT_SmartTags?
   drawing : CT_Drawing?
+  legacy_drawing : CT_LegacyDrawing?
+  legacy_drawing_hf : CT_LegacyDrawing?
   drawing_hf : CT_DrawingHF?
   picture : CT_SheetBackgroundPicture?
   ole_objects : CT_OleObjects?
@@ -1672,6 +1674,8 @@ pub fn CT_Worksheet::new(
   let mut ignored_errors : CT_IgnoredErrors? = None
   let mut smart_tags : CT_SmartTags? = None
   let mut drawing : CT_Drawing? = None
+  let mut legacy_drawing : CT_LegacyDrawing? = None
+  let mut legacy_drawing_hf : CT_LegacyDrawing? = None
   let mut drawing_hf : CT_DrawingHF? = None
   let mut picture : CT_SheetBackgroundPicture? = None
   let mut ole_objects : CT_OleObjects? = None
@@ -1729,6 +1733,10 @@ pub fn CT_Worksheet::new(
           ignored_errors = Some(CT_IgnoredErrors::new(child_element))
         "smartTags" => smart_tags = Some(CT_SmartTags::new(child_element))
         "drawing" => drawing = Some(CT_Drawing::new(child_element))
+        "legacyDrawing" =>
+          legacy_drawing = Some(CT_LegacyDrawing::new(child_element))
+        "legacyDrawingHF" =>
+          legacy_drawing_hf = Some(CT_LegacyDrawing::new(child_element))
         "drawingHF" => drawing_hf = Some(CT_DrawingHF::new(child_element))
         "picture" =>
           picture = Some(CT_SheetBackgroundPicture::new(child_element))
@@ -1774,6 +1782,8 @@ pub fn CT_Worksheet::new(
     ignored_errors,
     smart_tags,
     drawing,
+    legacy_drawing,
+    legacy_drawing_hf,
     drawing_hf,
     picture,
     ole_objects,

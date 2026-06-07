@@ -93,6 +93,35 @@ fn ao_line_chart() -> @xml.Element {
 }
 
 ///|
+fn ao_line_chart_with_marker_flag(value : String) -> @xml.Element {
+  let ser = ao_node("ser", [], [ao_val(["10", "20", "30"])])
+  ao_elem("lineChart", [], [ser, ao_node("marker", [("val", value)], [])])
+}
+
+///|
+fn ao_line_chart_with_data_labels(dlbl_kids : Array[@xml.Node]) -> @xml.Element {
+  let ser = ao_node("ser", [], [ao_val(["10", "20", "30"])])
+  ao_elem("lineChart", [], [ser, ao_node("dLbls", [], dlbl_kids)])
+}
+
+///|
+fn ao_line_chart_with_point_label() -> @xml.Element {
+  let ser = ao_node("ser", [], [
+    ao_node("tx", [], [ao_node("v", [], [@xml.Node::Text("Point override")])]),
+    ao_val(["10", "20", "30"]),
+  ])
+  ao_elem("lineChart", [], [
+    ser,
+    ao_node("dLbls", [], [
+      ao_node("dLbl", [], [
+        ao_node("idx", [("val", "1")], []),
+        ao_node("showSerName", [("val", "1")], []),
+      ]),
+    ]),
+  ])
+}
+
+///|
 /// A single-series scatter chart with three XY points.
 fn ao_scatter_chart() -> @xml.Element {
   let ser = ao_node("ser", [], [
@@ -296,6 +325,48 @@ test "line chart maxMin value axis flips the max marker" {
   // minMax SVG.
   assert_true(svg_min.contains(format_double(y_min)))
   assert_true(svg_max.contains(format_double(y_max)))
+}
+
+///|
+test "line chart marker flag suppresses chart-level markers" {
+  let svg = ao_render(
+    "line",
+    ao_line_chart_with_marker_flag("0"),
+    ao_plot_val(None),
+  )
+  assert_true(svg.contains("<polyline"))
+  assert_true(!svg.contains("<circle"))
+}
+
+///|
+test "line chart marker flag absent keeps default markers" {
+  let svg = ao_render("line", ao_line_chart(), ao_plot_val(None))
+  assert_true(svg.contains("<polyline"))
+  assert_true(svg.contains("<circle"))
+}
+
+///|
+test "line data labels render legend key swatch" {
+  let svg = ao_render(
+    "line",
+    ao_line_chart_with_data_labels([
+      ao_node("showVal", [("val", "1")], []),
+      ao_node("showLegendKey", [("val", "1")], []),
+    ]),
+    ao_plot_val(None),
+  )
+  assert_true(svg.contains("data-ooxml=\"chart-data-label-legend-key\""))
+  assert_true(svg.contains(">10<"))
+}
+
+///|
+test "line point-level dLbl override renders only targeted point label" {
+  let svg = ao_render(
+    "line",
+    ao_line_chart_with_point_label(),
+    ao_plot_val(None),
+  )
+  assert_true(svg.contains(">Point override<"))
 }
 
 ///|

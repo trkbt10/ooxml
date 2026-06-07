@@ -16,6 +16,7 @@ fn render_stock_chart(
   ctx : ColorResolveContext,
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
+  defs : SvgDefsCollector,
   disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
   // §21.2.2.188 — the series order is fixed by convention:
@@ -26,7 +27,7 @@ fn render_stock_chart(
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
-          let labels = read_cat_labels(se)
+          let labels = read_cat_axis_labels(se, axes)
           let values = read_val_number_slots(se)
           all_series.push((labels, values))
         }
@@ -44,6 +45,32 @@ fn render_stock_chart(
     (None, 0, 1, 2)
   }
   let (labels, _) = all_series[high_idx]
+  let cat_serials = if high_idx < s_count {
+    let ser = {
+      let mut found : @xml.Element? = None
+      let mut idx = 0
+      for ch in elem.children {
+        match ch {
+          @xml.Node::Element(se) =>
+            if se.name.local_name == "ser" {
+              if idx == high_idx {
+                found = Some(se)
+                break
+              }
+              idx = idx + 1
+            }
+          _ => ()
+        }
+      }
+      found
+    }
+    match ser {
+      Some(se) => read_cat_number_slots(se)
+      None => []
+    }
+  } else {
+    []
+  }
   let (_, high_vals) = all_series[high_idx]
   let (_, low_vals) = all_series[low_idx]
   let (_, close_vals) = all_series[close_idx]
@@ -82,8 +109,39 @@ fn render_stock_chart(
   }
   let max_v = effective_axis_max(data_max, axes)
   let (px, py, pw, ph) = chart_plot_inset(w, h, fw, fh, axes=Some(axes))
+  let val_rev = axes.val_reversed()
+  let cat_rev = axes.cat_reversed()
+  let cat_cross = axes.val_cross_between()
+  let value_axis_x = category_axis_cross_position(
+    px,
+    pw,
+    n,
+    cat_rev,
+    cat_cross,
+    axes.cat_crosses(),
+    axes.cat_crosses_at(),
+  )
+  let category_axis_y = value_axis_cross_y(
+    py,
+    ph,
+    0.0,
+    max_v,
+    val_rev,
+    axes.val_y_crosses(),
+    axes.val_y_crosses_at(),
+  )
   let nodes : Array[@xml.Node] = []
-  nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
+  nodes.push(
+    plot_axes_rect(
+      px,
+      py,
+      pw,
+      ph,
+      style=Some(style),
+      vertical_axis_x=Some(value_axis_x),
+      horizontal_axis_y=Some(category_axis_y),
+    ),
+  )
   if !axes.val_deleted() {
     for
       tick in y_axis_ticks(
@@ -96,9 +154,40 @@ fn render_stock_chart(
         axes.val_major(),
         style=Some(style),
         draw_minor_gridlines=axes.val_minor_gridlines(),
+        major_gridlines_element=axes.val_major_gridlines_element(),
+        minor_gridlines_element=axes.val_minor_gridlines_element(),
+        ctx=Some(ctx),
+        defs=Some(defs),
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        major_tick_mark=axes.val_major_tick_mark(),
+        minor_tick_mark=axes.val_minor_tick_mark(),
+        major_unit=axes.val_y_major_unit(),
+        minor_unit=axes.val_y_minor_unit(),
+        reversed=val_rev,
+        axis_x=Some(value_axis_x),
+        display_unit_factor=axes.val_y_disp_unit_factor(),
+      ) {
+      nodes.push(tick)
+    }
+  }
+  if !axes.cat_deleted() {
+    for
+      tick in date_axis_ticks_bottom(
+        px,
+        py,
+        pw,
+        ph,
+        fh,
+        n,
+        axes,
+        cat_serials,
+        major_tick_mark=axes.cat_major_tick_mark(),
+        minor_tick_mark=axes.cat_minor_tick_mark(),
+        cross_between=cat_cross,
+        axis_y=Some(category_axis_y),
+        tick_mark_skip=axes.cat_tick_mark_skip(),
       ) {
       nodes.push(tick)
     }
@@ -110,13 +199,15 @@ fn render_stock_chart(
     Some(_) => true
     None => false
   }
-  let band = pw / n.to_double()
+  let band = category_axis_slot_span_for_cross(pw, n, cat_cross)
   let tick_w = band * 0.25
   let stroke_w = format_double(h * 0.003)
   let series_color = chart_series_color(ctx, 0)
   let mut i = 0
   while i < n {
-    let x = px + (i.to_double() + 0.5) * band
+    let x = date_axis_position_for_index(
+      px, pw, n, i, cat_rev, cat_cross, axes, cat_serials,
+    )
     let hi = match chart_slot_value_at(high_vals, i, disp_blanks_as) {
       Some(v) => v
       None => {
@@ -131,8 +222,8 @@ fn render_stock_chart(
         continue
       }
     }
-    let y_hi = if max_v > 0.0 { py + ph - hi / max_v * ph } else { py + ph }
-    let y_lo = if max_v > 0.0 { py + ph - lo / max_v * ph } else { py + ph }
+    let y_hi = value_axis_y(hi, max_v, py, ph, val_rev)
+    let y_lo = value_axis_y(lo, max_v, py, ph, val_rev)
     // Vertical line High → Low.
     nodes.push(
       @markup.elem_ns(
@@ -152,7 +243,7 @@ fn render_stock_chart(
     // Open tick (left side).
     match chart_slot_value_at(open_vals, i, disp_blanks_as) {
       Some(ov) => {
-        let y_o = if max_v > 0.0 { py + ph - ov / max_v * ph } else { py + ph }
+        let y_o = value_axis_y(ov, max_v, py, ph, val_rev)
         nodes.push(
           @markup.elem_ns(
             "line",
@@ -174,7 +265,7 @@ fn render_stock_chart(
     // Close tick (right side) or upDownBar rectangle.
     match chart_slot_value_at(close_vals, i, disp_blanks_as) {
       Some(cv) => {
-        let y_c = if max_v > 0.0 { py + ph - cv / max_v * ph } else { py + ph }
+        let y_c = value_axis_y(cv, max_v, py, ph, val_rev)
         let open_for_bar = chart_slot_value_at(open_vals, i, disp_blanks_as)
         if has_up_down && open_for_bar is Some(_) {
           // §21.2.2.219 — filled rectangle from open to close.
@@ -182,11 +273,7 @@ fn render_stock_chart(
             Some(v) => v
             None => 0.0
           }
-          let y_o = if max_v > 0.0 {
-            py + ph - ov / max_v * ph
-          } else {
-            py + ph
-          }
+          let y_o = value_axis_y(ov, max_v, py, ph, val_rev)
           let fill = if cv >= ov {
             chart_stock_up_color
           } else {
@@ -234,24 +321,27 @@ fn render_stock_chart(
     i = i + 1
   }
   // Category labels along the bottom.
-  for i2, label in labels {
-    if i2 >= n {
-      break
+  if !axes.cat_deleted() && axes.cat_tick_lbl_pos() != "none" {
+    let label_side = axes.cat_tick_lbl_pos()
+    let label_offset = category_horizontal_label_offset(fh, axes)
+    let anchor = category_label_anchor(axes)
+    for i2, label in labels {
+      if i2 >= n {
+        break
+      }
+      if !date_axis_label_should_render(axes, cat_serials, i2) {
+        continue
+      }
+      let bx = date_axis_position_for_index(
+        px, pw, n, i2, cat_rev, cat_cross, axes, cat_serials,
+      )
+      let (by, baseline) = category_horizontal_label_y(
+        py, category_axis_y, label_side, label_offset,
+      )
+      nodes.push(
+        chart_text(label, bx, by, w, h, anchor~, baseline~, style=Some(style)),
+      )
     }
-    let bx = px + (i2.to_double() + 0.5) * band
-    let by = py + ph + fh * 0.018
-    nodes.push(
-      chart_text(
-        label,
-        bx,
-        by,
-        w,
-        h,
-        anchor="middle",
-        baseline="hanging",
-        style=Some(style),
-      ),
-    )
   }
   nodes
 }

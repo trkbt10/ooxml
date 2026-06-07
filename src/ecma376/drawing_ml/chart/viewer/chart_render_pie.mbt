@@ -10,6 +10,28 @@
 // =============================================================================
 
 ///|
+fn pie_leader_line_style(
+  leader_lines : @xml.Element?,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  default_width : Double,
+) -> ChartLineStyle? {
+  match leader_lines {
+    Some(ll) =>
+      chart_lines_style(
+        ll, ctx, defs, "chart-pie-leader-lines", "#808080", default_width,
+      )
+    None =>
+      Some({
+        stroke: "#808080",
+        stroke_width: default_width,
+        dasharray: None,
+        linecap: None,
+      })
+  }
+}
+
+///|
 fn render_pie_chart(
   elem : @xml.Element,
   w : Double,
@@ -55,6 +77,8 @@ fn render_pie_chart(
     None => 0.0
   }
   let dpt_overrides = collect_dpt_colors(ser, ctx, defs, "pie")
+  let series_color = resolve_series_color(ser, 0, ctx, defs)
+  let vary_colors = chart_vary_colors(elem)
   // §21.2.2.64 explosion — per-data-point slice offset (in % of
   // outer radius).  Series-level <c:explosion> applies to all
   // slices; per-dPt <c:explosion> overrides individual slices.
@@ -75,7 +99,12 @@ fn render_pie_chart(
     }
     let color = match dpt_color_for(dpt_overrides, i) {
       Some(c) => c
-      None => chart_series_color(ctx, i)
+      None =>
+        if vary_colors {
+          chart_series_color(ctx, i)
+        } else {
+          series_color
+        }
     }
     let expl_pct = {
       let dpt_v = dpt_explosion_for(dpt_explosions, i)
@@ -105,6 +134,7 @@ fn render_pie_chart(
         Some(nm) => nm
         None => ""
       }
+      let value_num_fmt = read_val_number_format(ser)
       let pi = 3.141592653589793
       // §21.2.2.48 dLblPos — "outEnd" / "bestFit" place labels OUTSIDE
       // the pie; everything else (default) places them at the slice
@@ -131,27 +161,38 @@ fn render_pie_chart(
         let lx = cx + label_r * ca
         let ly = cy + label_r * sa
         let cat_name = if i < cat_labels.length() { cat_labels[i] } else { "" }
-        let text = build_data_label_text(cfg, v, cat_name, ser_name, total)
+        let text = build_data_label_text(
+          cfg,
+          v,
+          cat_name,
+          ser_name,
+          total,
+          value_num_fmt~,
+        )
         if text.length() > 0 {
           // §21.2.2.92 leaderLines — for an external label, draw a
           // connector from the slice's outer edge to the label, then
           // anchor the text on the side it sits (left / right).
           if external && cfg.show_leader_lines {
-            nodes.push(
-              @markup.elem_ns(
-                "line",
-                @markup.svg_ns,
-                [
+            match
+              pie_leader_line_style(
+                cfg.leader_lines,
+                ctx,
+                defs,
+                font_size * 0.08,
+              ) {
+              Some(line_style) => {
+                let attrs : Array[@xml.Attribute] = [
                   @markup.attr("x1", format_double(cx + outer * ca)),
                   @markup.attr("y1", format_double(cy + outer * sa)),
                   @markup.attr("x2", format_double(lx)),
                   @markup.attr("y2", format_double(ly)),
-                  @markup.attr("stroke", "#808080"),
-                  @markup.attr("stroke-width", format_double(font_size * 0.08)),
-                ],
-                [],
-              ),
-            )
+                ]
+                push_chart_line_style_attrs(attrs, line_style)
+                nodes.push(@markup.elem_ns("line", @markup.svg_ns, attrs, []))
+              }
+              None => ()
+            }
           }
           let (anchor, fill) = if external {
             // Right half → start (left-anchored); left half → end.

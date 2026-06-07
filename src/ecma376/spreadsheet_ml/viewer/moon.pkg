@@ -23,10 +23,12 @@ import {
   "trkbt10/ooxml/util/color",
   "trkbt10/ooxml/util/glyph",
   "trkbt10/ooxml/util/markup",
+  "trkbt10/ooxml/util/vml",
   "trkbt10/ooxml/xml",
 }
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/x/fs",
 } for "wbtest"

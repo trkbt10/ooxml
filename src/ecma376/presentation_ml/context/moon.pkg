@@ -20,6 +20,7 @@ import {
   "trkbt10/ooxml/ecma376/presentation_ml/animation_eval" @pml_animation,
   "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver" @pml_placeholder,
   "trkbt10/ooxml/ecma376/presentation_ml/viewer" @pml_viewer,
+  "trkbt10/ooxml/ecma376/drawing_ml" @a,
   "trkbt10/ooxml/ecma376/drawing_ml/theme",
   "trkbt10/ooxml/util/markup",
   "trkbt10/ooxml/xml",

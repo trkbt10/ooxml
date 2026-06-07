@@ -56,6 +56,20 @@ fn scx_scatter() -> @xml.Element {
 }
 
 ///|
+/// A minimal scatter chart whose series carries `<c:marker>`.
+fn scx_scatter_with_marker(marker_kids : Array[@xml.Node]) -> @xml.Element {
+  let ser = scx_node("ser", [], [
+    scx_node("xVal", [], [scx_numlit(["1", "2", "3"])]),
+    scx_node("yVal", [], [scx_numlit(["10", "20", "30"])]),
+    scx_node("marker", [], marker_kids),
+  ])
+  scx_elem("scatterChart", [], [
+    scx_node("scatterStyle", [("val", "marker")], []),
+    ser,
+  ])
+}
+
+///|
 fn scx_style() -> ChartStyleDefaults {
   ChartStyleDefaults::{
     text_color: "#000000",
@@ -130,6 +144,62 @@ test "scatter chart suppresses X-axis ticks when value axis deleted" {
   ])
   let svg = scx_render(plot_area)
   assert_true(!svg.contains("dominant-baseline=\"hanging\""))
+}
+
+///|
+test "scatter chart uses horizontal scaling min independently" {
+  let default_plot_area = scx_elem("plotArea", [], [
+    scx_node("valAx", [], [scx_node("axPos", [("val", "b")], [])]),
+    scx_node("valAx", [], [scx_node("axPos", [("val", "l")], [])]),
+  ])
+  let min_x_plot_area = scx_elem("plotArea", [], [
+    scx_node("valAx", [], [
+      scx_node("scaling", [], [scx_node("min", [("val", "1")], [])]),
+      scx_node("axPos", [("val", "b")], []),
+    ]),
+    scx_node("valAx", [], [scx_node("axPos", [("val", "l")], [])]),
+  ])
+  let axes = collect_axes_info(min_x_plot_area)
+  match axes.val_x_scaling_min() {
+    Some(v) => assert_eq(v, 1.0)
+    None => abort("missing x-axis min")
+  }
+  assert_true(axes.val_y_scaling_min() is None)
+  let default_svg = scx_render(default_plot_area)
+  let min_x_svg = scx_render(min_x_plot_area)
+  assert_true(default_svg != min_x_svg)
+}
+
+///|
+test "scatter chart consumes marker symbol and size" {
+  let plot_area = scx_elem("plotArea", [], [
+    scx_node("valAx", [], []),
+    scx_node("valAx", [], []),
+  ])
+  let scatter = scx_scatter_with_marker([
+    scx_node("symbol", [("val", "square")], []),
+    scx_node("size", [("val", "10")], []),
+  ])
+  let svg = scx_render_chart(plot_area, scatter)
+  // Base scatter marker radius is 300 * 0.012 = 3.6; size=10 doubles it
+  // to 7.2, so the square glyph width is 14.4.
+  assert_true(svg.contains("width=\"14.4\""))
+  assert_true(svg.contains("height=\"14.4\""))
+}
+
+///|
+test "scatter chart marker symbol none suppresses marker glyphs" {
+  let plot_area = scx_elem("plotArea", [], [
+    scx_node("valAx", [], []),
+    scx_node("valAx", [], []),
+  ])
+  let scatter = scx_scatter_with_marker([
+    scx_node("symbol", [("val", "none")], []),
+  ])
+  let svg = scx_render_chart(plot_area, scatter)
+  assert_true(!svg.contains("<circle"))
+  assert_true(!svg.contains("<polygon"))
+  assert_true(!svg.contains("<path"))
 }
 
 ///|

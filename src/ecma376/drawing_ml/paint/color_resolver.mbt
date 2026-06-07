@@ -3,8 +3,8 @@
 //
 // DrawingML colour reference resolution.  Handles all six §20.1.2.3
 // colour types — srgbClr, schemeClr, scrgbClr, prstClr, hslClr,
-// sysClr — and applies the six §20.1.2.3 colour transforms — alpha,
-// shade, tint, lumMod, lumOff, hueMod, satMod.
+// sysClr — and applies the §20.1.2.3 colour transforms that affect
+// DrawingML solid-fill rendering.
 //
 // The transforms are delegated to `@color`; this file only knows how
 // to walk a DrawingML colour element and produce a hex string.
@@ -269,7 +269,18 @@ fn default_office_scheme() -> Map[String, String] {
 ///|
 /// Which scheme-color names are mappable through the colour map.
 fn is_mappable_scheme_color(name : String) -> Bool {
-  name == "tx1" || name == "tx2" || name == "bg1" || name == "bg2"
+  name == "tx1" ||
+  name == "tx2" ||
+  name == "bg1" ||
+  name == "bg2" ||
+  name == "accent1" ||
+  name == "accent2" ||
+  name == "accent3" ||
+  name == "accent4" ||
+  name == "accent5" ||
+  name == "accent6" ||
+  name == "hlink" ||
+  name == "folHlink"
 }
 
 ///|
@@ -406,6 +417,17 @@ fn parse_pct(value : String) -> Double {
 }
 
 ///|
+fn clamp_unit(value : Double) -> Double {
+  if value < 0.0 {
+    0.0
+  } else if value > 1.0 {
+    1.0
+  } else {
+    value
+  }
+}
+
+///|
 /// Common pattern: read `<a:xyz val="...">` from `element`, parse as
 /// percentage, divide by 100000.  Returns `None` when the child or
 /// attribute is missing.
@@ -451,6 +473,62 @@ fn int_attr_child(element : @xml.Element, name : String, attr : String) -> Int? 
           }
       }
   }
+}
+
+///|
+fn set_hue(rgb_str : String, degrees : Double, is_alpha : Bool) -> String {
+  let color = @color.parse_color_to_hsl(rgb_str)
+  let mut h = degrees
+  while h < 0.0 {
+    h = h + 360.0
+  }
+  while h >= 360.0 {
+    h = h - 360.0
+  }
+  @color.hsl_to_hex_string({ h, s: color.s, l: color.l, a: color.a }, is_alpha)
+}
+
+///|
+fn set_saturation(
+  rgb_str : String,
+  saturation : Double,
+  is_alpha : Bool,
+) -> String {
+  let color = @color.parse_color_to_hsl(rgb_str)
+  @color.hsl_to_hex_string(
+    { h: color.h, s: clamp_unit(saturation), l: color.l, a: color.a },
+    is_alpha,
+  )
+}
+
+///|
+fn set_luminance(
+  rgb_str : String,
+  luminance : Double,
+  is_alpha : Bool,
+) -> String {
+  let color = @color.parse_color_to_hsl(rgb_str)
+  @color.hsl_to_hex_string(
+    { h: color.h, s: color.s, l: clamp_unit(luminance), a: color.a },
+    is_alpha,
+  )
+}
+
+///|
+fn resolved_alpha(element : @xml.Element) -> Double {
+  let mut alpha = match pct_child(element, "alpha") {
+    Some(v) => clamp_unit(v)
+    None => 1.0
+  }
+  match pct_child(element, "alphaMod") {
+    Some(v) => alpha = clamp_unit(alpha * v)
+    None => ()
+  }
+  match pct_child(element, "alphaOff") {
+    Some(v) => alpha = clamp_unit(alpha + v)
+    None => ()
+  }
+  alpha
 }
 
 ///|
@@ -556,8 +634,9 @@ fn extract_base_color(
 }
 
 ///|
-/// Apply all DrawingML transforms (alpha → hue-family → sat-family →
-/// lum-family → channel-family → gamma → comp/inv/gray → shade → tint)
+/// Apply all DrawingML transforms (alpha-family → hue-family →
+/// sat-family → lum-family → channel-family → gamma → comp/inv/gray →
+/// shade → tint)
 /// in the order that the TS reference applies them.  Returns the
 /// final hex string and the resolved alpha.
 ///
@@ -573,21 +652,15 @@ fn apply_color_transforms(
   if base_hex == "" {
     return { hex: "", alpha: 1.0 }
   }
-  // Alpha first, because subsequent transforms operate on hex that
-  // already has the alpha byte appended.
-  let alpha_pct = pct_child(element, "alpha")
-  let (initial_hex, alpha, has_alpha) = match alpha_pct {
-    None => (base_hex, 1.0, false)
-    Some(a) => {
-      let hsl = @color.parse_color_to_hsl(base_hex)
-      let with_a = @color.hsl_to_hex_string(
-        { h: hsl.h, s: hsl.s, l: hsl.l, a: Some(a) },
-        true,
-      )
-      (with_a, a, true)
-    }
+  let alpha = resolved_alpha(element)
+  let has_alpha = alpha < 1.0
+  let mut result = base_hex
+  // §20.1.2.3.15 hue — direct HSL hue replacement.  The value is
+  // ST_PositiveFixedAngle in 60000ths of a degree.
+  match int_attr_child(element, "hue", "val") {
+    Some(n) => result = set_hue(result, n.to_double() / 60000.0, has_alpha)
+    None => ()
   }
-  let mut result = initial_hex
   // §20.1.2.3.18 hueMod — multiplicative hue rotation.
   match pct_child(element, "hueMod") {
     Some(v) => result = @color.apply_hue_mod(result, v, is_alpha=has_alpha)
@@ -609,6 +682,10 @@ fn apply_color_transforms(
     None => ()
   }
   // §20.1.2.3.28 satMod / §20.1.2.3.7 satOff.
+  match pct_child(element, "sat") {
+    Some(v) => result = set_saturation(result, v, has_alpha)
+    None => ()
+  }
   match pct_child(element, "satMod") {
     Some(v) => result = @color.apply_sat_mod(result, v, is_alpha=has_alpha)
     None => ()
@@ -618,6 +695,10 @@ fn apply_color_transforms(
     None => ()
   }
   // §20.1.2.3.20 lumMod / §20.1.2.3.19 lumOff.
+  match pct_child(element, "lum") {
+    Some(v) => result = set_luminance(result, v, has_alpha)
+    None => ()
+  }
   match pct_child(element, "lumMod") {
     Some(v) => result = @color.apply_lum_mod(result, v, is_alpha=has_alpha)
     None => ()

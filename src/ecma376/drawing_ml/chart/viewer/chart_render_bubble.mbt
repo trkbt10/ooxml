@@ -17,28 +17,57 @@ fn render_bubble_chart(
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
   disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
+  show_dlbls_over_max? : Bool = true,
 ) -> Array[@xml.Node] {
   let ser_elems = child_elements_named(elem, "ser")
   if !xy_series_has_rendered_points(ser_elems, disp_blanks_as) {
     return []
   }
   let (px, py, pw, ph) = chart_plot_inset(w, h, fw, fh, axes=Some(axes))
-  let max_x = effective_axis_max(
+  let max_x = effective_axis_max_from_scaling(
     xy_series_axis_max(ser_elems, "xVal", disp_blanks_as),
-    axes,
+    axes.val_x_scaling_max(),
   )
-  let max_y = effective_axis_max(
+  let max_y = effective_axis_max_from_scaling(
     xy_series_axis_max(ser_elems, "yVal", disp_blanks_as),
-    axes,
+    axes.val_y_scaling_max(),
   )
   // §21.2.2.170 — axis origin defaults to 0 for scatter/bubble.
-  let min_x = effective_axis_min(axes)
-  let min_y = effective_axis_min(axes)
+  let min_x = effective_axis_min_from_scaling(axes.val_x_scaling_min())
+  let min_y = effective_axis_min_from_scaling(axes.val_y_scaling_min())
   // §21.2.2.170 CT_Scaling / orientation — two INDEPENDENT value axes.
   let val_x_rev = axes.val_x_reversed()
   let val_y_rev = axes.val_y_reversed()
+  let vertical_axis_x = value_axis_cross_x(
+    px,
+    pw,
+    min_x,
+    max_x,
+    val_x_rev,
+    axes.val_x_crosses(),
+    axes.val_x_crosses_at(),
+  )
+  let horizontal_axis_y = value_axis_cross_y(
+    py,
+    ph,
+    min_y,
+    max_y,
+    val_y_rev,
+    axes.val_y_crosses(),
+    axes.val_y_crosses_at(),
+  )
   let nodes : Array[@xml.Node] = []
-  nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
+  nodes.push(
+    plot_axes_rect(
+      px,
+      py,
+      pw,
+      ph,
+      style=Some(style),
+      vertical_axis_x=Some(vertical_axis_x),
+      horizontal_axis_y=Some(horizontal_axis_y),
+    ),
+  )
   if !axes.val_deleted() {
     for
       tick in y_axis_ticks(
@@ -51,10 +80,20 @@ fn render_bubble_chart(
         axes.val_major(),
         style=Some(style),
         draw_minor_gridlines=axes.val_minor_gridlines(),
+        major_gridlines_element=axes.val_major_gridlines_element(),
+        minor_gridlines_element=axes.val_minor_gridlines_element(),
+        ctx=Some(ctx),
+        defs=Some(defs),
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        major_tick_mark=axes.val_major_tick_mark(),
+        minor_tick_mark=axes.val_minor_tick_mark(),
+        major_unit=axes.val_y_major_unit(),
+        minor_unit=axes.val_y_minor_unit(),
         reversed=val_y_rev,
+        axis_x=Some(vertical_axis_x),
+        display_unit_factor=axes.val_y_disp_unit_factor(),
       ) {
       nodes.push(tick)
     }
@@ -73,7 +112,16 @@ fn render_bubble_chart(
         fh,
         axes.val_major(),
         style=Some(style),
+        major_gridlines_element=axes.val_major_gridlines_element(),
+        ctx=Some(ctx),
+        defs=Some(defs),
+        major_tick_mark=axes.val_major_tick_mark(),
+        minor_tick_mark=axes.val_minor_tick_mark(),
+        major_unit=axes.val_x_major_unit(),
+        minor_unit=axes.val_x_minor_unit(),
         reversed=val_x_rev,
+        axis_y=Some(horizontal_axis_y),
+        display_unit_factor=axes.val_x_disp_unit_factor(),
       ) {
       nodes.push(tick)
     }
@@ -122,6 +170,7 @@ fn render_bubble_chart(
   // diameter is ≈ 18% of the shorter plot dimension → radius ≈ 9%.
   let base_r = (if pw < ph { pw } else { ph }) * 0.09
   let max_r = base_r * bubble_scale.to_double() / 100.0
+  let dlbl_config = read_data_labels(elem)
   for si in 0..<ser_elems.length() {
     let ser = ser_elems[si]
     let xs = read_axis_number_slots(ser, "xVal")
@@ -131,6 +180,14 @@ fn render_bubble_chart(
       continue
     }
     let series_color = resolve_series_color(ser, si, ctx, defs)
+    let ser_name = match read_series_name(ser) {
+      Some(nm) => nm
+      None => ""
+    }
+    let value_num_fmt = read_axis_number_format(ser, "yVal")
+    let bubble_size_num_fmt = read_axis_number_format(ser, "bubbleSize")
+    let label_points : Array[DataLabelPoint] = []
+    let total = sum_positive_slots(ys, disp_blanks_as)
     for point in chart_xy_rendered_points(xs, ys, disp_blanks_as) {
       let (j, xv, yv) = point
       // §21.2.2.170 — flip each axis's fraction independently under maxMin.
@@ -197,6 +254,42 @@ fn render_bubble_chart(
           ),
         )
       }
+      match dlbl_config {
+        Some(_) => {
+          let cat_name = (j + 1).to_string()
+          label_points.push({
+            idx: j,
+            x,
+            y,
+            value: yv,
+            cat_name,
+            bubble_size: Some(raw_bval),
+          })
+        }
+        None => ()
+      }
+    }
+    match dlbl_config {
+      Some(cfg) =>
+        for
+          nd in render_data_labels(
+            cfg,
+            label_points,
+            ser_name,
+            total,
+            w,
+            h,
+            -(h * 0.02),
+            style,
+            legend_key_color=Some(series_color),
+            value_num_fmt~,
+            bubble_size_num_fmt~,
+            show_over_max=show_dlbls_over_max,
+            max_value=axes.val_y_scaling_max(),
+          ) {
+          nodes.push(nd)
+        }
+      None => ()
     }
   }
   nodes

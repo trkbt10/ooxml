@@ -181,6 +181,58 @@ fn read_second_pie_size(elem : @xml.Element) -> Double {
 }
 
 ///|
+/// §21.2.2.194 CT_ChartLines / §20.1.2.2.24 ln — resolve the line
+/// properties carried by `<c:serLines>`.  Explicit `<a:noFill/>` means
+/// the requested chart line has no visible stroke.
+fn of_pie_ser_line_style(
+  ser_lines : @xml.Element,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  style : ChartStyleDefaults,
+  default_width : Double,
+) -> ChartLineStyle? {
+  chart_lines_style(
+    ser_lines,
+    ctx,
+    defs,
+    "chart-of-pie-ser-lines",
+    style.axis_color,
+    default_width,
+  )
+}
+
+///|
+/// §21.2.2.194 serLines — connector from the primary "Other" wedge to
+/// the secondary of-pie plot.  The caller has already proven that both
+/// tiers exist; this helper only applies the CT_ChartLines styling.
+fn render_of_pie_ser_line(
+  ser_lines : @xml.Element,
+  edge_x : Double,
+  edge_y : Double,
+  secondary_cx : Double,
+  secondary_cy : Double,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  style : ChartStyleDefaults,
+  default_width : Double,
+) -> @xml.Node? {
+  match of_pie_ser_line_style(ser_lines, ctx, defs, style, default_width) {
+    Some(line_style) => {
+      let attrs : Array[@xml.Attribute] = [
+        @markup.attr("x1", format_double(edge_x)),
+        @markup.attr("y1", format_double(edge_y)),
+        @markup.attr("x2", format_double(secondary_cx)),
+        @markup.attr("y2", format_double(secondary_cy)),
+        @markup.attr("data-ooxml", "chart-ser-lines"),
+      ]
+      push_chart_line_style_attrs(attrs, line_style)
+      Some(@markup.elem_ns("line", @markup.svg_ns, attrs, []))
+    }
+    None => None
+  }
+}
+
+///|
 /// §21.2.2.126 CT_OfPieChart — render a pie-of-pie / bar-of-pie chart.
 ///
 /// The single <c:ser> is split into PRIMARY and SECONDARY point sets
@@ -189,8 +241,9 @@ fn read_second_pie_size(elem : @xml.Element) -> Double {
 /// one aggregated "Other" wedge (value = Σ secondary points).  The
 /// SECONDARY plot occupies the RIGHT half: for ofPieType="pie" a smaller
 /// pie of the secondary points (diameter per secondPieSize), for
-/// ofPieType="bar" a single stacked vertical bar.  A connector line links
-/// the primary "Other" wedge to the secondary plot.
+/// ofPieType="bar" a single stacked vertical bar.  When `<c:serLines>`
+/// is present, a connector line links the primary "Other" wedge to the
+/// secondary plot.
 ///
 /// Signature mirrors the axis-bearing dispatch cases (`iw/ih` inner rect,
 /// `fw/fh` outer frame, `axes`, `style`, `defs`) so the dispatcher wires
@@ -229,6 +282,8 @@ fn render_of_pie_chart(
   let primary_slices : Array[PieSlice] = []
   let secondary_slices : Array[PieSlice] = []
   let dpt_overrides = collect_dpt_colors(ser, ctx, defs, "ofpie")
+  let series_color = resolve_series_color(ser, 0, ctx, defs)
+  let vary_colors = chart_vary_colors(elem)
   let mut other_value = 0.0
   for point in chart_rendered_points(values, disp_blanks_as) {
     let (i, v) = point
@@ -240,7 +295,12 @@ fn render_of_pie_chart(
     // collect_dpt_colors) first, falling back to the palette by index.
     let color = match dpt_color_for(dpt_overrides, i) {
       Some(c) => c
-      None => chart_series_color(ctx, i)
+      None =>
+        if vary_colors {
+          chart_series_color(ctx, i)
+        } else {
+          series_color
+        }
     }
     if is_secondary[i] {
       secondary_slices.push({ value: v, color, explosion_pct: 0 })
@@ -265,7 +325,11 @@ fn render_of_pie_chart(
 
   // §21.2.2.227 — the aggregated "Other" wedge takes the next palette
   // colour after the primary points (so it reads distinctly from them).
-  let other_color = chart_series_color(ctx, primary_slices.length())
+  let other_color = if vary_colors {
+    chart_series_color(ctx, primary_slices.length())
+  } else {
+    series_color
+  }
   if other_value > 0.0 {
     primary_slices.push({
       value: other_value,
@@ -318,35 +382,39 @@ fn render_of_pie_chart(
     t
   }
 
-  // Connector: link the primary "Other" wedge midpoint to the secondary
-  // plot.  Drawn BEFORE the secondary shapes so it sits beneath them.
+  // §21.2.2.194 serLines — link the primary "Other" wedge midpoint to
+  // the secondary plot.  Drawn BEFORE the secondary shapes so it sits
+  // beneath them.
   // The "Other" wedge is the LAST primary slice; its midpoint angle is
   // start + (primary_total - other_value)/primary_total*360 + half its
   // own sweep.
-  if other_value > 0.0 && secondary_total > 0.0 {
-    let pi = 3.141592653589793
-    let other_start = start_deg.to_double() +
-      (primary_total - other_value) / primary_total * 360.0
-    let other_mid = other_start + other_value / primary_total * 360.0 / 2.0
-    let a = (other_mid - 90.0) * pi / 180.0
-    let edge_x = primary_cx + primary_outer * @math.cos(a)
-    let edge_y = primary_cy + primary_outer * @math.sin(a)
-    nodes.push(
-      @markup.elem_ns(
-        "line",
-        @markup.svg_ns,
-        [
-          @markup.attr("x1", format_double(edge_x)),
-          @markup.attr("y1", format_double(edge_y)),
-          @markup.attr("x2", format_double(secondary_cx)),
-          @markup.attr("y2", format_double(secondary_cy)),
-          @markup.attr("stroke", "#808080"),
-          @markup.attr("stroke-width", format_double(primary_outer * 0.02)),
-          @markup.attr("stroke-dasharray", "4,3"),
-        ],
-        [],
-      ),
-    )
+  match first_child_named(elem, "serLines") {
+    Some(ser_lines) =>
+      if other_value > 0.0 && secondary_total > 0.0 {
+        let pi = 3.141592653589793
+        let other_start = start_deg.to_double() +
+          (primary_total - other_value) / primary_total * 360.0
+        let other_mid = other_start + other_value / primary_total * 360.0 / 2.0
+        let a = (other_mid - 90.0) * pi / 180.0
+        let edge_x = primary_cx + primary_outer * @math.cos(a)
+        let edge_y = primary_cy + primary_outer * @math.sin(a)
+        match
+          render_of_pie_ser_line(
+            ser_lines,
+            edge_x,
+            edge_y,
+            secondary_cx,
+            secondary_cy,
+            ctx,
+            defs,
+            style,
+            primary_outer * 0.02,
+          ) {
+          Some(line) => nodes.push(line)
+          None => ()
+        }
+      }
+    None => ()
   }
 
   if secondary_total > 0.0 {
@@ -388,6 +456,7 @@ fn render_of_pie_chart(
         Some(nm) => nm
         None => ""
       }
+      let value_num_fmt = read_val_number_format(ser)
       let pi = 3.141592653589793
       let label_r = primary_outer * 0.6
       let font_size = (if half_w < h { half_w } else { h }) * 0.04
@@ -408,7 +477,12 @@ fn render_of_pie_chart(
         let ly = primary_cy + label_r * @math.sin(a)
         let cat_name = if i < cat_labels.length() { cat_labels[i] } else { "" }
         let text = build_data_label_text(
-          cfg, v, cat_name, ser_name, primary_total,
+          cfg,
+          v,
+          cat_name,
+          ser_name,
+          primary_total,
+          value_num_fmt~,
         )
         if text.length() > 0 {
           nodes.push(of_pie_label(lx, ly, text, font_size, style))
@@ -423,7 +497,12 @@ fn render_of_pie_chart(
         let lx = primary_cx + label_r * @math.cos(a)
         let ly = primary_cy + label_r * @math.sin(a)
         let text = build_data_label_text(
-          cfg, other_value, "Other", ser_name, primary_total,
+          cfg,
+          other_value,
+          "Other",
+          ser_name,
+          primary_total,
+          value_num_fmt~,
         )
         if text.length() > 0 {
           nodes.push(of_pie_label(lx, ly, text, font_size, style))

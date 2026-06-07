@@ -116,13 +116,21 @@ pub fn CT_PivotCacheDefinition::new(
   let background_query = attr_bool_schema(
     element, "backgroundQuery", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
   )
-  let missing_items_limit = attr_uint_opt_schema(element, "missingItemsLimit")
-  let created_version = attr_uint_schema(element, "createdVersion", 0)
-  let refreshed_version = attr_uint_schema(element, "refreshedVersion", 0)
-  let min_refreshable_version = attr_uint_schema(
-    element, "minRefreshableVersion", 0,
+  let missing_items_limit = attr_uint_opt_schema_at(
+    element, "missingItemsLimit", "Part 1 §18.10.1.67", "pivotCacheDefinition",
   )
-  let record_count = attr_uint_opt_schema(element, "recordCount")
+  let created_version = attr_uint_schema_at(
+    element, "createdVersion", 0, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let refreshed_version = attr_uint_schema_at(
+    element, "refreshedVersion", 0, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let min_refreshable_version = attr_uint_schema_at(
+    element, "minRefreshableVersion", 0, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let record_count = attr_uint_opt_schema_at(
+    element, "recordCount", "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
   let upgrade_on_refresh = attr_bool_schema(
     element, "upgradeOnRefresh", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
   )

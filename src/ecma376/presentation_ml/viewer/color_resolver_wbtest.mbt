@@ -77,6 +77,25 @@ test "schemeClr respects colorMap (tx1 → dk1)" {
 }
 
 ///|
+test "schemeClr respects colorMap for accent slots" {
+  let elt = make_elt("schemeClr", [("val", "accent1")], [])
+  let scheme : ColorScheme = { "accent2": "ed7d31" }
+  let cm : ColorMap = { "accent1": "accent2" }
+  let ctx : ColorResolveContext = {
+    color_map: cm,
+    color_map_override: None,
+    color_scheme: scheme,
+    ph_clr: None,
+    major_font: Map([], capacity=0),
+    minor_font: Map([], capacity=0),
+    clamp_overflow_hue: true,
+    group_fill: None,
+  }
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.hex, content="ed7d31")
+}
+
+///|
 test "prstClr resolves CSS named color" {
   let elt = make_elt("prstClr", [("val", "red")], [])
   let ctx = ColorResolveContext::empty()
@@ -121,6 +140,24 @@ test "alpha 50 percent suffix is captured" {
 }
 
 ///|
+test "alphaMod 50% scales opaque alpha" {
+  let alpha_mod = make_elt("alphaMod", [("val", "50000")], [])
+  let elt = make_elt("srgbClr", [("val", "FF0000")], [alpha_mod])
+  let ctx = ColorResolveContext::empty()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.alpha, content="0.5")
+}
+
+///|
+test "alphaOff can reduce opaque alpha" {
+  let alpha_off = make_elt("alphaOff", [("val", "-50%")], [])
+  let elt = make_elt("srgbClr", [("val", "FF0000")], [alpha_off])
+  let ctx = ColorResolveContext::empty()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.alpha, content="0.5")
+}
+
+///|
 test "format_resolved_color emits #hex or rgba" {
   let opaque_color : ResolvedColor = { hex: "abcdef", alpha: 1.0 }
   inspect(@paint.format_resolved_color(opaque_color), content="#abcdef")
@@ -156,6 +193,33 @@ test "hueOff rotates hue by 90 degrees" {
   // Pure red (H=0) + 90° → H=90 → yellow-green region.
   // HSL(90, 1, 0.5) → #80ff00.
   inspect(rc.hex, content="80ff00")
+}
+
+///|
+test "hue sets an absolute hue" {
+  let hue = make_elt("hue", [("val", "7200000")], [])
+  let elt = make_elt("srgbClr", [("val", "FF0000")], [hue])
+  let ctx = ColorResolveContext::empty()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.hex, content="00ff00")
+}
+
+///|
+test "sat sets an absolute saturation" {
+  let sat = make_elt("sat", [("val", "0")], [])
+  let elt = make_elt("srgbClr", [("val", "FF0000")], [sat])
+  let ctx = ColorResolveContext::empty()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.hex, content="808080")
+}
+
+///|
+test "lum sets an absolute luminance" {
+  let lum = make_elt("lum", [("val", "25000")], [])
+  let elt = make_elt("srgbClr", [("val", "FF0000")], [lum])
+  let ctx = ColorResolveContext::empty()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.hex, content="800000")
 }
 
 ///|

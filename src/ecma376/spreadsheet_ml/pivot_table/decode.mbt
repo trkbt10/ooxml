@@ -71,6 +71,14 @@ pub fn decode_pivot_cache_definition(
     save_data,
     invalid,
     refresh_on_load,
+    cache_hierarchies: definition.cache_hierarchies,
+    kpis: definition.kpis,
+    tuple_cache: definition.tuple_cache,
+    calculated_items: definition.calculated_items,
+    calculated_members: definition.calculated_members,
+    dimensions: definition.dimensions,
+    measure_groups: definition.measure_groups,
+    maps: definition.maps,
   }
 }
 
@@ -551,6 +559,12 @@ pub fn decode_pivot_table_definition(
     page_fields,
     filters: pivot_filters,
     data_fields,
+    formats: definition.formats,
+    conditional_formats: definition.conditional_formats,
+    chart_formats: definition.chart_formats,
+    pivot_hierarchies: definition.pivot_hierarchies,
+    row_hierarchies_usage: definition.row_hierarchies_usage,
+    col_hierarchies_usage: definition.col_hierarchies_usage,
     style_info,
   }
 }
@@ -644,19 +658,19 @@ fn decode_pivot_field(
   let subtotal_top = decode_bool_attr(element, "subtotalTop", true)
   let default_subtotal = decode_bool_attr(element, "defaultSubtotal", true)
   let items : Array[PivotItemDef] = []
+  let mut items_declared_count : Int? = None
+  let mut auto_sort_scope : @domain.CT_AutoSortScope? = None
   for child in element.children {
     match child {
       @xml.Element(child_element) =>
         if child_element.name.local_name == "items" {
-          for inner in child_element.children {
-            match inner {
-              @xml.Element(item_element) =>
-                if item_element.name.local_name == "item" {
-                  items.push(decode_pivot_item(item_element))
-                }
-              _ => ()
-            }
+          let typed_items = @domain.CT_Items::new(child_element)
+          items_declared_count = typed_items.count
+          for item in typed_items.item {
+            items.push(decode_pivot_item(item.element))
           }
+        } else if child_element.name.local_name == "autoSortScope" {
+          auto_sort_scope = Some(@domain.CT_AutoSortScope::new(child_element))
         }
       _ => ()
     }
@@ -671,6 +685,8 @@ fn decode_pivot_field(
     subtotal_top,
     default_subtotal,
     items,
+    items_declared_count,
+    auto_sort_scope,
   }
 }
 

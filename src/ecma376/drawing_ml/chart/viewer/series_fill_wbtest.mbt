@@ -64,14 +64,26 @@ fn sf_numval(vals : Array[String]) -> @xml.Node {
 ///|
 /// A single-series column `<c:barChart>` whose series `<c:spPr>` carries
 /// the supplied fill element (or none when `sp_pr_kids` is empty).
-fn sf_bar_chart(sp_pr_kids : Array[@xml.Node]) -> @xml.Element {
+fn sf_bar_chart_with_values(
+  sp_pr_kids : Array[@xml.Node],
+  values : Array[String],
+  invert_if_negative : Bool,
+) -> @xml.Element {
   let ser_kids : Array[@xml.Node] = []
   if sp_pr_kids.length() > 0 {
     ser_kids.push(sf_cn("spPr", [], sp_pr_kids))
   }
-  ser_kids.push(sf_numval(["10", "20", "30"]))
+  if invert_if_negative {
+    ser_kids.push(sf_cn("invertIfNegative", [("val", "1")], []))
+  }
+  ser_kids.push(sf_numval(values))
   let ser = sf_cn("ser", [], ser_kids)
   sf_c("barChart", [], [sf_cn("barDir", [("val", "col")], []), ser])
+}
+
+///|
+fn sf_bar_chart(sp_pr_kids : Array[@xml.Node]) -> @xml.Element {
+  sf_bar_chart_with_values(sp_pr_kids, ["10", "20", "30"], false)
 }
 
 ///|
@@ -176,6 +188,20 @@ test "series solidFill renders an unchanged solid hex fill (no defs)" {
   // The bar carries the literal resolved hex fill (legacy behaviour).
   assert_true(svg.contains("fill=\"#abcdef\""))
   assert_true(!svg.contains("url(#"))
+}
+
+///|
+test "bar invertIfNegative inverts the negative solid fill" {
+  // §21.2.2.84 invertIfNegative — negative points in this series use
+  // the inverted series fill, while positive points keep the original.
+  let solid = sf_a("solidFill", [], [sf_a("srgbClr", [("val", "112233")], [])])
+  let (svg, defs) = sf_render(
+    sf_bar_chart_with_values([solid], ["10", "-5"], true),
+  )
+  assert_eq(defs, "")
+  assert_true(svg.contains("fill=\"#112233\""))
+  assert_true(svg.contains("fill=\"#eeddcc\""))
+  assert_true(!svg.contains("height=\"-"))
 }
 
 ///|

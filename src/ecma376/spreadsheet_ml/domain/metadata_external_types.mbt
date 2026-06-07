@@ -1793,6 +1793,40 @@ fn attr_uint_opt_schema(
 }
 
 ///|
+fn attr_uint_schema_at(
+  element : @xml.Element,
+  local_name : String,
+  default : Int,
+  section : String,
+  path_prefix : String,
+) -> Int raise @opc_errors.SchemaViolation {
+  match attr_uint_opt_schema_at(element, local_name, section, path_prefix) {
+    Some(n) => n
+    None => default
+  }
+}
+
+///|
+fn attr_uint_opt_schema_at(
+  element : @xml.Element,
+  local_name : String,
+  section : String,
+  path_prefix : String,
+) -> Int? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_uint_text(value) {
+        Some(n) => Some(n)
+        None =>
+          raise_numeric_attr_violation_at(
+            local_name, "xsd:unsignedInt", value, section, path_prefix,
+          )
+      }
+    None => None
+  }
+}
+
+///|
 fn[T] raise_numeric_attr_violation(
   element : @xml.Element,
   local_name : String,
@@ -1802,6 +1836,21 @@ fn[T] raise_numeric_attr_violation(
     section="Part 1 §18 SpreadsheetML",
     path=element.name.local_name + "/@" + local_name,
     reason="value is outside " + type_name,
+  )
+}
+
+///|
+fn[T] raise_numeric_attr_violation_at(
+  local_name : String,
+  type_name : String,
+  value : String,
+  section : String,
+  path_prefix : String,
+) -> T raise @opc_errors.SchemaViolation {
+  raise @opc_errors.SchemaViolation(
+    section~,
+    path=path_prefix + "/@" + local_name,
+    reason="expected " + type_name + " lexical, got " + value,
   )
 }
 
@@ -2056,12 +2105,46 @@ fn attr_double_opt_schema(
 }
 
 ///|
+fn attr_double_opt_schema_at(
+  element : @xml.Element,
+  local_name : String,
+  section : String,
+  path_prefix : String,
+) -> Double? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_double_text(value) {
+        Some(n) => Some(n)
+        None =>
+          raise_numeric_attr_violation_at(
+            local_name, "xsd:double", value, section, path_prefix,
+          )
+      }
+    None => None
+  }
+}
+
+///|
 fn attr_double_schema(
   element : @xml.Element,
   local_name : String,
   default : Double,
 ) -> Double raise @opc_errors.SchemaViolation {
   match attr_double_opt_schema(element, local_name) {
+    Some(d) => d
+    None => default
+  }
+}
+
+///|
+fn attr_double_schema_at(
+  element : @xml.Element,
+  local_name : String,
+  default : Double,
+  section : String,
+  path_prefix : String,
+) -> Double raise @opc_errors.SchemaViolation {
+  match attr_double_opt_schema_at(element, local_name, section, path_prefix) {
     Some(d) => d
     None => default
   }

@@ -3,7 +3,7 @@
 
 ///|
 fn ce(
-  local : String,
+  local_name : String,
   attrs : Array[(String, String)],
   kids : Array[@xml.Node],
 ) -> @xml.Node {
@@ -13,7 +13,25 @@ fn ce(
     a.push({ name: { prefix: None, local_name: k, ns: None }, value: v })
   }
   @xml.Node::Element({
-    name: { prefix: Some("c"), local_name: local, ns: None },
+    name: { prefix: Some("c"), local_name, ns: None },
+    attributes: a,
+    children: kids,
+  })
+}
+
+///|
+fn ll_a(
+  local_name : String,
+  attrs : Array[(String, String)],
+  kids : Array[@xml.Node],
+) -> @xml.Node {
+  let a : Array[@xml.Attribute] = []
+  for kv in attrs {
+    let (k, v) = kv
+    a.push({ name: { prefix: None, local_name: k, ns: None }, value: v })
+  }
+  @xml.Node::Element({
+    name: { prefix: Some("a"), local_name, ns: None },
     attributes: a,
     children: kids,
   })
@@ -21,8 +39,18 @@ fn ce(
 
 ///|
 fn pie_with_dlbls(dlbl_kids : Array[@xml.Node]) -> @xml.Element {
+  pie_with_dlbls_value_fmt(dlbl_kids, "General")
+}
+
+///|
+fn pie_with_dlbls_value_fmt(
+  dlbl_kids : Array[@xml.Node],
+  value_fmt : String,
+) -> @xml.Element {
   // values 30,50,20 via <c:val><c:numRef><c:numCache><c:pt><c:v>.
   let pts = [
+    ce("formatCode", [], [@xml.Node::Text(value_fmt)]),
+    ce("ptCount", [("val", "3")], []),
     ce("pt", [("idx", "0")], [ce("v", [], [@xml.Node::Text("30")])]),
     ce("pt", [("idx", "1")], [ce("v", [], [@xml.Node::Text("50")])]),
     ce("pt", [("idx", "2")], [ce("v", [], [@xml.Node::Text("20")])]),
@@ -121,6 +149,73 @@ test "pie showLeaderLines honours xsd boolean false token" {
 }
 
 ///|
+test "pie leaderLines spPr drives connector stroke" {
+  let dlbls = [
+    ce("showVal", [("val", "1")], []),
+    ce("dLblPos", [("val", "outEnd")], []),
+    ce("leaderLines", [], [
+      ce("spPr", [], [
+        ll_a("ln", [("w", "19050"), ("cap", "rnd")], [
+          ll_a("solidFill", [], [ll_a("srgbClr", [("val", "8090A0")], [])]),
+          ll_a("prstDash", [("val", "dash")], []),
+        ]),
+      ]),
+    ]),
+  ]
+  let elem = pie_with_dlbls(dlbls)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
+    hole_percent=None,
+  )
+  let sb = StringBuilder::new()
+  for nd in nodes {
+    match nd {
+      @xml.Node::Element(e) => sb.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  let svg = sb.to_string()
+  assert_true(svg.contains("stroke=\"#8090a0\""))
+  assert_true(svg.contains("stroke-width=\"2\""))
+  assert_true(svg.contains("stroke-dasharray=\"8 6\""))
+  assert_true(svg.contains("stroke-linecap=\"round\""))
+}
+
+///|
+test "pie leaderLines noFill suppresses connector stroke" {
+  let dlbls = [
+    ce("showVal", [("val", "1")], []),
+    ce("dLblPos", [("val", "outEnd")], []),
+    ce("leaderLines", [], [
+      ce("spPr", [], [ll_a("ln", [], [ll_a("noFill", [], [])])]),
+    ]),
+  ]
+  let elem = pie_with_dlbls(dlbls)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
+    hole_percent=None,
+  )
+  let sb = StringBuilder::new()
+  for nd in nodes {
+    match nd {
+      @xml.Node::Element(e) => sb.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  let svg = sb.to_string()
+  assert_true(!svg.contains("<line "))
+  assert_true(svg.contains(">30<"))
+}
+
+///|
 test "pie showVal without val uses CT_Boolean default true" {
   let dlbls = [ce("showVal", [], [])]
   let elem = pie_with_dlbls(dlbls)
@@ -140,4 +235,77 @@ test "pie showVal without val uses CT_Boolean default true" {
     }
   }
   assert_true(sb.to_string().contains(">30<"))
+}
+
+///|
+test "pie data label separator joins visible components" {
+  let dlbls = [
+    ce("showVal", [("val", "1")], []),
+    ce("showPercent", [("val", "1")], []),
+    ce("separator", [], [@xml.Node::Text(" / ")]),
+  ]
+  let elem = pie_with_dlbls(dlbls)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
+    hole_percent=None,
+  )
+  let sb = StringBuilder::new()
+  for nd in nodes {
+    match nd {
+      @xml.Node::Element(e) => sb.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  assert_true(sb.to_string().contains(">30 / 30%<"))
+}
+
+///|
+test "pie data label numFmt formats numeric value" {
+  let dlbls = [
+    ce("showVal", [("val", "1")], []),
+    ce("numFmt", [("formatCode", "0.00"), ("sourceLinked", "0")], []),
+  ]
+  let elem = pie_with_dlbls(dlbls)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
+    hole_percent=None,
+  )
+  let sb = StringBuilder::new()
+  for nd in nodes {
+    match nd {
+      @xml.Node::Element(e) => sb.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  assert_true(sb.to_string().contains(">30.00<"))
+}
+
+///|
+test "pie data label uses value cache format when numFmt is absent" {
+  let dlbls = [ce("showVal", [("val", "1")], [])]
+  let elem = pie_with_dlbls_value_fmt(dlbls, "0.00")
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
+    hole_percent=None,
+  )
+  let sb = StringBuilder::new()
+  for nd in nodes {
+    match nd {
+      @xml.Node::Element(e) => sb.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  assert_true(sb.to_string().contains(">30.00<"))
 }

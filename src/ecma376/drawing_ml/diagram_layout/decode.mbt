@@ -46,6 +46,7 @@ pub fn decode_layout_node(
   let mut shape : Shape? = None
   let mut pres_of : PresOfSpec? = None
   let constraints : Array[Constraint] = []
+  let layout_vars : Array[(String, String)] = []
   let children : Array[LayoutChild] = []
   for child in element.children {
     match child {
@@ -59,6 +60,10 @@ pub fn decode_layout_node(
           pres_of = Some(decode_pres_of(node))
         } else if local_name == "constrLst" {
           decode_constraint_list(node, constraints)
+        } else if local_name == "ruleLst" {
+          decode_rule_list(node, constraints)
+        } else if local_name == "varLst" {
+          decode_layout_variable_list(node, layout_vars)
         } else if local_name == "layoutNode" {
           children.push(LcNode(decode_layout_node(node)))
         } else if local_name == "choose" {
@@ -78,7 +83,72 @@ pub fn decode_layout_node(
     shape,
     pres_of,
     constraints,
+    layout_vars,
     children,
+  }
+}
+
+///|
+/// Part 1 §21.4.2.31 varLst — decode layout variable property
+/// values into the lexical keys used by `if func="var" arg="…"`:
+/// `orgChart`, `chMax`, `chPref`, `bulEnabled`, `dir`,
+/// `hierBranch`, `animOne`, `animLvl`, and `resizeHandles`.
+fn decode_layout_variable_list(
+  element : @xml.Element,
+  sink : Array[(String, String)],
+) -> Unit raise @opc_errors.SchemaViolation {
+  let typed = @domain.CT_LayoutVariablePropertySet::new(element) catch {
+    @domain.SchemaViolation(schema=_, path=p, reason~) =>
+      raise @opc_errors.SchemaViolation(
+        section=diagram_layout_section,
+        path=p,
+        reason~,
+      )
+  }
+  match typed.org_chart {
+    Some(v) => sink.push(("orgChart", bool_lex(v.val)))
+    None => ()
+  }
+  match typed.ch_max {
+    Some(v) => sink.push(("chMax", v.val.to_string()))
+    None => ()
+  }
+  match typed.ch_pref {
+    Some(v) => sink.push(("chPref", v.val.to_string()))
+    None => ()
+  }
+  match typed.bullet_enabled {
+    Some(v) => sink.push(("bulEnabled", bool_lex(v.val)))
+    None => ()
+  }
+  match typed.dir {
+    Some(v) => sink.push(("dir", v.val.to_string()))
+    None => ()
+  }
+  match typed.hier_branch {
+    Some(v) => sink.push(("hierBranch", v.val.to_string()))
+    None => ()
+  }
+  match typed.anim_one {
+    Some(v) => sink.push(("animOne", v.val.to_string()))
+    None => ()
+  }
+  match typed.anim_lvl {
+    Some(v) => sink.push(("animLvl", v.val.to_string()))
+    None => ()
+  }
+  match typed.resize_handles {
+    Some(v) => sink.push(("resizeHandles", v.val.to_string()))
+    None => ()
+  }
+}
+
+///|
+fn bool_lex(value : Bool) -> String {
+  if value {
+    "true"
+  } else {
+    "false"
   }
 }
 
@@ -135,7 +205,48 @@ pub fn decode_shape(
     }
     @domain.LayoutShapeTypeOutput(_) => None
   }
-  { preset, hide_geom: typed.hide_geom }
+  {
+    preset,
+    hide_geom: typed.hide_geom,
+    adjustments: diagram_shape_adjustments(typed),
+  }
+}
+
+///|
+fn diagram_shape_adjustments(
+  shape : @domain.CT_Shape,
+) -> Array[@preset_geometry.Adjustment] {
+  let out : Array[@preset_geometry.Adjustment] = []
+  let adj_lst = match shape.adj_lst {
+    Some(a) => a
+    None => return out
+  }
+  for adj in adj_lst.adj {
+    let idx_text = adj.idx.to_string()
+    let value = diagram_adjustment_value(adj.val)
+    if idx_text == "1" {
+      out.push({
+        name: "adj",
+        raw_formula: "val " + value.to_string(),
+        value: Some(value),
+      })
+    }
+    out.push({
+      name: "adj" + idx_text,
+      raw_formula: "val " + value.to_string(),
+      value: Some(value),
+    })
+  }
+  out
+}
+
+///|
+fn diagram_adjustment_value(value : Double) -> Int {
+  if value >= 0.0 {
+    (value + 0.5).to_int()
+  } else {
+    (value - 0.5).to_int()
+  }
 }
 
 ///|
@@ -327,6 +438,57 @@ pub fn decode_constraint_list(
 }
 
 ///|
+/// Part 1 §21.4.2.25 ruleLst — numeric layout rules share
+/// AG_ConstraintAttributes with constr. The layout engine consumes the
+/// same `Constraint` SoT, so rules are normalised into that record here.
+pub fn decode_rule_list(
+  list_element : @xml.Element,
+  sink : Array[Constraint],
+) -> Unit raise @opc_errors.SchemaViolation {
+  let typed = @domain.CT_Rules::new(list_element) catch {
+    @domain.SchemaViolation(schema=_, path=p, reason~) =>
+      raise @opc_errors.SchemaViolation(
+        section=diagram_layout_section,
+        path=p,
+        reason~,
+      )
+  }
+  for rule in typed.rule {
+    sink.push(decode_numeric_rule(rule))
+  }
+}
+
+///|
+fn decode_numeric_rule(rule : @domain.CT_NumericRule) -> Constraint {
+  let for_target = match rule.for_.to_string() {
+    "self" => None
+    other => Some(other)
+  }
+  let for_name = if rule.for_name.length() > 0 {
+    Some(rule.for_name)
+  } else {
+    None
+  }
+  let pt_type = match rule.pt_type.to_string() {
+    "all" => None
+    other => Some(other)
+  }
+  {
+    kind: ConstraintKind::from_attr(rule.type_.to_string()),
+    for_target,
+    for_name,
+    pt_type,
+    ref_type: None,
+    ref_for_target: None,
+    ref_for_name: None,
+    ref_pt_type: None,
+    op: None,
+    val: rule.val,
+    fact: rule.fact,
+  }
+}
+
+///|
 /// Part 1 §21.4.2.8 constr — decode a single constraint. The
 /// schema makes `@type` required; missing values raise
 /// `SchemaViolation`. `val` / `fact` are parsed as `Double`;
@@ -463,6 +625,7 @@ fn assign_parent_ids(
       text: point.text,
       pr_set: point.pr_set,
       sp_pr: point.sp_pr,
+      layout_vars: point.layout_vars,
     })
   }
   result
@@ -503,6 +666,7 @@ pub fn decode_point(
   let mut text : String? = None
   let mut pr_set : @xml.Element? = None
   let mut sp_pr : @xml.Element? = None
+  let layout_vars : Array[(String, String)] = []
   for child in element.children {
     match child {
       @xml.Element(node) => {
@@ -511,6 +675,7 @@ pub fn decode_point(
           text = Some(collect_text(node))
         } else if local_name == "prSet" {
           pr_set = Some(node)
+          decode_pres_layout_vars_from_pr_set(node, layout_vars)
         } else if local_name == "spPr" {
           sp_pr = Some(node)
         }
@@ -518,7 +683,26 @@ pub fn decode_point(
       _ => ()
     }
   }
-  { id, point_type, parent_id: None, text, pr_set, sp_pr }
+  { id, point_type, parent_id: None, text, pr_set, sp_pr, layout_vars }
+}
+
+///|
+/// Part 1 §21.4.5.4 presLayoutVars — decode point-scoped layout
+/// variables from prSet by reusing the exact CT_LayoutVariablePropertySet
+/// projection used for layoutNode/varLst.
+fn decode_pres_layout_vars_from_pr_set(
+  pr_set : @xml.Element,
+  sink : Array[(String, String)],
+) -> Unit raise @opc_errors.SchemaViolation {
+  for child in pr_set.children {
+    match child {
+      @xml.Element(node) =>
+        if node.name.local_name == "presLayoutVars" {
+          decode_layout_variable_list(node, sink)
+        }
+      _ => ()
+    }
+  }
 }
 
 ///|

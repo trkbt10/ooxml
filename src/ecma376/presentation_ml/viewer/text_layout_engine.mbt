@@ -43,10 +43,14 @@ fn bullet_width_of(bullet : BulletConfig?) -> Double {
   match bullet {
     None => 0.0
     Some(b) =>
-      try estimate_bullet_width(b.char, b.font_size, b.font_family) catch {
-        _ => 0.0
-      } noraise {
-        w => w
+      if b.image_url is Some(_) {
+        b.font_size * @glyph.pt_to_px
+      } else {
+        try estimate_bullet_width(b.char, b.font_size, b.font_family) catch {
+          _ => 0.0
+        } noraise {
+          w => w
+        }
       }
   }
 }
@@ -90,6 +94,7 @@ fn scale_bullet(bullet : BulletConfig?, percent : Double) -> BulletConfig? {
       Some({
         char: b.char,
         font_size: b.font_size * percent / 100.0,
+        font_size_percent: b.font_size_percent,
         color: b.color,
         font_family: b.font_family,
         image_url: b.image_url,
@@ -195,6 +200,93 @@ fn position_spans(spans : Array[MeasuredSpan]) -> Array[PositionedSpan] {
 }
 
 ///|
+fn measure_span_text_like(source : LayoutSpan, text : String) -> MeasuredSpan {
+  let span : LayoutSpan = { ..source, text, }
+  let width = try
+    @glyph.measure_text_width(
+      text,
+      font_size_pt=span.font_size,
+      letter_spacing_px=span.letter_spacing,
+      family=span.font_family,
+      weight=span.font_weight,
+    )
+  catch {
+    _ => 0.0
+  } noraise {
+    w => w
+  }
+  { span, width }
+}
+
+///|
+fn next_tab_advance(
+  current_x : Double,
+  default_tab_size : Double,
+  tab_stops : Array[LayoutTabStop],
+) -> Double {
+  let epsilon = 0.01
+  let mut best : Double? = None
+  for stop in tab_stops {
+    if stop.position > current_x + epsilon {
+      match best {
+        None => best = Some(stop.position)
+        Some(v) => if stop.position < v { best = Some(stop.position) }
+      }
+    }
+  }
+  match best {
+    Some(pos) => (pos - current_x).max(0.0)
+    None => {
+      let step = if default_tab_size > 0.0 { default_tab_size } else { 96.0 }
+      let next_index = (current_x / step).floor().to_int() + 1
+      (next_index.to_double() * step - current_x).max(0.0)
+    }
+  }
+}
+
+///|
+fn expand_tabs_in_measured_spans(
+  spans : Array[MeasuredSpan],
+  default_tab_size : Double,
+  tab_stops : Array[LayoutTabStop],
+) -> Array[MeasuredSpan] {
+  let out : Array[MeasuredSpan] = []
+  let mut current_x = 0.0
+  for item in spans {
+    if item.span.is_break {
+      out.push(item)
+      current_x = 0.0
+      continue
+    }
+    let mut buf = StringBuilder::new()
+    for ch in item.span.text {
+      if ch == '\t' {
+        let segment = buf.to_string()
+        if segment.length() > 0 {
+          let measured = measure_span_text_like(item.span, segment)
+          current_x = current_x + measured.width
+          out.push(measured)
+        }
+        buf = StringBuilder::new()
+        let adv = next_tab_advance(current_x, default_tab_size, tab_stops)
+        let tab_span : LayoutSpan = { ..item.span, text: " " }
+        out.push({ span: tab_span, width: adv })
+        current_x = current_x + adv
+      } else {
+        buf.write_char(ch)
+      }
+    }
+    let tail = buf.to_string()
+    if tail.length() > 0 {
+      let measured = measure_span_text_like(item.span, tail)
+      current_x = current_x + measured.width
+      out.push(measured)
+    }
+  }
+  out
+}
+
+///|
 /// X-position of one line given alignment + margins.  Mirrors
 /// `calculateLineX` in `engine.ts:268`.
 ///
@@ -264,6 +356,11 @@ fn layout_paragraph(
   } noraise {
     m => m
   }
+  let measured_spans = expand_tabs_in_measured_spans(
+    measured,
+    para.default_tab_size,
+    para.tab_stops,
+  )
   let bw = bullet_width_of(para.bullet)
   // Hanging-indent snap: when the bullet area fits entirely inside
   // the negative-indent slot (`bw < -ind`) the first-line text origin
@@ -282,7 +379,7 @@ fn layout_paragraph(
   }
   let next_line_width = cw - ml - mr
   let { lines: span_lines, line_heights } = break_into_lines(
-    measured,
+    measured_spans,
     if first_line_width < 0.0 {
       0.0
     } else {

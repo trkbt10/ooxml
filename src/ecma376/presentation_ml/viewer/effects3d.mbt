@@ -952,21 +952,21 @@ fn attr_emu_d(
 
 ///|
 /// §20.1.5.7 `<a:extrusionClr>` (child of §20.1.5.12 sp3d) —
-/// pull the first
-/// `<a:srgbClr>` or `<a:sysClr lastClr>` colour from the
-/// `<a:extrusionClr>` child.  Returns `currentColor` when the
-/// child is absent or carries a colour we can't resolve without
-/// the full DML colour cascade.
+/// resolve the first DrawingML colour child from the
+/// `<a:extrusionClr>` child. Returns `currentColor` when the child is
+/// absent or carries a theme-bound colour that cannot resolve without
+/// the deck's colour scheme.
 fn resolve_extrusion_color(sp3d : @xml.Element) -> String {
   resolve_sp3d_color(sp3d, "extrusionClr")
 }
 
 ///|
 /// §20.1.5.12 `<a:sp3d>` colour child resolver — return the first
-/// `srgbClr` / `sysClr` colour under the named child (`extrusionClr`
-/// or `contourClr`), or `currentColor` so the SVG cascade resolves the
+/// DrawingML colour under the named child (`extrusionClr` or
+/// `contourClr`), or `currentColor` so the SVG cascade resolves the
 /// hue upstream when the colour is absent or scheme-bound.
 fn resolve_sp3d_color(sp3d : @xml.Element, child_name : String) -> String {
+  let ctx = ColorResolveContext::empty()
   for child in sp3d.children {
     match child {
       @xml.Node::Element(el) =>
@@ -974,18 +974,14 @@ fn resolve_sp3d_color(sp3d : @xml.Element, child_name : String) -> String {
           for grand in el.children {
             match grand {
               @xml.Node::Element(color_el) =>
-                match color_el.name.local_name {
-                  "srgbClr" =>
-                    match attr_value(color_el, "val") {
-                      Some(v) => return "#" + v.to_lower()
-                      None => ()
+                match @paint.resolve_solid_fill(color_el, ctx~) {
+                  Some(rc) => {
+                    let color = @paint.format_resolved_color(rc)
+                    if color != "none" {
+                      return color
                     }
-                  "sysClr" =>
-                    match attr_value(color_el, "lastClr") {
-                      Some(v) => return "#" + v.to_lower()
-                      None => ()
-                    }
-                  _ => ()
+                  }
+                  None => ()
                 }
               _ => ()
             }

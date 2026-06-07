@@ -176,6 +176,8 @@ fn pivot_field_def(items : Array[PivotItemDef]) -> PivotFieldDef {
     subtotal_top: true,
     default_subtotal: true,
     items,
+    items_declared_count: None,
+    auto_sort_scope: None,
   }
 }
 
@@ -253,6 +255,12 @@ fn definition(
     page_fields,
     filters: [],
     data_fields,
+    formats: None,
+    conditional_formats: None,
+    chart_formats: None,
+    pivot_hierarchies: None,
+    row_hierarchies_usage: None,
+    col_hierarchies_usage: None,
     style_info: None,
   }
 }
@@ -275,6 +283,14 @@ fn cache_with_fields(fields : Array[CacheField]) -> PivotCacheDefinition {
     save_data: true,
     invalid: false,
     refresh_on_load: false,
+    cache_hierarchies: None,
+    kpis: None,
+    tuple_cache: None,
+    calculated_items: None,
+    calculated_members: None,
+    dimensions: None,
+    measure_groups: None,
+    maps: None,
   }
 }
 
@@ -300,6 +316,27 @@ test "§18.10.1.67 decode_pivot_cache_definition reads refresh metadata" {
     }
     None => assert_true(false)
   }
+}
+
+///|
+test "§18.10.1.67 decode_pivot_cache_definition preserves OLAP metadata branches" {
+  let root = parse_xml(
+    "<pivotCacheDefinition><cacheSource type=\"worksheet\"><worksheetSource sheet=\"Sheet1\" ref=\"A1:A2\"/></cacheSource><cacheFields count=\"0\"/><dimensions count=\"1\"><dimension name=\"Dim\" uniqueName=\"[Dim]\" caption=\"Dimension\" measure=\"1\"/></dimensions><measureGroups count=\"1\"><measureGroup name=\"Sales\" caption=\"Sales\"/></measureGroups><maps count=\"1\"><map measureGroup=\"0\" dimension=\"0\"/></maps></pivotCacheDefinition>",
+  )
+  let decoded = try! decode_pivot_cache_definition(
+    @domain.CT_PivotCacheDefinition::new(root),
+  )
+  let dimensions = decoded.dimensions.unwrap()
+  assert_eq(dimensions.dimension.length(), 1)
+  assert_eq(dimensions.dimension[0].caption, "Dimension")
+  assert_true(dimensions.dimension[0].measure)
+  let groups = decoded.measure_groups.unwrap()
+  assert_eq(groups.measure_group.length(), 1)
+  assert_eq(groups.measure_group[0].name, "Sales")
+  let maps = decoded.maps.unwrap()
+  assert_eq(maps.map.length(), 1)
+  assert_eq(maps.map[0].measure_group.unwrap(), 0)
+  assert_eq(maps.map[0].dimension.unwrap(), 0)
 }
 
 ///|
@@ -1532,6 +1569,47 @@ test "§18.10.1.73 decode_pivot_table_definition reads all axis lists" {
     Some(loc) => assert_eq(loc.ref_range.to_a1(), "A3:C7")
     None => assert_true(false)
   }
+}
+
+///|
+test "§18.10.1.73 decode_pivot_table_definition preserves format and hierarchy metadata branches" {
+  let root = parse_xml(
+    "<pivotTableDefinition name=\"P1\"><formats count=\"1\"><format action=\"formatting\" dxfId=\"2\"><pivotArea field=\"0\" type=\"data\" dataOnly=\"1\"><references count=\"1\"><reference field=\"0\" count=\"1\"><x v=\"0\"/></reference></references></pivotArea></format></formats><conditionalFormats count=\"1\"><conditionalFormat scope=\"data\" type=\"all\" priority=\"3\"><pivotAreas count=\"1\"><pivotArea field=\"1\" axis=\"axisRow\"/></pivotAreas></conditionalFormat></conditionalFormats><chartFormats count=\"1\"><chartFormat chart=\"2\" format=\"4\" series=\"1\"><pivotArea field=\"2\"/></chartFormat></chartFormats><pivotHierarchies count=\"1\"><pivotHierarchy caption=\"Calendar\" outline=\"1\"><mps count=\"1\"><mp field=\"0\" name=\"Fiscal\" showCell=\"1\"/></mps><members count=\"1\" level=\"0\"><member name=\"FY2026\"/></members></pivotHierarchy></pivotHierarchies><rowHierarchiesUsage count=\"1\"><rowHierarchyUsage hierarchyUsage=\"5\"/></rowHierarchiesUsage><colHierarchiesUsage count=\"1\"><colHierarchyUsage hierarchyUsage=\"6\"/></colHierarchiesUsage></pivotTableDefinition>",
+  )
+  let def = try! decode_pivot_table_definition(
+    @domain.CT_pivotTableDefinition::new(root),
+  )
+  let formats = def.formats.unwrap()
+  assert_eq(formats.format.length(), 1)
+  assert_eq(formats.format[0].dxf_id.unwrap(), 2)
+  assert_eq(
+    formats.format[0].pivot_area.references.unwrap().reference.length(),
+    1,
+  )
+  let conditional_formats = def.conditional_formats.unwrap()
+  assert_eq(conditional_formats.conditional_format.length(), 1)
+  assert_eq(conditional_formats.conditional_format[0].priority, 3)
+  let chart_formats = def.chart_formats.unwrap()
+  assert_eq(chart_formats.chart_format[0].chart, 2)
+  assert_true(chart_formats.chart_format[0].series)
+  let hierarchies = def.pivot_hierarchies.unwrap()
+  assert_eq(hierarchies.pivot_hierarchies[0].caption.unwrap(), "Calendar")
+  assert_eq(
+    hierarchies.pivot_hierarchies[0].mps.unwrap().mp[0].name.unwrap(),
+    "Fiscal",
+  )
+  assert_eq(
+    hierarchies.pivot_hierarchies[0].members[0].member_entries[0].name,
+    "FY2026",
+  )
+  assert_eq(
+    def.row_hierarchies_usage.unwrap().row_hierarchy_usages[0].hierarchy_usage,
+    5,
+  )
+  assert_eq(
+    def.col_hierarchies_usage.unwrap().col_hierarchy_usage[0].hierarchy_usage,
+    6,
+  )
 }
 
 ///|

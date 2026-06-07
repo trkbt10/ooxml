@@ -30,14 +30,47 @@ pub(all) suberror SaveError {
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct ChartsheetPart {
+  name : String
+  value : @domain.CT_Chartsheet
+  drawing : @drawing.CT_Drawing?
+  drawing_part : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ExternalLinkPart {
+  name : String
+  value : @domain.CT_ExternalLink
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RevisionLogPart {
+  name : String
+  value : @domain.CT_Revisions
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SingleXmlCellsPart {
+  name : String
+  value : @domain.CT_SingleXmlCells
+} derive(Eq, @debug.Debug)
+
 pub(all) struct Workbook {
   opc_package : @opc.Package
   workbook_part : String
   workbook : @domain.CT_Workbook
   worksheets : Array[WorksheetPart]
+  chartsheets : Array[ChartsheetPart]
   shared_strings : @domain.CT_Sst?
   styles : @domain.CT_Stylesheet?
   metadata : @domain.CT_Metadata?
+  connections : @domain.CT_Connections?
+  calc_chain : @domain.CT_CalcChain?
+  xml_maps : @domain.CT_MapInfo?
+  volatile_dependencies : @domain.CT_VolTypes?
+  revision_headers_part : String?
+  revision_headers : @domain.CT_RevisionHeaders?
+  revision_logs : Array[RevisionLogPart]
+  external_links : Array[ExternalLinkPart]
+  user_names_part : String?
+  user_names : @domain.CT_Users?
   theme : @opc.PackagePart?
 } derive(Eq, @debug.Debug)
 pub fn Workbook::auto_filter_row_visible(Self, @domain.CT_AutoFilter, @autofilter.CandidateRow, @date_serial.DateSystem) -> Bool
@@ -53,13 +86,33 @@ pub fn Workbook::save(Self) -> Bytes
 pub fn Workbook::save_or_raise(Self) -> Bytes raise SaveError
 pub fn Workbook::to_svg(Self, debug_attrs? : Bool) -> String
 
+pub(all) struct WorksheetControlPart {
+  r_id : String
+  name : String
+  value : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WorksheetCustomPropertyPart {
+  r_id : String
+  name : String
+  value : @xml.Element
+} derive(Eq, @debug.Debug)
+
 pub(all) struct WorksheetPart {
   name : String
   value : @domain.CT_Worksheet
   drawing : @drawing.CT_Drawing?
   drawing_part : String?
+  legacy_drawing : @xml.Element?
+  legacy_drawing_part : String?
+  legacy_drawing_hf : @xml.Element?
+  legacy_drawing_hf_part : String?
   tables : Array[@xml.Element]
   comments : @xml.Element?
+  query_tables : Array[@domain.CT_QueryTable]
+  single_xml_cells : Array[SingleXmlCellsPart]
+  control_parts : Array[WorksheetControlPart]
+  custom_property_parts : Array[WorksheetCustomPropertyPart]
 } derive(Eq, @debug.Debug)
 
 // Type aliases

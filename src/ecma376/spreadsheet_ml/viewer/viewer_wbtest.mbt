@@ -60,12 +60,18 @@ fn set_sml_fixture_font_faces(families : Array[String]) -> Unit {
 fn sml_fixture_mdw(family : String, size : Double) -> Double {
   let font : ResolvedFont = {
     family,
+    charset: None,
     size,
     bold: false,
     italic: false,
     underline: false,
     strikethrough: false,
+    outline: false,
+    shadow: false,
+    condense: false,
+    extend: false,
     color: None,
+    vertical_align: "baseline",
   }
   match normal_style_max_digit_width_px(font) {
     Some(w) => w
@@ -81,6 +87,36 @@ fn sml_default_lr_margin_px() -> Double {
 ///|
 fn attr(local_name : String, value : String) -> @xml.Attribute {
   { name: name(local_name), value }
+}
+
+///|
+fn marker_node(local_name : String, col : String, row : String) -> @xml.Node {
+  @xml.Node::Element({
+    name: name(local_name),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("col"),
+        attributes: [],
+        children: [@xml.Node::Text(col)],
+      }),
+      @xml.Node::Element({
+        name: name("colOff"),
+        attributes: [],
+        children: [@xml.Node::Text("0")],
+      }),
+      @xml.Node::Element({
+        name: name("row"),
+        attributes: [],
+        children: [@xml.Node::Text(row)],
+      }),
+      @xml.Node::Element({
+        name: name("rowOff"),
+        attributes: [],
+        children: [@xml.Node::Text("0")],
+      }),
+    ],
+  })
 }
 
 ///|
@@ -262,12 +298,18 @@ test "SpreadsheetML SVG renderer derives defaults and MDW from Normal style" {
   })
   let normal_font : ResolvedFont = {
     family: "Noto Sans",
+    charset: None,
     size: 20.0,
     bold: false,
     italic: false,
     underline: false,
     strikethrough: false,
+    outline: false,
+    shadow: false,
+    condense: false,
+    extend: false,
     color: None,
+    vertical_align: "baseline",
   }
   let mdw = match normal_style_max_digit_width_px(normal_font) {
     Some(w) => w
@@ -385,12 +427,18 @@ test "SpreadsheetML SVG renderer resolves Normal font scheme from workbook theme
   })
   let normal_font : ResolvedFont = {
     family: "Noto Sans",
+    charset: None,
     size: 20.0,
     bold: false,
     italic: false,
     underline: false,
     strikethrough: false,
+    outline: false,
+    shadow: false,
+    condense: false,
+    extend: false,
     color: None,
+    vertical_align: "baseline",
   }
   let mdw = match normal_style_max_digit_width_px(normal_font) {
     Some(w) => w
@@ -409,12 +457,18 @@ test "SpreadsheetML SVG renderer resolves Normal font scheme from workbook theme
 test "SpreadsheetML rich text scheme uses theme font only when document supplies it" {
   let base : ResolvedFont = {
     family: "Base Font",
+    charset: None,
     size: 11.0,
     bold: false,
     italic: false,
     underline: false,
     strikethrough: false,
+    outline: false,
+    shadow: false,
+    condense: false,
+    extend: false,
     color: None,
+    vertical_align: "baseline",
   }
   let rpr : @xml.Element = {
     name: name("rPr"),
@@ -3393,6 +3447,51 @@ test "SpreadsheetML viewer emits <image> for resolved <xdr:pic>" {
 }
 
 ///|
+/// §18.3.1.84 — worksheet background pictures resolve through the
+/// worksheet part relationship scope, independent of DrawingML
+/// picture relationships.
+test "SpreadsheetML viewer renders worksheet background picture from worksheet image resolver" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:B2" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      @xml.Node::Element({
+        name: name("picture"),
+        attributes: [attr("id", "rIdBg")],
+        children: [],
+      }),
+    ],
+  })
+  let worksheet_resolver = fn(rid : String) -> String? {
+    if rid == "rIdBg" {
+      Some("data:image/png;base64,BG")
+    } else {
+      None
+    }
+  }
+  let result = render_svg(
+    worksheet,
+    image_resolver=fn(_rid) {
+      abort("drawing image resolver must not resolve worksheet background")
+    },
+    worksheet_image_resolver=worksheet_resolver,
+  )
+  assert_true(result.svg.contains("class=\"sheet-background-picture\""))
+  assert_true(result.svg.contains("href=\"data:image/png;base64,BG\""))
+}
+
+///|
 /// §20.5.2.30 — an `<xdr:sp>` carrying `<a:prstGeom prst="ellipse">`
 /// renders as a typed `<path>` rather than the labelled placeholder
 /// rect. Mirrors web-pptx renderShape behaviour (xlsx drawing
@@ -4153,6 +4252,61 @@ test "SpreadsheetML viewer §18.3.1.65 absent pane emits no pane attrs" {
   let result = render_svg(worksheet)
   assert_false(result.svg.contains("data-ooxml-pane"))
   assert_false(result.svg.contains("class=\"pane-splits\""))
+}
+
+///|
+/// §18.3.1.78 `<selection>` — saved active selection is editing-view
+/// state.  It is suppressed by default page rendering and painted as
+/// an outline only when chrome rendering opts in.
+test "SpreadsheetML viewer §18.3.1.78 selection outline emitted with chrome opt-in" {
+  let selection : @xml.Node = @xml.Node::Element({
+    name: name("selection"),
+    attributes: [
+      { name: name("pane"), value: "bottomRight" },
+      { name: name("activeCell"), value: "B2" },
+      { name: name("sqref"), value: "B2:C3" },
+    ],
+    children: [],
+  })
+  let sheet_view : @xml.Node = @xml.Node::Element({
+    name: name("sheetView"),
+    attributes: [{ name: name("workbookViewId"), value: "0" }],
+    children: [selection],
+  })
+  let sheet_views : @xml.Node = @xml.Node::Element({
+    name: name("sheetViews"),
+    attributes: [],
+    children: [sheet_view],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:C3" }],
+        children: [],
+      }),
+      sheet_views,
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", None, "1")]),
+          build_row(2, [build_cell("B2", None, "2")]),
+          build_row(3, [build_cell("C3", None, "3")]),
+        ],
+      }),
+    ],
+  })
+  let page_svg = render_svg(worksheet).svg
+  assert_false(page_svg.contains("class=\"sheet-view-selections\""))
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let chrome_svg = render_svg(worksheet, options=opts).svg
+  assert_true(chrome_svg.contains("class=\"sheet-view-selections\""))
+  assert_true(chrome_svg.contains("data-ooxml-selection=\"B2:C3\""))
+  assert_true(chrome_svg.contains("data-ooxml-active-cell=\"B2\""))
+  assert_true(chrome_svg.contains("stroke=\"#217346\""))
 }
 
 ///|
@@ -5008,6 +5162,189 @@ test "SpreadsheetML viewer §18.3.1.82 tabColor theme index surfaces verbatim" {
 }
 
 ///|
+test "SpreadsheetML viewer §18.3 metadata-only worksheet branches surface typed data attrs" {
+  let sheet_pr : @xml.Node = @xml.Node::Element({
+    name: name("sheetPr"),
+    attributes: [
+      { name: name("codeName"), value: "SheetCode" },
+      { name: name("filterMode"), value: "1" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("outlinePr"),
+        attributes: [{ name: name("summaryBelow"), value: "0" }],
+        children: [],
+      }),
+    ],
+  })
+  let data_consolidate : @xml.Node = @xml.Node::Element({
+    name: name("dataConsolidate"),
+    attributes: [{ name: name("function"), value: "sum" }],
+    children: [
+      @xml.Node::Element({
+        name: name("dataRefs"),
+        attributes: [{ name: name("count"), value: "1" }],
+        children: [
+          @xml.Node::Element({
+            name: name("dataRef"),
+            attributes: [
+              { name: name("ref"), value: "A1:A2" },
+              { name: name("sheet"), value: "Sheet1" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let custom_sheet_views : @xml.Node = @xml.Node::Element({
+    name: name("customSheetViews"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("customSheetView"),
+        attributes: [
+          {
+            name: name("guid"),
+            value: "{11111111-1111-1111-1111-111111111111}",
+          },
+          { name: name("topLeftCell"), value: "B2" },
+        ],
+        children: [],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      sheet_pr,
+      @xml.Node::Element({
+        name: name("sheetCalcPr"),
+        attributes: [{ name: name("fullCalcOnLoad"), value: "1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      data_consolidate,
+      custom_sheet_views,
+      @xml.Node::Element({
+        name: name("scenarios"),
+        attributes: [{ name: name("sqref"), value: "A1" }],
+        children: [
+          @xml.Node::Element({
+            name: name("scenario"),
+            attributes: [{ name: name("name"), value: "Budget" }],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("cellWatches"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("cellWatch"),
+            attributes: [{ name: name("r"), value: "A1" }],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("ignoredErrors"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("ignoredError"),
+            attributes: [
+              { name: name("sqref"), value: "A1" },
+              { name: name("numberStoredAsText"), value: "1" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("smartTags"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("cellSmartTags"),
+            attributes: [{ name: name("r"), value: "A1" }],
+            children: [
+              @xml.Node::Element({
+                name: name("cellSmartTag"),
+                attributes: [{ name: name("type"), value: "1" }],
+                children: [
+                  @xml.Node::Element({
+                    name: name("cellSmartTagPr"),
+                    attributes: [
+                      { name: name("key"), value: "k" },
+                      { name: name("val"), value: "v" },
+                    ],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("webPublishItems"),
+        attributes: [{ name: name("count"), value: "1" }],
+        children: [
+          @xml.Node::Element({
+            name: name("webPublishItem"),
+            attributes: [
+              { name: name("id"), value: "1" },
+              { name: name("sourceType"), value: "sheet" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("data-ooxml-sheet-pr=\"1\""))
+  assert_true(
+    result.svg.contains("data-ooxml-sheet-pr-attr-codeName=\"SheetCode\""),
+  )
+  assert_true(
+    result.svg.contains("data-ooxml-data-consolidate-dataRef-0-ref=\"A1:A2\""),
+  )
+  assert_true(
+    result.svg.contains(
+      "data-ooxml-custom-sheet-views-customSheetView-0-guid=\"{11111111-1111-1111-1111-111111111111}\"",
+    ),
+  )
+  assert_true(
+    result.svg.contains("data-ooxml-sheet-calc-pr-attr-fullCalcOnLoad=\"1\""),
+  )
+  assert_true(
+    result.svg.contains("data-ooxml-scenarios-scenario-0-name=\"Budget\""),
+  )
+  assert_true(
+    result.svg.contains("data-ooxml-cell-watches-cellWatch-0-r=\"A1\""),
+  )
+  assert_true(
+    result.svg.contains("data-ooxml-ignored-errors-ignoredError-0-sqref=\"A1\""),
+  )
+  assert_true(
+    result.svg.contains("data-ooxml-smart-tags-cell-smart-tags-count=\"1\""),
+  )
+  assert_true(
+    result.svg.contains(
+      "data-ooxml-web-publish-items-webPublishItem-0-id=\"1\"",
+    ),
+  )
+}
+
+///|
 /// §18.3.1.70 `<printOptions>` — the print-setup boolean flags
 /// (horizontalCentered / verticalCentered / headings / gridLines)
 /// MUST surface as `data-ooxml-print-*` on the SVG root for
@@ -5046,6 +5383,295 @@ test "SpreadsheetML viewer §18.3.1.70 printOptions surface as data-ooxml-print-
   assert_true(result.svg.contains("data-ooxml-print-verticalCentered=\"1\""))
   assert_true(result.svg.contains("data-ooxml-print-headings=\"1\""))
   assert_true(result.svg.contains("data-ooxml-print-gridLines=\"1\""))
+}
+
+///|
+/// §18.3.1.63 `<pageSetup>` — explicit paper/orientation/scale
+/// settings have a visible print-page layer, not only root
+/// `data-ooxml-page-setup-*` metadata.
+test "SpreadsheetML viewer §18.3.1.63 pageSetup paints page setup layer" {
+  let page_setup : @xml.Node = @xml.Node::Element({
+    name: name("pageSetup"),
+    attributes: [
+      { name: name("paperSize"), value: "9" },
+      { name: name("orientation"), value: "landscape" },
+      { name: name("scale"), value: "120" },
+      { name: name("copies"), value: "2" },
+    ],
+    children: [],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      page_setup,
+    ],
+  })
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("class=\"page-setup\""))
+  assert_true(
+    result.svg.contains("data-ooxml-page-setup-orientation=\"landscape\""),
+  )
+  assert_true(result.svg.contains("paper 9 landscape 120% copies 2"))
+}
+
+///|
+/// §18.3.1.32 `<legacyDrawingHF>` — legacy VML header/footer drawing
+/// relationships render from the resolved VML drawing part.
+test "SpreadsheetML viewer §18.3.1.32 legacyDrawingHF renders resolved VML part" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      @xml.Node::Element({
+        name: name("legacyDrawingHF"),
+        attributes: [attr("id", "rIdLegacyHF")],
+        children: [],
+      }),
+    ],
+  })
+  let ns_v = "urn:schemas-microsoft-com:vml"
+  let vml_root : @xml.Element = {
+    name: name("xml"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: { prefix: Some("v"), local_name: "rect", ns: Some(ns_v) },
+        attributes: [
+          attr(
+            "style", "position:absolute;left:8pt;top:6pt;width:42pt;height:14pt",
+          ),
+          attr("fillcolor", "#F2F7FF"),
+          attr("strokecolor", "#2F5597"),
+        ],
+        children: [],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, legacy_drawing_hf=Some(vml_root))
+  assert_true(result.svg.contains("class=\"legacy-drawing-hf\""))
+  assert_true(
+    result.svg.contains("data-ooxml-legacy-drawing-hf-r-id=\"rIdLegacyHF\""),
+  )
+  assert_true(result.svg.contains("fill=\"#F2F7FF\""))
+  assert_true(result.svg.contains("stroke=\"#2F5597\""))
+  assert_false(result.svg.contains("legacy VML HF"))
+}
+
+///|
+/// §18.3.1.31 `<legacyDrawing>` — worksheet VML drawings render from
+/// the resolved VML part, not from a worksheet-local placeholder.
+test "SpreadsheetML viewer §18.3.1.31 legacyDrawing renders resolved VML part" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:B2" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      @xml.Node::Element({
+        name: name("legacyDrawing"),
+        attributes: [attr("id", "rIdLegacy")],
+        children: [],
+      }),
+    ],
+  })
+  let ns_v = "urn:schemas-microsoft-com:vml"
+  let vml_root : @xml.Element = {
+    name: name("xml"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: { prefix: Some("v"), local_name: "rect", ns: Some(ns_v) },
+        attributes: [
+          attr(
+            "style", "position:absolute;left:12pt;top:18pt;width:36pt;height:20pt",
+          ),
+          attr("fillcolor", "#C0504D"),
+          attr("strokecolor", "#8064A2"),
+        ],
+        children: [],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, legacy_drawing=Some(vml_root))
+  assert_true(result.svg.contains("class=\"legacy-drawing\""))
+  assert_true(
+    result.svg.contains("data-ooxml-legacy-drawing-r-id=\"rIdLegacy\""),
+  )
+  assert_true(result.svg.contains("fill=\"#C0504D\""))
+  assert_true(result.svg.contains("stroke=\"#8064A2\""))
+  assert_false(result.svg.contains("legacy VML HF"))
+}
+
+///|
+/// §18.3.1.20 `<controls>` — a worksheet control renders only after
+/// its `r:id` resolves to a control persistence part. The anchor is
+/// taken from `<controlPr>/<anchor>` and the caption from ActiveX
+/// `ocxPr name="Caption"`.
+test "SpreadsheetML viewer §18.3.1.20 controls render resolved ActiveX caption" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:D6" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      @xml.Node::Element({
+        name: name("controls"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("control"),
+            attributes: [
+              attr("shapeId", "2"),
+              attr("name", "CatalogControl"),
+              attr("id", "rIdControl"),
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("controlPr"),
+                attributes: [
+                  attr("disabled", "1"),
+                  attr("print", "0"),
+                  attr("altText", "Catalog embedded control"),
+                ],
+                children: [
+                  @xml.Node::Element({
+                    name: name("anchor"),
+                    attributes: [],
+                    children: [
+                      marker_node("from", "0", "0"),
+                      marker_node("to", "3", "5"),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let ns_ax = "http://schemas.microsoft.com/office/2006/activeX"
+  let active_x : @xml.Element = {
+    name: { prefix: Some("ax"), local_name: "ocx", ns: Some(ns_ax) },
+    attributes: [
+      attr("classid", "{D7053240-CE69-11CD-A777-00DD01143C57}"),
+      attr("persistence", "persistPropertyBag"),
+    ],
+    children: [
+      @xml.Node::Element({
+        name: { prefix: Some("ax"), local_name: "ocxPr", ns: Some(ns_ax) },
+        attributes: [attr("name", "Caption"), attr("value", "CatalogControl")],
+        children: [],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, control_part_resolver=fn(rid) {
+    if rid == "rIdControl" {
+      Some(active_x)
+    } else {
+      None
+    }
+  })
+  assert_true(result.svg.contains("class=\"controls\""))
+  assert_true(result.svg.contains("class=\"control\""))
+  assert_true(result.svg.contains("data-ooxml-control-r-id=\"rIdControl\""))
+  assert_true(result.svg.contains("data-ooxml-control-anchor-from=\"A1\""))
+  assert_true(result.svg.contains("data-ooxml-control-anchor-to=\"D6\""))
+  assert_true(result.svg.contains(">CatalogControl<"))
+  assert_true(result.svg.contains("data-ooxml-control-disabled=\"1\""))
+}
+
+///|
+/// §18.3.1.16 `<customProperties>` — resolved custom property parts
+/// surface as document metadata on debug SVG output.
+test "SpreadsheetML viewer §18.3.1.16 customProperties render resolved part metadata" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("customProperties"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("customPr"),
+            attributes: [
+              attr("name", "CatalogProperty"),
+              attr("id", "rIdCustom"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let custom_root : @xml.Element = {
+    name: name("CustomApplicationData"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("CustomProperty"),
+        attributes: [attr("name", "CatalogProperty"), attr("value", "observed")],
+        children: [],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, custom_property_resolver=fn(rid) {
+    if rid == "rIdCustom" {
+      Some(custom_root)
+    } else {
+      None
+    }
+  })
+  assert_true(result.svg.contains("data-ooxml-custom-properties-count=\"1\""))
+  assert_true(
+    result.svg.contains("data-ooxml-custom-property-0-r-id=\"rIdCustom\""),
+  )
+  assert_true(
+    result.svg.contains(
+      "data-ooxml-custom-property-0-payload-0-value=\"observed\"",
+    ),
+  )
 }
 
 ///|
@@ -5135,6 +5761,7 @@ test "SpreadsheetML viewer §18.3.1.81 sheetFormatPr overrides default dims" {
 /// `data-ooxml-phonetic` sidecar carrying the concatenated
 /// furigana text.
 test "SpreadsheetML viewer §18.4.6 rPh phonetic surfaces as data-ooxml-phonetic" {
+  set_sml_fixture_font_faces(["Calibri"])
   // <si><t>東京</t><rPh sb="0" eb="2"><t>とうきょう</t></rPh></si>
   let si : @xml.Element = {
     name: name("si"),
@@ -5160,6 +5787,15 @@ test "SpreadsheetML viewer §18.4.6 rPh phonetic surfaces as data-ooxml-phonetic
             ],
           }),
         ],
+      }),
+      @xml.Node::Element({
+        name: name("phoneticPr"),
+        attributes: [
+          { name: name("fontId"), value: "2" },
+          { name: name("type"), value: "Hiragana" },
+          { name: name("alignment"), value: "center" },
+        ],
+        children: [],
       }),
     ],
   }
@@ -5208,6 +5844,9 @@ test "SpreadsheetML viewer §18.4.6 rPh phonetic surfaces as data-ooxml-phonetic
   let result = render_svg(worksheet, shared_strings=Some(sst))
   assert_true(result.svg.contains("class=\"phonetics\""))
   assert_true(result.svg.contains("data-ooxml-phonetic="))
+  assert_true(result.svg.contains("data-ooxml-phonetic-font-id=\"2\""))
+  assert_true(result.svg.contains("data-ooxml-phonetic-type=\"Hiragana\""))
+  assert_true(result.svg.contains("data-ooxml-phonetic-alignment=\"center\""))
   assert_true(result.svg.contains("\u{3068}\u{3046}\u{304d}\u{3087}\u{3046}"))
   // Base text still renders.
   assert_true(result.svg.contains("\u{6771}\u{4eac}"))
@@ -5445,6 +6084,106 @@ test "SpreadsheetML SVG renderer stops single-line overflow at occupied cell" {
 }
 
 ///|
+/// §18.3.1.46 — worksheet `<headerFooter>` text is part of the
+/// printed page surface, so a header/footer-only worksheet must still
+/// produce visible SVG text in the page margin bands.
+test "SpreadsheetML SVG renderer paints worksheet header and footer text" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("headerFooter"),
+        attributes: [attr("differentOddEven", "1"), attr("differentFirst", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("oddHeader"),
+            attributes: [],
+            children: [@xml.Node::Text("&LLeft&CMain&RRight")],
+          }),
+          @xml.Node::Element({
+            name: name("oddFooter"),
+            attributes: [],
+            children: [@xml.Node::Text("&P / &N")],
+          }),
+          @xml.Node::Element({
+            name: name("evenHeader"),
+            attributes: [],
+            children: [@xml.Node::Text("&CEven")],
+          }),
+          @xml.Node::Element({
+            name: name("firstFooter"),
+            attributes: [],
+            children: [@xml.Node::Text("&CFirst footer")],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet).svg
+  assert_true(svg.contains("class=\"header-footer\""))
+  assert_true(svg.contains(">Left<"))
+  assert_true(svg.contains(">Main<"))
+  assert_true(svg.contains(">Right<"))
+  assert_true(svg.contains(">1 / 1<"))
+  assert_true(svg.contains(">Even<"))
+  assert_true(svg.contains(">First footer<"))
+}
+
+///|
+/// §18.3.1.64 / §18.3.1.1 — manual page breaks are printed page
+/// boundaries and should be visible in the worksheet SVG.
+test "SpreadsheetML SVG renderer paints row and column page breaks" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:C3" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", None, "1")]),
+          build_row(2, [build_cell("A2", None, "2")]),
+          build_row(3, [build_cell("A3", None, "3")]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("rowBreaks"),
+        attributes: [attr("count", "1"), attr("manualBreakCount", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("brk"),
+            attributes: [attr("id", "1"), attr("man", "1")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("colBreaks"),
+        attributes: [attr("count", "1"), attr("manualBreakCount", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("brk"),
+            attributes: [attr("id", "2"), attr("man", "1")],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet).svg
+  assert_true(svg.contains("class=\"page-breaks\""))
+  assert_true(svg.contains("data-ooxml-page-break=\"row\""))
+  assert_true(svg.contains("data-ooxml-page-break=\"col\""))
+  assert_true(svg.contains("stroke-dasharray=\"4 3\""))
+}
+
+///|
 /// Numeric cells do not use the string overflow rule; they keep their
 /// own cell clip even when neighbouring cells are empty.
 test "SpreadsheetML SVG renderer does not overflow numeric cells into empty cells" {
@@ -5630,6 +6369,131 @@ test "SpreadsheetML viewer §18.5 table chrome emitted when show_table_chrome op
   assert_true(svg.contains("data-ooxml-table-band=\"header\""))
   // One row stripe — data rows are 2,3,4 → stripe lands on row 3.
   assert_true(svg.contains("data-ooxml-table-band=\"row-stripe\""))
+}
+
+///|
+/// §18.5.1.3 / §18.5.1.7 — editing-view table chrome surfaces
+/// structured-column metadata from CT_TableColumn, including
+/// calculated-column formulas, totals-row formulas, and XML column
+/// mappings.  The default print path stays covered by the suppression
+/// test above; this test exercises the explicit `show_table_chrome`
+/// pathway.
+test "SpreadsheetML viewer §18.5 table column metadata badges emitted with chrome opt-in" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", None, "Item"),
+            build_cell("B1", None, "Qty"),
+            build_cell("C1", None, "Amount"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "A"),
+            build_cell("B2", None, "3"),
+            build_cell("C2", None, "6"),
+          ]),
+          build_row(3, [
+            build_cell("A3", None, "B"),
+            build_cell("B3", None, "2"),
+            build_cell("C3", None, "4"),
+          ]),
+          build_row(4, [
+            build_cell("A4", None, "C"),
+            build_cell("B4", None, "1"),
+            build_cell("C4", None, "8"),
+          ]),
+          build_row(5, [
+            build_cell("A5", None, "Total"),
+            build_cell("B5", None, "6"),
+            build_cell("C5", None, "18"),
+          ]),
+        ],
+      }),
+    ],
+  })
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:C5" },
+      { name: name("totalsRowCount"), value: "1" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("tableColumns"),
+        attributes: [{ name: name("count"), value: "3" }],
+        children: [
+          @xml.Node::Element({
+            name: name("tableColumn"),
+            attributes: [
+              { name: name("id"), value: "1" },
+              { name: name("name"), value: "Item" },
+            ],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("tableColumn"),
+            attributes: [
+              { name: name("id"), value: "2" },
+              { name: name("name"), value: "Qty" },
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("calculatedColumnFormula"),
+                attributes: [],
+                children: [@xml.Node::Text("=[@Qty]*2")],
+              }),
+            ],
+          }),
+          @xml.Node::Element({
+            name: name("tableColumn"),
+            attributes: [
+              { name: name("id"), value: "3" },
+              { name: name("name"), value: "Amount" },
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("totalsRowFormula"),
+                attributes: [],
+                children: [@xml.Node::Text("SUM([Amount])")],
+              }),
+              @xml.Node::Element({
+                name: name("xmlColumnPr"),
+                attributes: [
+                  { name: name("mapId"), value: "1" },
+                  { name: name("xpath"), value: "/catalog/item" },
+                  { name: name("xmlDataType"), value: "string" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(worksheet, options=opts, tables=[table]).svg
+  assert_true(svg.contains("class=\"table-column-metadata\""))
+  assert_true(svg.contains("data-ooxml-table-column-meta=\"column\""))
+  assert_true(
+    svg.contains("data-ooxml-table-column-meta=\"calculated-column-formula\""),
+  )
+  assert_true(
+    svg.contains("data-ooxml-table-column-meta=\"totals-row-formula\""),
+  )
+  assert_true(svg.contains("data-ooxml-table-column-meta=\"xml-column\""))
+  assert_true(svg.contains(">fx<"))
+  assert_true(svg.contains(">tot<"))
+  assert_true(svg.contains(">xml<"))
 }
 
 ///|
@@ -6087,6 +6951,23 @@ test "SpreadsheetML viewer §18.3 AutoFilter buttons honor filterColumn flags" {
             ],
             children: [],
           }),
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "2" }],
+            children: [
+              @xml.Node::Element({
+                name: name("filters"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("filter"),
+                    attributes: [{ name: name("val"), value: "z" }],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
         ],
       }),
     ],
@@ -6105,6 +6986,8 @@ test "SpreadsheetML viewer §18.3 AutoFilter buttons honor filterColumn flags" {
     1
   @debug.assert_eq(button_count, 1)
   @debug.assert_eq(arrow_count, 1)
+  assert_true(svg.contains("data-ooxml-autofilter-active=\"1\""))
+  assert_true(svg.contains("#DDEBFF"))
 }
 
 ///|
@@ -6166,6 +7049,528 @@ test "SpreadsheetML viewer §18.5 table AutoFilter buttons use table ref default
     .length() -
     1
   @debug.assert_eq(button_count, 2)
+}
+
+///|
+test "SpreadsheetML viewer §18.3 AutoFilter sortState emits sort glyph" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", None, "Item"),
+            build_cell("B1", None, "Score"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "A"),
+            build_cell("B2", None, "1"),
+          ]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B2" }],
+        children: [
+          @xml.Node::Element({
+            name: name("sortState"),
+            attributes: [{ name: name("ref"), value: "A1:B2" }],
+            children: [
+              @xml.Node::Element({
+                name: name("sortCondition"),
+                attributes: [
+                  { name: name("ref"), value: "B2:B2" },
+                  { name: name("descending"), value: "1" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(worksheet, options=opts).svg
+  assert_true(svg.contains("data-ooxml-sort-state=\"descending\""))
+}
+
+///|
+test "SpreadsheetML viewer §18.2 workbook metadata projects typed child entries" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let workbook : @xml.Element = {
+    name: name("workbook"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheets"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("sheet"),
+            attributes: [
+              attr("name", "S1"),
+              attr("sheetId", "1"),
+              attr("id", "rIdSheet"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("externalReferences"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("externalReference"),
+            attributes: [attr("id", "rIdExt")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("pivotCaches"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("pivotCache"),
+            attributes: [attr("cacheId", "7"), attr("id", "rIdPivot")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("functionGroups"),
+        attributes: [attr("builtInGroupCount", "12")],
+        children: [
+          @xml.Node::Element({
+            name: name("functionGroup"),
+            attributes: [attr("name", "Engineering")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("smartTagTypes"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("smartTagType"),
+            attributes: [
+              attr("namespaceUri", "urn:smart"),
+              attr("name", "Thing"),
+              attr("url", "https://example.test/smart"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("webPublishObjects"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("webPublishObject"),
+            attributes: [
+              attr("id", "3"),
+              attr("divId", "div1"),
+              attr("sourceObject", "Sheet1!A1"),
+              attr("destinationFile", "sheet.htm"),
+              attr("title", "Sheet export"),
+              attr("autoRepublish", "1"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  }
+  let svg = render_svg(worksheet, workbook=Some(workbook)).svg
+  assert_true(svg.contains("data-ooxml-wb-external-reference-0-rid=\"rIdExt\""))
+  assert_true(svg.contains("data-ooxml-wb-pivot-cache-0-cache-id=\"7\""))
+  assert_true(svg.contains("data-ooxml-wb-pivot-cache-0-rid=\"rIdPivot\""))
+  assert_true(
+    svg.contains("data-ooxml-wb-function-groups-built-in-count=\"12\""),
+  )
+  assert_true(
+    svg.contains("data-ooxml-wb-function-group-0-name=\"Engineering\""),
+  )
+  assert_true(
+    svg.contains("data-ooxml-wb-smart-tag-type-0-namespace-uri=\"urn:smart\""),
+  )
+  assert_true(svg.contains("data-ooxml-wb-smart-tag-type-0-name=\"Thing\""))
+  assert_true(
+    svg.contains("data-ooxml-wb-web-publish-objects-declared-count=\"1\""),
+  )
+  assert_true(svg.contains("data-ooxml-wb-web-publish-object-0-id=\"3\""))
+  assert_true(
+    svg.contains("data-ooxml-wb-web-publish-object-0-div-id=\"div1\""),
+  )
+  assert_true(
+    svg.contains("data-ooxml-wb-web-publish-object-0-auto-republish=\"1\""),
+  )
+}
+
+///|
+test "SpreadsheetML viewer §18.13 connections metadata projects typed entries" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let connections = @domain.CT_Connections::new({
+    name: name("connections"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("connection"),
+        attributes: [
+          attr("id", "2"),
+          attr("name", "CatalogConnection"),
+          attr("refreshedVersion", "3"),
+          attr("type", "1"),
+          attr("refreshOnLoad", "1"),
+        ],
+        children: [
+          @xml.Node::Element({
+            name: name("dbPr"),
+            attributes: [
+              attr("connection", "Driver=SQLite"),
+              attr("command", "select * from t"),
+              attr("commandType", "2"),
+            ],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("parameters"),
+            attributes: [attr("count", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("parameter"),
+                attributes: [
+                  attr("name", "P1"),
+                  attr("parameterType", "value"),
+                  attr("string", "catalog"),
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet, connections=Some(connections)).svg
+  assert_true(svg.contains("data-ooxml-connections-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-connection-0-id=\"2\""))
+  assert_true(
+    svg.contains("data-ooxml-connection-0-name=\"CatalogConnection\""),
+  )
+  assert_true(svg.contains("data-ooxml-connection-0-type=\"1\""))
+  assert_true(svg.contains("data-ooxml-connection-0-refresh-on-load=\"1\""))
+  assert_true(svg.contains("data-ooxml-connection-0-db-pr=\"1\""))
+  assert_true(
+    svg.contains("data-ooxml-connection-0-db-pr-connection=\"Driver=SQLite\""),
+  )
+  assert_true(svg.contains("data-ooxml-connection-0-parameters-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-connection-0-parameter-0-name=\"P1\""))
+  assert_true(
+    svg.contains("data-ooxml-connection-0-parameter-0-string=\"catalog\""),
+  )
+}
+
+///|
+test "SpreadsheetML viewer §18.12 queryTable metadata projects typed entries" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let query_table = @domain.CT_QueryTable::new({
+    name: name("queryTable"),
+    attributes: [
+      attr("name", "Query1"),
+      attr("connectionId", "2"),
+      attr("headers", "1"),
+      attr("refreshOnLoad", "1"),
+      attr("autoFormatId", "4"),
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("queryTableRefresh"),
+        attributes: [attr("nextId", "8")],
+        children: [
+          @xml.Node::Element({
+            name: name("queryTableFields"),
+            attributes: [attr("count", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("queryTableField"),
+                attributes: [
+                  attr("id", "5"),
+                  attr("name", "Amount"),
+                  attr("tableColumnId", "3"),
+                ],
+                children: [],
+              }),
+            ],
+          }),
+          @xml.Node::Element({
+            name: name("queryTableDeletedFields"),
+            attributes: [attr("count", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("deletedField"),
+                attributes: [attr("name", "OldAmount")],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet, query_tables=[query_table]).svg
+  assert_true(svg.contains("data-ooxml-query-tables-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-name=\"Query1\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-connection-id=\"2\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-refresh-on-load=\"1\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-auto-format-id=\"4\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-refresh=\"1\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-refresh-next-id=\"8\""))
+  assert_true(
+    svg.contains("data-ooxml-query-table-0-refresh-fields-count=\"1\""),
+  )
+  assert_true(svg.contains("data-ooxml-query-table-0-refresh-field-0-id=\"5\""))
+  assert_true(
+    svg.contains("data-ooxml-query-table-0-refresh-field-0-name=\"Amount\""),
+  )
+  assert_true(
+    svg.contains(
+      "data-ooxml-query-table-0-refresh-field-0-table-column-id=\"3\"",
+    ),
+  )
+  assert_true(
+    svg.contains(
+      "data-ooxml-query-table-0-refresh-deleted-field-0-name=\"OldAmount\"",
+    ),
+  )
+}
+
+///|
+test "SpreadsheetML viewer §18.11 revision and shared-user metadata projects typed entries" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let revision_headers = @domain.CT_RevisionHeaders::new({
+    name: name("headers"),
+    attributes: [
+      attr("guid", "{233BEE23-EB5C-4542-905D-0230EFFED88B}"),
+      attr("trackRevisions", "1"),
+      attr("preserveHistory", "45"),
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("header"),
+        attributes: [
+          attr("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000001}"),
+          attr("dateTime", "2026-06-06T00:00:00Z"),
+          attr("maxSheetId", "1"),
+          attr("userName", "Catalog User"),
+          attr("id", "rId1"),
+        ],
+        children: [
+          @xml.Node::Element({
+            name: name("sheetIdMap"),
+            attributes: [attr("count", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("sheetId"),
+                attributes: [attr("val", "1")],
+                children: [],
+              }),
+            ],
+          }),
+          @xml.Node::Element({
+            name: name("reviewedList"),
+            attributes: [attr("count", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("reviewed"),
+                attributes: [attr("rId", "7")],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let revisions = @domain.CT_Revisions::new({
+    name: name("revisions"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("rrc"),
+        attributes: [
+          attr("rId", "9"),
+          attr("sId", "1"),
+          attr("ref", "1:1"),
+          attr("action", "insertRow"),
+        ],
+        children: [
+          @xml.Node::Element({
+            name: name("undo"),
+            attributes: [
+              attr("index", "3"),
+              attr("exp", "ref"),
+              attr("dr", "A1"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("rcv"),
+        attributes: [
+          attr("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000002}"),
+          attr("action", "add"),
+        ],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("rcc"),
+        attributes: [attr("rId", "10"), attr("sId", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("nc"),
+            attributes: [attr("r", "B2"), attr("t", "str")],
+            children: [
+              @xml.Node::Element({
+                name: name("f"),
+                attributes: [attr("t", "normal")],
+                children: [@xml.Node::Text("SUM(A1:A2)")],
+              }),
+              @xml.Node::Element({
+                name: name("v"),
+                attributes: [],
+                children: [@xml.Node::Text("5")],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("rdn"),
+        attributes: [attr("rId", "11"), attr("name", "CatalogName")],
+        children: [
+          @xml.Node::Element({
+            name: name("formula"),
+            attributes: [],
+            children: [@xml.Node::Text("Sheet1!$A$1")],
+          }),
+          @xml.Node::Element({
+            name: name("oldFormula"),
+            attributes: [],
+            children: [@xml.Node::Text("Sheet1!$A$2")],
+          }),
+        ],
+      }),
+    ],
+  })
+  let users = @domain.CT_Users::new({
+    name: name("users"),
+    attributes: [attr("count", "1")],
+    children: [
+      @xml.Node::Element({
+        name: name("userInfo"),
+        attributes: [
+          attr("guid", "{A5A4B6F1-2B31-4B09-9AC8-000000000003}"),
+          attr("name", "Catalog User"),
+          attr("id", "7"),
+          attr("dateTime", "2026-06-06T00:00:00Z"),
+        ],
+        children: [],
+      }),
+    ],
+  })
+  let svg = render_svg(
+      worksheet,
+      revision_headers=Some(revision_headers),
+      revision_logs=[revisions],
+      user_names=Some(users),
+    ).svg
+  assert_true(svg.contains("data-ooxml-revision-headers=\"1\""))
+  assert_true(
+    svg.contains(
+      "data-ooxml-revision-headers-guid=\"{233BEE23-EB5C-4542-905D-0230EFFED88B}\"",
+    ),
+  )
+  assert_true(
+    svg.contains("data-ooxml-revision-header-0-user-name=\"Catalog User\""),
+  )
+  assert_true(svg.contains("data-ooxml-revision-header-0-r-id=\"rId1\""))
+  assert_true(svg.contains("data-ooxml-revision-header-0-sheet-id-0-val=\"1\""))
+  assert_true(
+    svg.contains("data-ooxml-revision-header-0-reviewed-0-r-id=\"7\""),
+  )
+  assert_true(svg.contains("data-ooxml-revision-log-0-rrc-0-ref=\"1:1\""))
+  assert_true(svg.contains("data-ooxml-revision-log-0-rrc-0-undo-0-dr=\"A1\""))
+  assert_true(svg.contains("data-ooxml-revision-log-0-rcv-count=\"1\""))
+  assert_true(
+    svg.contains(
+      "data-ooxml-revision-log-0-rcv-0-guid=\"{A5A4B6F1-2B31-4B09-9AC8-000000000002}\"",
+    ),
+  )
+  assert_true(
+    svg.contains(
+      "data-ooxml-revision-log-0-rcc-0-nc-formula-text=\"SUM(A1:A2)\"",
+    ),
+  )
+  assert_true(
+    svg.contains("data-ooxml-revision-log-0-rdn-0-formula=\"Sheet1!$A$1\""),
+  )
+  assert_true(
+    svg.contains("data-ooxml-revision-log-0-rdn-0-old-formula=\"Sheet1!$A$2\""),
+  )
+  assert_true(svg.contains("data-ooxml-shared-users-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-shared-user-0-name=\"Catalog User\""))
+  assert_true(svg.contains("data-ooxml-shared-user-0-id=\"7\""))
 }
 
 ///|
@@ -7092,6 +8497,40 @@ fn comment_for(ref_ : String) -> @xml.Node {
 }
 
 ///|
+fn comment_anchor_marker(
+  local_name : String,
+  col : String,
+  row : String,
+) -> @xml.Node {
+  @xml.Node::Element({
+    name: name(local_name),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("col"),
+        attributes: [],
+        children: [@xml.Node::Text(col)],
+      }),
+      @xml.Node::Element({
+        name: name("colOff"),
+        attributes: [],
+        children: [@xml.Node::Text("0")],
+      }),
+      @xml.Node::Element({
+        name: name("row"),
+        attributes: [],
+        children: [@xml.Node::Text(row)],
+      }),
+      @xml.Node::Element({
+        name: name("rowOff"),
+        attributes: [],
+        children: [@xml.Node::Text("0")],
+      }),
+    ],
+  })
+}
+
+///|
 test "§18.7.3 commented cells get a red corner indicator triangle" {
   let cells_row1 : Array[@xml.Node] = [
     build_cell("A1", None, "1"),
@@ -7134,6 +8573,162 @@ test "§18.7.3 commented cells get a red corner indicator triangle" {
   assert_true(result.svg.contains("fill=\"#c00000\""))
   assert_true(result.svg.contains("data-ooxml-comment-ref=\"A1\""))
   assert_true(result.svg.contains("data-ooxml-comment-ref=\"B2\""))
+}
+
+///|
+test "§18.7 comments render author body and presentation callout" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let comments : @xml.Element = {
+    name: name("comments"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("authors"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("author"),
+            attributes: [],
+            children: [@xml.Node::Text("Catalog author")],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("commentList"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("comment"),
+            attributes: [attr("ref", "A1"), attr("authorId", "0")],
+            children: [
+              @xml.Node::Element({
+                name: name("text"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("Catalog note")],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("commentPr"),
+                attributes: [],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, comments=Some(comments))
+  assert_true(result.svg.contains("class=\"comment-callout\""))
+  assert_true(result.svg.contains(">Catalog author<"))
+  assert_true(result.svg.contains(">Catalog note<"))
+  assert_true(result.svg.contains("data-ooxml-comment-pr=\"1\""))
+}
+
+///|
+test "§18.7.5 commentPr anchor positions comment callout" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [attr("ref", "A1:D5")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let comments : @xml.Element = {
+    name: name("comments"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("authors"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("author"),
+            attributes: [],
+            children: [@xml.Node::Text("Anchor author")],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("commentList"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("comment"),
+            attributes: [attr("ref", "A1"), attr("authorId", "0")],
+            children: [
+              @xml.Node::Element({
+                name: name("text"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("Anchored note")],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("commentPr"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("anchor"),
+                    attributes: [
+                      attr("moveWithCells", "1"),
+                      attr("sizeWithCells", "1"),
+                    ],
+                    children: [
+                      comment_anchor_marker("from", "1", "1"),
+                      comment_anchor_marker("to", "3", "4"),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, comments=Some(comments))
+  assert_true(result.svg.contains("class=\"comment-callout\""))
+  assert_true(result.svg.contains("data-ooxml-comment-anchor=\"1\""))
+  assert_true(result.svg.contains("data-ooxml-comment-anchor-from=\"B2\""))
+  assert_true(result.svg.contains("data-ooxml-comment-anchor-to=\"D5\""))
+  assert_true(
+    result.svg.contains("data-ooxml-comment-anchor-move-with-cells=\"1\""),
+  )
+  assert_true(
+    result.svg.contains("data-ooxml-comment-anchor-size-with-cells=\"1\""),
+  )
+  assert_true(result.svg.contains(">Anchor author<"))
+  assert_true(result.svg.contains(">Anchored note<"))
 }
 
 ///|

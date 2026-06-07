@@ -5,6 +5,9 @@
 // for each, and writes .snapshots/catalog.json.
 
 ///|
+let g_catalog_font_fixture_installed : Ref[Bool] = { val: false }
+
+///|
 /// Install the catalog harness's deterministic TTF fixture.
 ///
 /// The harness exercises renderers as part of coverage measurement,
@@ -14,6 +17,9 @@
 /// `FontResolver` with real TTF bytes, avoiding host-specific font
 /// discovery and avoiding any synthetic metric table.
 fn install_catalog_font_fixture() -> Unit {
+  if g_catalog_font_fixture_installed.val {
+    return
+  }
   let bytes = try
     @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
   catch {
@@ -27,10 +33,23 @@ fn install_catalog_font_fixture() -> Unit {
   @glyph.set_default_font_set(
     @glyph.FontSet::new(
       resolver=@glyph.FontResolver::in_memory(
-        Map([("Noto Sans", bytes)], capacity=1),
+        Map(
+          [
+            ("Noto Sans", bytes),
+            ("Calibri", bytes),
+            ("Calibri Light", bytes),
+            ("sans-serif", bytes),
+            ("Arial", bytes),
+            ("Cambria", bytes),
+            ("Courier New", bytes),
+            ("Times New Roman", bytes),
+          ],
+          capacity=8,
+        ),
       ),
     ),
   )
+  g_catalog_font_fixture_installed.val = true
 }
 
 ///|
@@ -188,6 +207,76 @@ fn catalog_part_roots() -> Array[CatalogPartRoot] {
       type_ns_tail: "spreadsheetml/main",
       type_local: "CT_Stylesheet",
       host: "xlsx:styles",
+      phase: "supplementary",
+    },
+    {
+      name: "calcChain",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_CalcChain",
+      host: "xlsx:calcChain",
+      phase: "supplementary",
+    },
+    {
+      name: "connections",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Connections",
+      host: "xlsx:connections",
+      phase: "supplementary",
+    },
+    {
+      name: "metadata",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Metadata",
+      host: "xlsx:metadata",
+      phase: "supplementary",
+    },
+    {
+      name: "MapInfo",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_MapInfo",
+      host: "xlsx:xmlMaps",
+      phase: "supplementary",
+    },
+    {
+      name: "queryTable",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_QueryTable",
+      host: "xlsx:queryTable",
+      phase: "supplementary",
+    },
+    {
+      name: "headers",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_RevisionHeaders",
+      host: "xlsx:revisionHeaders",
+      phase: "supplementary",
+    },
+    {
+      name: "revisions",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Revisions",
+      host: "xlsx:revisionLog",
+      phase: "supplementary",
+    },
+    {
+      name: "users",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Users",
+      host: "xlsx:userNames",
+      phase: "supplementary",
+    },
+    {
+      name: "volTypes",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_VolTypes",
+      host: "xlsx:volatileDependencies",
+      phase: "supplementary",
+    },
+    {
+      name: "chartsheet",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Chartsheet",
+      host: "xlsx:chartsheet",
       phase: "supplementary",
     },
     {
@@ -435,6 +524,90 @@ fn strip_ns(ns : String) -> String {
 }
 
 ///|
+fn is_sml_inline_string_catalog_target(
+  name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  strip_ns(ns) == "spreadsheetml/main" &&
+  name == "is" &&
+  catalog_type_local(type_name) == "CT_Rst"
+}
+
+///|
+fn is_sml_single_xml_cells_catalog_target(
+  _name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "spreadsheetml/main" {
+    return false
+  }
+  match catalog_type_local(type_name) {
+    "CT_SingleXmlCells" | "CT_SingleXmlCell" | "CT_XmlCellPr" | "CT_XmlPr" =>
+      true
+    _ => false
+  }
+}
+
+///|
+fn is_sml_external_link_catalog_target(
+  _name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "spreadsheetml/main" {
+    return false
+  }
+  match catalog_type_local(type_name) {
+    "CT_ExternalLink"
+    | "CT_ExternalBook"
+    | "CT_DdeLink"
+    | "CT_OleLink"
+    | "CT_ExternalSheetNames"
+    | "CT_ExternalDefinedNames"
+    | "CT_ExternalSheetName"
+    | "CT_ExternalDefinedName"
+    | "CT_ExternalSheetDataSet"
+    | "CT_ExternalSheetData"
+    | "CT_ExternalRow"
+    | "CT_ExternalCell"
+    | "CT_DdeItems"
+    | "CT_DdeItem"
+    | "CT_DdeValues"
+    | "CT_DdeValue"
+    | "CT_OleItems"
+    | "CT_OleItem" => true
+    _ => false
+  }
+}
+
+///|
+fn is_sml_external_link_shared_string_catalog_target(
+  name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  (
+    strip_ns(ns) == "officeDocument/sharedTypes" ||
+    strip_ns(ns) == "spreadsheetml/main"
+  ) &&
+  name == "val" &&
+  catalog_type_local(type_name) == "ST_Xstring"
+}
+
+///|
+fn is_sml_extension_catalog_target(
+  name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  strip_ns(ns) == "spreadsheetml/main" &&
+  name == "ext" &&
+  catalog_type_local(type_name) == "CT_Extension"
+}
+
+///|
 /// Hex digit (0-15) as a lowercase Char.
 fn hex_digit(n : Int) -> Char {
   if n < 10 {
@@ -502,12 +675,19 @@ fn main {
     ""
   }
   let schema = load_catalog_schema()
+  let partial_filter = load_catalog_partial_filter()
+  let partial_active = catalog_filter_active(partial_filter)
   println(
     "loaded: \{schema.complex_types.length()} complexTypes, " +
     "\{schema.simple_types.length()} simpleTypes, " +
     "\{schema.all_elements.length()} element declarations, " +
     "\{schema.groups.length()} groups",
   )
+  if partial_active {
+    println(
+      "partial catalog validation: " + catalog_filter_summary(partial_filter),
+    )
+  }
 
   // Containment ancestry — the wrapper chain from a part root down to
   // each element, used to embed host-less elements where the schema
@@ -605,9 +785,29 @@ fn main {
   for _k, decl in schema.all_elements {
     element_known[decl.name] = true
   }
+  let touched_formats : Map[String, Bool] = Map([], capacity=0)
+  let mut filtered_seen = 0
+  let mut filtered_taken = 0
   for _key, decl in schema.all_elements {
     let prefix = ns_prefix(decl.ns)
     let fmt = ns_format(decl.ns)
+    // The type display (local) name and a stable id.
+    let type_local = catalog_type_local(decl.type_name)
+    let ident_base = if name_variants.get(decl.name).unwrap_or(1) <= 1 ||
+      decl.type_name.has_prefix("__") {
+      decl.name
+    } else {
+      decl.name + "__" + type_local
+    }
+    let ident = if id_variants.get(ident_base).unwrap_or(1) <= 1 {
+      ident_base
+    } else {
+      ident_base + "__" + ns_prefix(decl.ns)
+    }
+    if !catalog_filter_decl_match(partial_filter, prefix, fmt, decl, type_local) ||
+      !catalog_filter_id_match(partial_filter, ident) {
+      continue
+    }
     // Synthesise the element under test as an @xml.Element tree.
     // The element under test gets the rich synthesis budget so its
     // instance is visually non-degenerate (see RICH_BUDGET).
@@ -680,19 +880,6 @@ fn main {
           }
       }
     }
-    // The type display (local) name and a stable id.
-    let type_local = catalog_type_local(decl.type_name)
-    let ident_base = if name_variants.get(decl.name).unwrap_or(1) <= 1 ||
-      decl.type_name.has_prefix("__") {
-      decl.name
-    } else {
-      decl.name + "__" + type_local
-    }
-    let ident = if id_variants.get(ident_base).unwrap_or(1) <= 1 {
-      ident_base
-    } else {
-      ident_base + "__" + ns_prefix(decl.ns)
-    }
     let lineage_json = StringBuilder::new()
     lineage_json.write_char('[')
     for i, lin in decl.lineages {
@@ -715,25 +902,6 @@ fn main {
     // The verification copy carries the `TARGET_ATTR` sentinel so the
     // differential render check can locate and prune it.
     let target = stamp_target(target)
-    entries.push(
-      "{\"id\":" +
-      json_str(ident) +
-      ",\"element\":" +
-      json_str(decl.name) +
-      ",\"type\":" +
-      type_json +
-      ",\"namespace\":" +
-      json_str(decl.ns) +
-      ",\"prefix\":" +
-      json_str(prefix) +
-      ",\"format\":" +
-      (if fmt == "" { "null" } else { json_str(fmt) }) +
-      ",\"lineage\":" +
-      lineage_json.to_string() +
-      ",\"fragment\":" +
-      json_str(fragment) +
-      "}",
-    )
     // Embed the element at its schema-correct position: wrap it in
     // its containment ancestry (a real element tree).  The ancestry
     // also picks the host format.  Format strings carry the OPC
@@ -757,10 +925,267 @@ fn main {
     // `chartSpace/spPr` should keep their original document/sld
     // canonical path so the renderer's shape pipeline credits them.
     let is_chart_ns = strip_ns(decl.ns) == "drawingml/chart"
+    let is_chart_drawing_ns = strip_ns(decl.ns) == "drawingml/chartDrawing"
+    let is_diagram_ns = strip_ns(decl.ns) == "drawingml/diagram"
+    let is_sml_ns = strip_ns(decl.ns) == "spreadsheetml/main"
     if decl.name == "relIds" &&
-      strip_ns(decl.ns) == "drawingml/diagram" &&
+      is_diagram_ns &&
       catalog_type_local(decl.type_name) == "CT_RelIds" {
       candidates.push(("pptx:diagram-relids", target))
+    }
+    if is_diagram_ns &&
+      catalog_type_local(decl.type_name) == "CT_Colors" &&
+      (
+        decl.name == "fillClrLst" ||
+        decl.name == "linClrLst" ||
+        decl.name == "txLinClrLst" ||
+        decl.name == "txFillClrLst"
+      ) {
+      candidates.push(
+        ("pptx:diagram-colors", catalog_diagram_active_colors_root(target)),
+      )
+    }
+    if is_diagram_ns &&
+      catalog_type_local(decl.type_name) == "CT_Colors" &&
+      decl.name == "effectClrLst" {
+      candidates.push(
+        (
+          "pptx:diagram-colors-effect",
+          catalog_diagram_effect_colors_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      catalog_type_local(decl.type_name) == "CT_Colors" &&
+      decl.name == "txEffectClrLst" {
+      candidates.push(
+        (
+          "pptx:diagram-colors-text-effect",
+          catalog_diagram_text_effect_colors_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (
+          decl.name == "t" &&
+          catalog_type_local(decl.type_name) == "CT_TextBody"
+        ) ||
+        (decl.name == "pt" && catalog_type_local(decl.type_name) == "CT_Pt") ||
+        (
+          decl.name == "ptLst" &&
+          catalog_type_local(decl.type_name) == "CT_PtList"
+        ) ||
+        (
+          decl.name == "prSet" &&
+          catalog_type_local(decl.type_name) == "CT_ElemPropSet"
+        )
+      ) {
+      candidates.push(
+        ("pptx:diagram-data", catalog_diagram_active_data_model_root(target)),
+      )
+    }
+    if decl.name == "bg" &&
+      catalog_type_local(decl.type_name) == "CT_BackgroundFormatting" {
+      candidates.push(
+        ("pptx:diagram-data", catalog_diagram_active_data_model_root(target)),
+      )
+    }
+    if decl.name == "whole" &&
+      catalog_type_local(decl.type_name) == "CT_WholeE2oFormatting" {
+      candidates.push(
+        ("pptx:diagram-data", catalog_diagram_active_data_model_root(target)),
+      )
+    }
+    if is_diagram_ns &&
+      decl.name == "presLayoutVars" &&
+      catalog_type_local(decl.type_name) == "CT_LayoutVariablePropertySet" {
+      candidates.push(
+        (
+          "pptx:diagram-data-var",
+          catalog_diagram_point_variable_data_model_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (decl.name == "cxn" && catalog_type_local(decl.type_name) == "CT_Cxn") ||
+        (
+          decl.name == "cxnLst" &&
+          catalog_type_local(decl.type_name) == "CT_CxnList"
+        )
+      ) {
+      candidates.push(
+        (
+          "pptx:diagram-data-cxn",
+          catalog_diagram_connection_data_model_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (
+          decl.name == "shape" &&
+          catalog_type_local(decl.type_name) == "CT_Shape"
+        ) ||
+        (
+          decl.name == "presOf" &&
+          catalog_type_local(decl.type_name) == "CT_PresentationOf"
+        ) ||
+        (
+          decl.name == "constr" &&
+          catalog_type_local(decl.type_name) == "CT_Constraint"
+        ) ||
+        (
+          decl.name == "constrLst" &&
+          catalog_type_local(decl.type_name) == "CT_Constraints"
+        )
+      ) {
+      candidates.push(
+        ("pptx:diagram-layout", catalog_diagram_active_layout_root(target)),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (decl.name == "adj" && catalog_type_local(decl.type_name) == "CT_Adj") ||
+        (
+          decl.name == "adjLst" &&
+          catalog_type_local(decl.type_name) == "CT_AdjLst"
+        )
+      ) {
+      candidates.push(
+        (
+          "pptx:diagram-layout-adj",
+          catalog_diagram_adjustment_layout_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (
+          decl.name == "rule" &&
+          catalog_type_local(decl.type_name) == "CT_NumericRule"
+        ) ||
+        (
+          decl.name == "ruleLst" &&
+          catalog_type_local(decl.type_name) == "CT_Rules"
+        )
+      ) {
+      candidates.push(
+        ("pptx:diagram-layout-rule", catalog_diagram_rule_layout_root(target)),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (
+          decl.name == "alg" &&
+          catalog_type_local(decl.type_name) == "CT_Algorithm"
+        ) ||
+        (
+          decl.name == "param" &&
+          catalog_type_local(decl.type_name) == "CT_Parameter"
+        )
+      ) {
+      candidates.push(
+        (
+          "pptx:diagram-layout-alg",
+          catalog_diagram_algorithm_layout_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (
+          decl.name == "layoutNode" &&
+          catalog_type_local(decl.type_name) == "CT_LayoutNode"
+        ) ||
+        (
+          decl.name == "forEach" &&
+          catalog_type_local(decl.type_name) == "CT_ForEach"
+        ) ||
+        (
+          decl.name == "choose" &&
+          catalog_type_local(decl.type_name) == "CT_Choose"
+        ) ||
+        (decl.name == "if" && catalog_type_local(decl.type_name) == "CT_When") ||
+        (
+          decl.name == "else" &&
+          catalog_type_local(decl.type_name) == "CT_Otherwise"
+        )
+      ) {
+      candidates.push(
+        (
+          "pptx:diagram-layout-flow",
+          catalog_diagram_layout_flow_layout_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      (
+        (
+          decl.name == "varLst" &&
+          catalog_type_local(decl.type_name) == "CT_LayoutVariablePropertySet"
+        ) ||
+        (
+          decl.name == "orgChart" &&
+          catalog_type_local(decl.type_name) == "CT_OrgChart"
+        ) ||
+        (
+          decl.name == "chMax" &&
+          catalog_type_local(decl.type_name) == "CT_ChildMax"
+        ) ||
+        (
+          decl.name == "chPref" &&
+          catalog_type_local(decl.type_name) == "CT_ChildPref"
+        ) ||
+        (
+          decl.name == "bulletEnabled" &&
+          catalog_type_local(decl.type_name) == "CT_BulletEnabled"
+        ) ||
+        (
+          decl.name == "dir" &&
+          catalog_type_local(decl.type_name) == "CT_Direction"
+        ) ||
+        (
+          decl.name == "hierBranch" &&
+          catalog_type_local(decl.type_name) == "CT_HierBranchStyle"
+        ) ||
+        (
+          decl.name == "animOne" &&
+          catalog_type_local(decl.type_name) == "CT_AnimOne"
+        ) ||
+        (
+          decl.name == "animLvl" &&
+          catalog_type_local(decl.type_name) == "CT_AnimLvl"
+        ) ||
+        (
+          decl.name == "resizeHandles" &&
+          catalog_type_local(decl.type_name) == "CT_ResizeHandles"
+        )
+      ) {
+      candidates.push(
+        (
+          "pptx:diagram-layout-var",
+          catalog_diagram_layout_variable_layout_root(target),
+        ),
+      )
+    }
+    if is_diagram_ns &&
+      decl.name == "styleLbl" &&
+      catalog_type_local(decl.type_name) == "CT_StyleLabel" {
+      candidates.push(
+        ("pptx:diagram-style", catalog_diagram_active_style_root(target)),
+      )
+    }
+    if is_diagram_ns &&
+      decl.name == "txPr" &&
+      catalog_type_local(decl.type_name) == "CT_TextProps" {
+      candidates.push(
+        (
+          "pptx:diagram-style-text-effect",
+          catalog_diagram_text_effect_style_root(target),
+        ),
+      )
     }
     if is_pml_picture_blip_catalog_target(decl.name, decl.type_name, decl.ns) {
       candidates.push(
@@ -774,6 +1199,77 @@ fn main {
     }
     if is_drawingml_table_catalog_target(decl.name, decl.type_name, decl.ns) {
       candidates.push(("pptx:table", catalog_table_root(target)))
+    }
+    if is_drawingml_table_style_part_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(
+        ("pptx:table-styles", catalog_table_style_part_root(target)),
+      )
+    }
+    if is_drawingml_text_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(("pptx:dml-text", catalog_dml_text_root(target)))
+    }
+    if is_drawingml_media_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(("pptx:dml-media", target))
+    }
+    if is_drawingml_hyperlink_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(("pptx:dml-hyperlink", target))
+    }
+    if is_drawingml_lock_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(("pptx:dml-lock", target))
+    }
+    if is_drawingml_gvml_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        (
+          "pptx:dml-locked-canvas",
+          catalog_dml_locked_canvas_root_for_target(target),
+        ),
+      )
+    }
+    if is_drawingml_graphic_data_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(("pptx:dml-graphic-data", target))
+    }
+    if is_drawingml_content_part_lock_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(
+        ("docx:contentPart", catalog_wml_content_part_lock_body(target)),
+      )
+    }
+    if is_drawingml_view_scale_ratio_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(("pptx:viewPr", catalog_pml_view_scale_root(target)))
+    }
+    if is_drawingml_shape_property_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(
+        ("pptx:dml-shape", catalog_dml_shape_property_root(target)),
+      )
+    }
+    if is_drawingml_timing_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(("pptx", catalog_dml_timing_root(target)))
+    }
+    if is_drawingml_group_transform_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(("pptx", catalog_dml_group_transform_root(target)))
     }
     if is_pml_master_tx_style_catalog_target(decl.name, decl.type_name, decl.ns) {
       candidates.push(
@@ -797,6 +1293,474 @@ fn main {
     if is_sml_pivot_catalog_target(decl.name, decl.type_name, decl.ns) {
       candidates.push(
         ("xlsx:pivot", catalog_sml_pivot_root(target, decl.type_name)),
+      )
+    }
+    if is_sml_extension_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        ("xlsx:workbook", catalog_sml_extension_list_root(target)),
+      )
+    }
+    if is_sml_inline_string_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        ("xlsx", catalog_sml_inline_string_worksheet_root(target)),
+      )
+    }
+    if is_sml_single_xml_cells_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(
+        ("xlsx:tableSingleCells", catalog_sml_single_xml_cells_root(target)),
+      )
+    }
+    if is_sml_external_link_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        ("xlsx:externalLink", catalog_sml_external_link_root(target)),
+      )
+    }
+    if is_sml_external_link_shared_string_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(
+        ("xlsx:externalLink", catalog_sml_external_link_root(target)),
+      )
+    }
+    if is_sml_worksheet_render_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(("xlsx", catalog_sml_worksheet_render_root(target)))
+    }
+    if is_sml_ns &&
+      (decl.name == "formula" || decl.name == "oldFormula") &&
+      catalog_type_local(decl.type_name) == "ST_Formula" {
+      candidates.push(("xlsx:revisionLog", target))
+    }
+    if is_sml_shared_string_rich_text_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        ("xlsx:sharedStrings", catalog_sml_shared_string_rich_text_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "leaderLines" &&
+      catalog_type_local(decl.type_name) == "CT_ChartLines" {
+      candidates.push(("pptx:chart", catalog_chart_leader_lines_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "marker" &&
+      catalog_type_local(decl.type_name) == "CT_Marker" {
+      candidates.push(("pptx:chart", catalog_chart_marker_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "marker" &&
+      catalog_type_local(decl.type_name) == "CT_Boolean" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_line_marker_flag_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "varyColors" &&
+      catalog_type_local(decl.type_name) == "CT_Boolean" {
+      candidates.push(("pptx:chart", catalog_chart_vary_colors_root(target)))
+    }
+    if is_chart_ns &&
+      (decl.name == "symbol" || decl.name == "size") &&
+      (
+        catalog_type_local(decl.type_name) == "CT_MarkerStyle" ||
+        catalog_type_local(decl.type_name) == "CT_MarkerSize"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_marker_child_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "scatterStyle" &&
+      catalog_type_local(decl.type_name) == "CT_ScatterStyle" {
+      candidates.push(("pptx:chart", catalog_chart_scatter_style_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "radarStyle" &&
+      catalog_type_local(decl.type_name) == "CT_RadarStyle" {
+      candidates.push(("pptx:chart", catalog_chart_radar_style_root(target)))
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "ofPieType" ||
+        decl.name == "splitType" ||
+        decl.name == "splitPos" ||
+        decl.name == "custSplit" ||
+        decl.name == "secondPiePt"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_OfPieType" ||
+        catalog_type_local(decl.type_name) == "CT_SplitType" ||
+        catalog_type_local(decl.type_name) == "CT_Double" ||
+        catalog_type_local(decl.type_name) == "CT_CustSplit" ||
+        catalog_type_local(decl.type_name) == "CT_UnsignedInt"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_of_pie_child_root(target)))
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "bubble3D" ||
+        decl.name == "bubbleScale" ||
+        decl.name == "showNegBubbles" ||
+        decl.name == "sizeRepresents"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_Boolean" ||
+        catalog_type_local(decl.type_name) == "CT_BubbleScale" ||
+        catalog_type_local(decl.type_name) == "CT_SizeRepresents"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_bubble_option_root(target)))
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "dLbls" ||
+        decl.name == "dLbl" ||
+        decl.name == "numFmt" ||
+        decl.name == "dLblPos" ||
+        decl.name == "showLegendKey" ||
+        decl.name == "showVal" ||
+        decl.name == "showCatName" ||
+        decl.name == "showSerName" ||
+        decl.name == "showPercent" ||
+        decl.name == "showBubbleSize" ||
+        decl.name == "showLeaderLines" ||
+        decl.name == "separator"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_DLbls" ||
+        catalog_type_local(decl.type_name) == "CT_DLbl" ||
+        catalog_type_local(decl.type_name) == "CT_NumFmt" ||
+        catalog_type_local(decl.type_name) == "CT_DLblPos" ||
+        catalog_type_local(decl.type_name) == "CT_Boolean" ||
+        catalog_type_local(decl.type_name) == "string"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_data_label_root(target)))
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "dTable" ||
+        decl.name == "showHorzBorder" ||
+        decl.name == "showVertBorder" ||
+        decl.name == "showOutline" ||
+        decl.name == "showKeys"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_DTable" ||
+        catalog_type_local(decl.type_name) == "CT_Boolean"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_data_table_root(target)))
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "trendline" ||
+        decl.name == "trendlineType" ||
+        decl.name == "order" ||
+        decl.name == "period" ||
+        decl.name == "forward" ||
+        decl.name == "backward" ||
+        decl.name == "intercept" ||
+        decl.name == "dispEq" ||
+        decl.name == "dispRSqr"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_Trendline" ||
+        catalog_type_local(decl.type_name) == "CT_TrendlineType" ||
+        catalog_type_local(decl.type_name) == "CT_Order" ||
+        catalog_type_local(decl.type_name) == "CT_Period" ||
+        catalog_type_local(decl.type_name) == "CT_Double" ||
+        catalog_type_local(decl.type_name) == "CT_Boolean"
+      ) {
+      candidates.push(
+        ("pptx:chart", catalog_chart_trendline_option_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "errBars" ||
+        decl.name == "errDir" ||
+        decl.name == "errBarType" ||
+        decl.name == "errValType" ||
+        decl.name == "noEndCap" ||
+        decl.name == "plus" ||
+        decl.name == "minus" ||
+        decl.name == "val"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_ErrBars" ||
+        catalog_type_local(decl.type_name) == "CT_ErrDir" ||
+        catalog_type_local(decl.type_name) == "CT_ErrBarType" ||
+        catalog_type_local(decl.type_name) == "CT_ErrValType" ||
+        catalog_type_local(decl.type_name) == "CT_Boolean" ||
+        catalog_type_local(decl.type_name) == "CT_NumDataSource" ||
+        catalog_type_local(decl.type_name) == "CT_Double"
+      ) {
+      candidates.push(
+        ("pptx:chart", catalog_chart_error_bars_option_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "upDownBars" ||
+        decl.name == "gapWidth" ||
+        decl.name == "upBars" ||
+        decl.name == "downBars"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_UpDownBars" ||
+        catalog_type_local(decl.type_name) == "CT_GapAmount" ||
+        catalog_type_local(decl.type_name) == "CT_UpDownBar"
+      ) {
+      candidates.push(
+        ("pptx:chart", catalog_chart_up_down_bars_option_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "gapDepth" &&
+      catalog_type_local(decl.type_name) == "CT_GapAmount" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_bar3d_gap_depth_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "order" &&
+      catalog_type_local(decl.type_name) == "CT_UnsignedInt" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_bar_series_order_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "axId" &&
+      catalog_type_local(decl.type_name) == "CT_UnsignedInt" {
+      candidates.push(("pptx:chart", catalog_chart_axis_id_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "crossAx" &&
+      catalog_type_local(decl.type_name) == "CT_UnsignedInt" {
+      candidates.push(("pptx:chart", catalog_chart_axis_cross_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "auto" &&
+      catalog_type_local(decl.type_name) == "CT_Boolean" {
+      candidates.push(("pptx:chart", catalog_chart_axis_auto_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "noMultiLvlLbl" &&
+      catalog_type_local(decl.type_name) == "CT_Boolean" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_no_multi_level_labels_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "baseTimeUnit" ||
+        decl.name == "majorTimeUnit" ||
+        decl.name == "minorTimeUnit" ||
+        decl.name == "date1904"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_TimeUnit" ||
+        catalog_type_local(decl.type_name) == "CT_Boolean"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_date_axis_unit_root(target)))
+    }
+    if is_chart_ns &&
+      (decl.name == "majorGridlines" || decl.name == "minorGridlines") &&
+      catalog_type_local(decl.type_name) == "CT_ChartLines" {
+      candidates.push(("pptx:chart", catalog_chart_axis_gridlines_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "wireframe" &&
+      catalog_type_local(decl.type_name) == "CT_Boolean" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_surface_wireframe_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      (decl.name == "bandFmt" || decl.name == "bandFmts") &&
+      (
+        catalog_type_local(decl.type_name) == "CT_BandFmt" ||
+        catalog_type_local(decl.type_name) == "CT_BandFmts"
+      ) {
+      candidates.push(
+        ("pptx:chart", catalog_chart_surface_band_format_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "title" &&
+      catalog_type_local(decl.type_name) == "CT_Title" {
+      candidates.push(("pptx:chart", catalog_chart_title_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "autoTitleDeleted" &&
+      catalog_type_local(decl.type_name) == "CT_Boolean" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_auto_title_deleted_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "showDLblsOverMax" &&
+      catalog_type_local(decl.type_name) == "CT_Boolean" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_show_data_labels_over_max_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "dispBlanksAs" &&
+      catalog_type_local(decl.type_name) == "CT_DispBlanksAs" {
+      candidates.push(("pptx:chart", catalog_chart_disp_blanks_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "clrMapOvr" &&
+      catalog_type_local(decl.type_name) == "CT_ColorMapping" {
+      candidates.push(
+        ("pptx:chart", catalog_chart_color_map_override_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "manualLayout" ||
+        decl.name == "layoutTarget" ||
+        decl.name == "xMode" ||
+        decl.name == "yMode" ||
+        decl.name == "wMode" ||
+        decl.name == "hMode" ||
+        decl.name == "x" ||
+        decl.name == "y" ||
+        decl.name == "w" ||
+        decl.name == "h"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_ManualLayout" ||
+        catalog_type_local(decl.type_name) == "CT_LayoutTarget" ||
+        catalog_type_local(decl.type_name) == "CT_LayoutMode" ||
+        catalog_type_local(decl.type_name) == "CT_Double"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_manual_layout_root(target)))
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "min" ||
+        decl.name == "axPos" ||
+        decl.name == "majorUnit" ||
+        decl.name == "minorUnit" ||
+        decl.name == "majorTickMark" ||
+        decl.name == "minorTickMark" ||
+        decl.name == "crosses" ||
+        decl.name == "lblAlgn" ||
+        decl.name == "lblOffset" ||
+        decl.name == "tickLblSkip" ||
+        decl.name == "tickMarkSkip" ||
+        decl.name == "crossBetween"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_Double" ||
+        catalog_type_local(decl.type_name) == "CT_AxPos" ||
+        catalog_type_local(decl.type_name) == "CT_AxisUnit" ||
+        catalog_type_local(decl.type_name) == "CT_TickMark" ||
+        catalog_type_local(decl.type_name) == "CT_Crosses" ||
+        catalog_type_local(decl.type_name) == "CT_LblAlgn" ||
+        catalog_type_local(decl.type_name) == "CT_LblOffset" ||
+        catalog_type_local(decl.type_name) == "CT_Skip" ||
+        catalog_type_local(decl.type_name) == "CT_CrossBetween"
+      ) {
+      candidates.push(("pptx:chart", catalog_chart_axis_option_root(target)))
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "grouping" ||
+        decl.name == "overlap" ||
+        decl.name == "invertIfNegative" ||
+        decl.name == "dPt"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "CT_BarGrouping" ||
+        catalog_type_local(decl.type_name) == "CT_Grouping" ||
+        catalog_type_local(decl.type_name) == "CT_Overlap" ||
+        catalog_type_local(decl.type_name) == "CT_Boolean" ||
+        catalog_type_local(decl.type_name) == "CT_DPt"
+      ) {
+      candidates.push(
+        ("pptx:chart", catalog_chart_bar_series_option_root(target)),
+      )
+    }
+    if is_chart_ns &&
+      (
+        decl.name == "formatCode" ||
+        decl.name == "ptCount" ||
+        decl.name == "pt" ||
+        decl.name == "numCache" ||
+        decl.name == "strRef" ||
+        decl.name == "strCache" ||
+        decl.name == "lvl" ||
+        decl.name == "multiLvlStrCache" ||
+        decl.name == "multiLvlStrRef" ||
+        decl.name == "strLit" ||
+        decl.name == "xVal" ||
+        decl.name == "bubbleSize" ||
+        decl.name == "tx" ||
+        decl.name == "rich"
+      ) &&
+      (
+        catalog_type_local(decl.type_name) == "ST_Xstring" ||
+        catalog_type_local(decl.type_name) == "CT_UnsignedInt" ||
+        catalog_type_local(decl.type_name) == "CT_NumVal" ||
+        catalog_type_local(decl.type_name) == "CT_StrVal" ||
+        catalog_type_local(decl.type_name) == "CT_NumData" ||
+        catalog_type_local(decl.type_name) == "CT_StrRef" ||
+        catalog_type_local(decl.type_name) == "CT_Lvl" ||
+        catalog_type_local(decl.type_name) == "CT_MultiLvlStrData" ||
+        catalog_type_local(decl.type_name) == "CT_MultiLvlStrRef" ||
+        catalog_type_local(decl.type_name) == "CT_StrData" ||
+        catalog_type_local(decl.type_name) == "CT_AxDataSource" ||
+        catalog_type_local(decl.type_name) == "CT_NumDataSource" ||
+        catalog_type_local(decl.type_name) == "CT_Tx" ||
+        catalog_type_local(decl.type_name) == "CT_SerTx" ||
+        catalog_type_local(decl.type_name) == "CT_TextBody"
+      ) {
+      candidates.push(
+        (
+          "pptx:chart",
+          catalog_chart_data_source_root(
+            target,
+            catalog_type_local(decl.type_name),
+          ),
+        ),
+      )
+    }
+    if is_chart_ns &&
+      decl.name == "txPr" &&
+      catalog_type_local(decl.type_name) == "CT_TextBody" {
+      candidates.push(("pptx:chart", catalog_chart_tx_pr_root(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "chart" &&
+      catalog_type_local(decl.type_name) == "CT_RelId" {
+      candidates.push(("docx:chart", catalog_docx_chart_ref_body(target)))
+    }
+    if is_chart_ns &&
+      decl.name == "userShapes" &&
+      catalog_type_local(decl.type_name) == "CT_RelId" {
+      candidates.push(
+        (
+          "pptx:chart-usershapes-ref",
+          catalog_chart_user_shapes_ref_root(target),
+        ),
+      )
+    }
+    if is_chart_drawing_ns &&
+      (
+        decl.name == "nvSpPr" ||
+        decl.name == "nvCxnSpPr" ||
+        decl.name == "nvPicPr" ||
+        decl.name == "nvGraphicFramePr" ||
+        decl.name == "nvGrpSpPr"
+      ) {
+      candidates.push(
+        (
+          "pptx:chart-usershapes",
+          catalog_chart_user_shapes_nonvisual_root(target),
+        ),
       )
     }
     match ancestry.get(akey) {
@@ -824,6 +1788,7 @@ fn main {
               | "layoutDef"
               | "styleDef"
               | "colorsDef"
+              | "chartsheet"
               | "wsDr"
               | "userShapes" => 0
               _ => 1
@@ -848,12 +1813,60 @@ fn main {
     if candidates.length() == 0 {
       candidates.push((if fmt != "" { fmt } else { "docx" }, target))
     }
+    if !catalog_filter_candidates_match(partial_filter, candidates) {
+      continue
+    }
+    let verify_candidates : Array[(String, @xml.Element)] = if partial_filter.hosts.length() ==
+      0 {
+      candidates
+    } else {
+      let filtered_candidates : Array[(String, @xml.Element)] = []
+      for cand in candidates {
+        let (cfmt, _) = cand
+        if catalog_filter_hosts_match(partial_filter.hosts, cfmt) {
+          filtered_candidates.push(cand)
+        }
+      }
+      filtered_candidates
+    }
+    if verify_candidates.length() == 0 {
+      continue
+    }
+    if filtered_seen < partial_filter.start {
+      filtered_seen = filtered_seen + 1
+      continue
+    }
+    match partial_filter.limit {
+      Some(limit) if filtered_taken >= limit => break
+      _ => ()
+    }
+    filtered_seen = filtered_seen + 1
+    filtered_taken = filtered_taken + 1
+    entries.push(
+      "{\"id\":" +
+      json_str(ident) +
+      ",\"element\":" +
+      json_str(decl.name) +
+      ",\"type\":" +
+      type_json +
+      ",\"namespace\":" +
+      json_str(decl.ns) +
+      ",\"prefix\":" +
+      json_str(prefix) +
+      ",\"format\":" +
+      (if fmt == "" { "null" } else { json_str(fmt) }) +
+      ",\"lineage\":" +
+      lineage_json.to_string() +
+      ",\"fragment\":" +
+      json_str(fragment) +
+      "}",
+    )
     // Round-trip + render verification with a unique marker token.
     let marker = "CATm\{count}m"
-    let mut host_fmt = candidates[0].0
-    let mut embed_tree = candidates[0].1
+    let mut host_fmt = verify_candidates[0].0
+    let mut embed_tree = verify_candidates[0].1
     let mut outcome = ""
-    for i, cand in candidates {
+    for i, cand in verify_candidates {
       let (cfmt, ctree) = cand
       let o = verify_entry(cfmt, ctree, marker)
       if i == 0 {
@@ -869,6 +1882,12 @@ fn main {
       if outcome == "rendered" {
         break
       }
+    }
+    let base_host_fmt = catalog_base_host_format(host_fmt)
+    if base_host_fmt == "xlsx" ||
+      base_host_fmt == "pptx" ||
+      base_host_fmt == "docx" {
+      touched_formats[base_host_fmt] = true
     }
     if debug_id != "" && ident == debug_id {
       // Per-namespace dump suffix so multiple entries sharing the
@@ -993,12 +2012,15 @@ fn main {
   }
   out.write_string("\n]}\n")
   let _ = try? @fs.create_dir(".snapshots")
-  try
-    @fs.write_string_to_file(".snapshots/catalog.json", out.to_string())
-  catch {
-    _ => println("!! failed to write catalog.json")
+  let catalog_output_path = if partial_active {
+    ".snapshots/catalog.partial.json"
+  } else {
+    ".snapshots/catalog.json"
+  }
+  try @fs.write_string_to_file(catalog_output_path, out.to_string()) catch {
+    _ => println("!! failed to write " + catalog_output_path)
   } noraise {
-    _ => println("catalog: \{count} element entries -> .snapshots/catalog.json")
+    _ => println("catalog: \{count} element entries -> " + catalog_output_path)
   }
 
   // Write coverage.json — the round-trip + render outcome per entry.
@@ -1020,10 +2042,13 @@ fn main {
     cov.write_string(e)
   }
   cov.write_string("\n]}\n")
-  try
-    @fs.write_string_to_file(".snapshots/coverage.json", cov.to_string())
-  catch {
-    _ => println("!! failed to write coverage.json")
+  let coverage_output_path = if partial_active {
+    ".snapshots/coverage.partial.json"
+  } else {
+    ".snapshots/coverage.json"
+  }
+  try @fs.write_string_to_file(coverage_output_path, cov.to_string()) catch {
+    _ => println("!! failed to write " + coverage_output_path)
   } noraise {
     _ => ()
   }
@@ -1042,6 +2067,15 @@ fn main {
   println("")
   println("L1  schema enumeration  (ECMA-376 Strict + Transitional + OPC)")
   println("    element declarations catalogued : \{count}")
+  if partial_active {
+    println(
+      "    partial filter                  : " +
+      catalog_filter_summary(partial_filter),
+    )
+    println(
+      "    total schema declarations       : \{schema.all_elements.length()}",
+    )
+  }
   println(
     "    complex types                   : \{schema.complex_types.length()}",
   )
@@ -1142,12 +2176,16 @@ fn main {
       sb.write_string(line)
       sb.write_char('\n')
     }
-    let _ = try? @fs.write_string_to_file(
-      "/tmp/catalog-parsed.txt",
-      sb.to_string(),
-    )
+    let parsed_output_path = if partial_active {
+      "/tmp/catalog-parsed.partial.txt"
+    } else {
+      "/tmp/catalog-parsed.txt"
+    }
+    let _ = try? @fs.write_string_to_file(parsed_output_path, sb.to_string())
     println(
-      "    (\{parsed_elements.length()} `parsed` elements written to /tmp/catalog-parsed.txt for glyph-level triage)",
+      "    (\{parsed_elements.length()} `parsed` elements written to " +
+      parsed_output_path +
+      " for glyph-level triage)",
     )
   }
 
@@ -1160,14 +2198,21 @@ fn main {
   println("L2c OPC structural validity  (open -> save -> reopen ->")
   println("    validate §6/§7/§11 invariants; necessary condition for")
   println("    Microsoft Office to open the package)")
-  for fmt in ["xlsx", "pptx", "docx"] {
-    let violations = structural_validity(fmt)
-    if violations.length() == 0 {
-      println("    \{fmt}: VALID (0 structural violations)")
-    } else {
-      println("    \{fmt}: \{violations.length()} violation(s):")
-      for v in violations {
-        println("      - \{v}")
+  let structural_formats = catalog_structural_formats(
+    partial_active, touched_formats,
+  )
+  if structural_formats.length() == 0 {
+    println("    skipped: partial selection produced no docx/xlsx/pptx host")
+  } else {
+    for fmt in structural_formats {
+      let violations = structural_validity(fmt)
+      if violations.length() == 0 {
+        println("    \{fmt}: VALID (0 structural violations)")
+      } else {
+        println("    \{fmt}: \{violations.length()} violation(s):")
+        for v in violations {
+          println("      - \{v}")
+        }
       }
     }
   }
@@ -1178,6 +2223,23 @@ fn main {
   // against the verified element set, in two dimensions: round-trip
   // (the library handles the element) and render (a traced effect
   // reached the SVG).
+  if partial_active {
+    println("L3  ECMA-376 specification-section coverage (Part 1-4)")
+    println(
+      "    skipped for partial validation; run without OOXML_CATALOG_* filters for global section denominators",
+    )
+    println("")
+    println("------------------------------------------------------------")
+    println(
+      "summary: \{count} selected ECMA-376 elements catalogued; " +
+      "\{no_crash}/\{count} parse + round-trip without crash; " +
+      "\{rendered}/\{count} content verified in the rendered SVG.",
+    )
+    println(
+      "         partial filter: " + catalog_filter_summary(partial_filter),
+    )
+    return
+  }
   let part_cov = analyse_sections(element_ok, element_parsed, element_known)
   let mut total_sec = 0
   let mut total_prose = 0

@@ -151,6 +151,290 @@ fn normalize_spreadsheet_drawing_marker(el : @xml.Element) -> @xml.Element {
 }
 
 ///|
+fn force_local_attr_value(
+  attrs : Array[@xml.Attribute],
+  ns : String,
+  local_name : String,
+  value : String,
+) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  let mut saw = false
+  for attr in attrs {
+    if attr.name.local_name == local_name {
+      saw = true
+      out.push({ name: attr.name, value })
+    } else {
+      out.push(attr)
+    }
+  }
+  if !saw {
+    out.push({ name: qname(ns, local_name), value })
+  }
+  out
+}
+
+///|
+/// §21.2.2.207 tickMarkSkip — catalog synthesis must exercise a
+/// visible non-default interval.  The schema-minimal ST_Skip sample is
+/// "1", which is valid but renders identically to omitting the element.
+fn normalize_chart_tick_mark_skip(el : @xml.Element) -> @xml.Element {
+  if el.name.local_name != "tickMarkSkip" {
+    return el
+  }
+  let ns = el.name.ns.unwrap_or("")
+  {
+    name: el.name,
+    attributes: force_local_attr_value(el.attributes, ns, "val", "2"),
+    children: el.children,
+  }
+}
+
+///|
+/// §21.2.2.14 / §21.2.2.116 / §21.2.2.123 date-axis time units.
+/// Use contrastive units so pruning one element changes the date-axis
+/// bucket / label / coordinate path instead of being masked by a
+/// sibling with the same value.
+fn normalize_chart_time_unit(el : @xml.Element) -> @xml.Element {
+  let value = match el.name.local_name {
+    "baseTimeUnit" => "months"
+    "majorTimeUnit" => "years"
+    "minorTimeUnit" => "days"
+    _ => return el
+  }
+  let ns = el.name.ns.unwrap_or("")
+  {
+    name: el.name,
+    attributes: force_local_attr_value(el.attributes, ns, "val", value),
+    children: el.children,
+  }
+}
+
+///|
+fn is_chart_namespace(ns : String) -> Bool {
+  strip_ns(ns) == "drawingml/chart"
+}
+
+///|
+fn is_drawingml_main_namespace(ns : String) -> Bool {
+  strip_ns(ns) == "drawingml/main"
+}
+
+///|
+fn visible_color_transform_value(local_name : String) -> String? {
+  match local_name {
+    // §20.1.2.3 colour modifiers. The schema-minimal numeric sample
+    // is usually "1", which is valid but visually indistinguishable
+    // from absence for percentage / angle transforms.
+    "alpha" | "alphaMod" => Some("50000")
+    // Opaque alpha plus positive offset saturates to opaque; use a
+    // negative offset so the target transform itself changes output.
+    "alphaOff" => Some("-50000")
+    "hue" => Some("7200000")
+    "hueMod" => Some("200000")
+    "hueOff" => Some("5400000")
+    "sat" => Some("0")
+    "satMod" => Some("50000")
+    "satOff" => Some("-50000")
+    "lum" => Some("25000")
+    "lumMod" => Some("50000")
+    "lumOff" => Some("25000")
+    "red" | "green" => Some("100000")
+    "blue" => Some("25000")
+    "redMod" | "greenMod" | "blueMod" => Some("50000")
+    "redOff" | "greenOff" | "blueOff" => Some("25000")
+    "shade" | "tint" => Some("50000")
+    _ => None
+  }
+}
+
+///|
+fn has_local_attr(attrs : Array[@xml.Attribute], local_name : String) -> Bool {
+  for attr in attrs {
+    if attr.name.local_name == local_name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn normalize_drawingml_color_transform(el : @xml.Element) -> @xml.Element {
+  let ns = el.name.ns.unwrap_or("")
+  if !is_drawingml_main_namespace(ns) {
+    return el
+  }
+  match visible_color_transform_value(el.name.local_name) {
+    None => el
+    Some(value) =>
+      {
+        name: el.name,
+        attributes: force_local_attr_value(el.attributes, ns, "val", value),
+        children: el.children,
+      }
+  }
+}
+
+///|
+fn normalize_drawingml_color_choice(el : @xml.Element) -> @xml.Element {
+  let ns = el.name.ns.unwrap_or("")
+  if !is_drawingml_main_namespace(ns) {
+    return el
+  }
+  match el.name.local_name {
+    "scrgbClr" =>
+      {
+        name: el.name,
+        attributes: force_local_attr_value(
+          force_local_attr_value(
+            force_local_attr_value(el.attributes, ns, "r", "20000"),
+            ns,
+            "g",
+            "60000",
+          ),
+          ns,
+          "b",
+          "90000",
+        ),
+        children: el.children,
+      }
+    _ => el
+  }
+}
+
+///|
+fn normalize_drawingml_transform_geometry(el : @xml.Element) -> @xml.Element {
+  let ns = el.name.ns.unwrap_or("")
+  if !is_drawingml_main_namespace(ns) {
+    return el
+  }
+  match el.name.local_name {
+    "sx" | "sy" =>
+      {
+        name: el.name,
+        attributes: force_local_attr_value(
+          force_local_attr_value(el.attributes, ns, "n", "2"),
+          ns,
+          "d",
+          "1",
+        ),
+        children: el.children,
+      }
+    "chOff" =>
+      {
+        name: el.name,
+        attributes: force_local_attr_value(
+          force_local_attr_value(el.attributes, ns, "x", "457200"),
+          ns,
+          "y",
+          "457200",
+        ),
+        children: el.children,
+      }
+    "chExt" =>
+      {
+        name: el.name,
+        attributes: force_local_attr_value(
+          force_local_attr_value(el.attributes, ns, "cx", "914400"),
+          ns,
+          "cy",
+          "914400",
+        ),
+        children: el.children,
+      }
+    "ext" =>
+      if has_local_attr(el.attributes, "cx") ||
+        has_local_attr(el.attributes, "cy") {
+        {
+          name: el.name,
+          attributes: force_local_attr_value(
+            force_local_attr_value(el.attributes, ns, "cx", "1828800"),
+            ns,
+            "cy",
+            "914400",
+          ),
+          children: el.children,
+        }
+      } else {
+        el
+      }
+    _ => el
+  }
+}
+
+///|
+fn is_chart_lines_element_name(local_name : String) -> Bool {
+  match local_name {
+    "dropLines"
+    | "hiLowLines"
+    | "leaderLines"
+    | "majorGridlines"
+    | "minorGridlines"
+    | "serLines" => true
+    _ => false
+  }
+}
+
+///|
+fn chart_main_namespace_for(chart_ns : String) -> String {
+  if chart_ns.has_prefix("http://purl.oclc.org/ooxml/") {
+    "http://purl.oclc.org/ooxml/drawingml/main"
+  } else {
+    "http://schemas.openxmlformats.org/drawingml/2006/main"
+  }
+}
+
+///|
+fn chart_lines_visible_sp_pr(chart_ns : String) -> @xml.Element {
+  let ns_a = chart_main_namespace_for(chart_ns)
+  elem(chart_ns, "spPr", [], [
+    Element(
+      elem(ns_a, "ln", [xa("w", "9525")], [
+        Element(
+          elem(ns_a, "solidFill", [], [
+            Element(elem(ns_a, "srgbClr", [xa("val", "8090A0")], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+/// §21.2.2.61 / §21.2.2.79 / §21.2.2.92 / §21.2.2.194
+/// CT_ChartLines — catalog synthesis must exercise a visible line.
+/// The generic XSD choice expansion can pick `<a:noFill/>` under
+/// `<c:spPr>/<a:ln>`, which is a valid explicit "draw no stroke"
+/// request and therefore cannot prove render connectivity.
+fn normalize_chart_lines(el : @xml.Element) -> @xml.Element {
+  let ns = el.name.ns.unwrap_or("")
+  if !is_chart_namespace(ns) || !is_chart_lines_element_name(el.name.local_name) {
+    return el
+  }
+  {
+    name: el.name,
+    attributes: el.attributes,
+    children: [Element(chart_lines_visible_sp_pr(ns))],
+  }
+}
+
+///|
+fn normalize_catalog_instance_element(el : @xml.Element) -> @xml.Element {
+  normalize_drawingml_transform_geometry(
+    normalize_drawingml_color_choice(
+      normalize_drawingml_color_transform(
+        normalize_chart_lines(
+          normalize_chart_time_unit(
+            normalize_chart_tick_mark_skip(
+              normalize_spreadsheet_drawing_marker(el),
+            ),
+          ),
+        ),
+      ),
+    ),
+  )
+}
+
+///|
 /// The namespace an `<xsd:element>` node declares its instance in
 /// (its `__ns` stamp), or "" when unstamped.
 fn element_ns(el : @xml.Element) -> String {
@@ -604,7 +888,7 @@ fn synth_element(
   if children.length() == 0 && xsd_child(ct, "simpleContent") is Some(_) {
     children.push(Text(TEXT_MARKER))
   }
-  normalize_spreadsheet_drawing_marker({
+  normalize_catalog_instance_element({
     name: qname(ns, name),
     attributes: attrs,
     children,

@@ -18,12 +18,18 @@ fn first_char(s : String) -> Char {
 fn tfont(size : Double) -> ResolvedFont {
   {
     family: "Noto Sans",
+    charset: None,
     size,
     bold: false,
     italic: false,
     underline: false,
     strikethrough: false,
+    outline: false,
+    shadow: false,
+    condense: false,
+    extend: false,
     color: None,
+    vertical_align: "baseline",
   }
 }
 

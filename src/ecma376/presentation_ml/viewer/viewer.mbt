@@ -62,6 +62,7 @@ pub fn render_svg(
   /// rels lookup.
   hyperlink_resolver? : (String) -> String? = _ => None,
   theme? : @theme.CT_OfficeStyleSheet? = None,
+  table_style_list? : @a.CT_TableStyleList? = None,
   chain? : @ph_resolver.SlideChain? = None,
   /// §19.2.1.26 — the presentation part's root `<p:presentation>`
   /// element, when the facade can supply it.  When present, the
@@ -145,6 +146,7 @@ pub fn render_svg(
     part_resolver,
     chart_part_resolver_factory,
     hyperlink_resolver,
+    table_style_list,
     chain,
     theme~,
   )
@@ -217,13 +219,11 @@ pub fn render_svg(
   // differential render check sees a distinguishing signal when
   // a theme child element changes.
   match theme {
-    None => svg_attrs.push(@markup.attr("data-ooxml-theme-DEBUG", "none"))
-    Some(t) => {
-      svg_attrs.push(@markup.attr("data-ooxml-theme-DEBUG", "some"))
+    None => ()
+    Some(t) =>
       for a in pml_theme_metadata_attrs(t) {
         svg_attrs.push(a)
       }
-    }
   }
   let root : @xml.Element = {
     name: @markup.qname_ns("svg", @markup.svg_ns),
@@ -357,12 +357,177 @@ fn slide_timing_metadata(domain : @domain.CT_Slide) -> Array[@xml.Attribute] {
     }
     names.write_string(tn.name.local_name)
   }
+  let leaf_names : Array[String] = []
+  let media_names : Array[String] = []
+  let target_spids : Array[String] = []
+  let graphic_targets : Array[String] = []
+  for tn in timing.tnLst {
+    collect_timing_metadata(
+      tn, leaf_names, media_names, target_spids, graphic_targets,
+    )
+  }
   // Also surface the count for consumers that just want to gate
   // on "has animations" without parsing the list.
-  [
+  let attrs : Array[@xml.Attribute] = [
     @markup.attr("data-ooxml-timing-tnLst", names.to_string()),
     @markup.attr("data-ooxml-timing-count", timing.tnLst.length().to_string()),
   ]
+  if leaf_names.length() > 0 {
+    attrs.push(@markup.attr("data-ooxml-timing-leaves", leaf_names.join(" ")))
+    attrs.push(
+      @markup.attr(
+        "data-ooxml-timing-leaf-count",
+        leaf_names.length().to_string(),
+      ),
+    )
+  }
+  if media_names.length() > 0 {
+    attrs.push(@markup.attr("data-ooxml-timing-media", media_names.join(" ")))
+    attrs.push(
+      @markup.attr(
+        "data-ooxml-timing-media-count",
+        media_names.length().to_string(),
+      ),
+    )
+  }
+  if target_spids.length() > 0 {
+    attrs.push(
+      @markup.attr("data-ooxml-timing-target-spids", target_spids.join(" ")),
+    )
+  }
+  if graphic_targets.length() > 0 {
+    attrs.push(
+      @markup.attr(
+        "data-ooxml-timing-graphic-targets",
+        graphic_targets.join(" "),
+      ),
+    )
+    attrs.push(
+      @markup.attr(
+        "data-ooxml-timing-graphic-target-count",
+        graphic_targets.length().to_string(),
+      ),
+    )
+  }
+  match timing.bldLst {
+    None => ()
+    Some(bld_lst) => {
+      let build_targets = timing_build_targets(bld_lst)
+      if build_targets.length() > 0 {
+        attrs.push(
+          @markup.attr("data-ooxml-timing-builds", build_targets.join(" ")),
+        )
+        attrs.push(
+          @markup.attr(
+            "data-ooxml-timing-build-count",
+            build_targets.length().to_string(),
+          ),
+        )
+      }
+    }
+  }
+  attrs
+}
+
+///|
+/// §19.5 timing metadata — walk the raw time-node tree retained by
+/// `CT_SlideTiming`.  The static SVG renderer does not execute the
+/// animation, but downstream players need a cheap root-level summary
+/// of leaf behaviours and media leaves without reparsing the slide.
+fn collect_timing_metadata(
+  element : @xml.Element,
+  leaf_names : Array[String],
+  media_names : Array[String],
+  target_spids : Array[String],
+  graphic_targets : Array[String],
+) -> Unit {
+  let local_name = element.name.local_name
+  if is_timing_leaf_name(local_name) {
+    leaf_names.push(local_name)
+    if local_name == "audio" || local_name == "video" {
+      media_names.push(local_name)
+    }
+  }
+  if local_name == "spTgt" {
+    match attr_value(element, "spid") {
+      Some(v) => target_spids.push(v)
+      None => ()
+    }
+  }
+  if local_name == "graphicEl" {
+    for child in element.children {
+      match child {
+        @xml.Node::Element(e) =>
+          match e.name.local_name {
+            "dgm" | "chart" => graphic_targets.push(e.name.local_name)
+            _ => ()
+          }
+        _ => ()
+      }
+    }
+  }
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) =>
+        collect_timing_metadata(
+          e, leaf_names, media_names, target_spids, graphic_targets,
+        )
+      _ => ()
+    }
+  }
+}
+
+///|
+fn timing_build_targets(bld_lst : @domain.CT_BuildList) -> Array[String] {
+  let out : Array[String] = []
+  for entry in bld_lst.entries {
+    match entry {
+      @domain.BuildEntryDiagram(_) => out.push("p:bldDgm")
+      @domain.BuildEntryOleChart(_) => out.push("p:bldOleChart")
+      @domain.BuildEntryGraphic(g) =>
+        match g.choice {
+          @domain.GraphicBuildAsOne(_) => out.push("p:bldAsOne")
+          @domain.GraphicBuildSub(e) =>
+            collect_graphic_build_sub_targets(e, out)
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+fn collect_graphic_build_sub_targets(
+  bld_sub : @xml.Element,
+  out : Array[String],
+) -> Unit {
+  for child in bld_sub.children {
+    match child {
+      @xml.Node::Element(e) =>
+        match e.name.local_name {
+          "bldDgm" | "bldChart" => out.push("a:" + e.name.local_name)
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn is_timing_leaf_name(local_name : String) -> Bool {
+  match local_name {
+    "anim"
+    | "animClr"
+    | "animEffect"
+    | "animMotion"
+    | "animRot"
+    | "animScale"
+    | "cmd"
+    | "set"
+    | "audio"
+    | "video" => true
+    _ => false
+  }
 }
 
 ///|
@@ -1111,6 +1276,7 @@ fn render_slide_shapes_svg(
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
   chain : @ph_resolver.SlideChain?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
@@ -1134,6 +1300,7 @@ fn render_slide_shapes_svg(
           part_resolver,
           chart_part_resolver_factory,
           hyperlink_resolver,
+          table_style_list,
           nodes,
           ch,
           theme~,
@@ -1157,6 +1324,7 @@ fn render_slide_shapes_svg(
         part_resolver,
         chart_part_resolver_factory,
         hyperlink_resolver,
+        table_style_list,
         nodes,
         chain,
         theme~,
@@ -1200,6 +1368,7 @@ fn render_master_shape_children(
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain,
   theme? : @theme.CT_OfficeStyleSheet? = None,
@@ -1225,6 +1394,7 @@ fn render_master_shape_children(
               part_resolver,
               chart_part_resolver_factory,
               hyperlink_resolver,
+              table_style_list,
               chain=Some(chain),
               theme~,
             ) {
@@ -1275,6 +1445,7 @@ fn render_shape_children(
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
@@ -1292,6 +1463,7 @@ fn render_shape_children(
             part_resolver,
             chart_part_resolver_factory,
             hyperlink_resolver,
+            table_style_list,
             chain~,
             theme~,
           ) {
@@ -1309,7 +1481,7 @@ fn render_shape_children(
     Some(ch) =>
       render_layout_only_shapes(
         parent, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
-        hyperlink_resolver, out, ch,
+        hyperlink_resolver, table_style_list, out, ch,
       )
   }
 }
@@ -1359,6 +1531,7 @@ fn render_layout_only_shapes(
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain,
 ) -> Unit {
@@ -1409,6 +1582,7 @@ fn render_layout_only_shapes(
             part_resolver,
             chart_part_resolver_factory,
             hyperlink_resolver,
+            table_style_list,
             chain=Some(chain),
           ) {
           out.push(n)
@@ -1532,6 +1706,7 @@ fn render_shape_svg(
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
   chain? : @ph_resolver.SlideChain? = None,
   theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
@@ -1557,13 +1732,20 @@ fn render_shape_svg(
     "grpSp" =>
       render_group_svg(
         shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
-        hyperlink_resolver, chain,
+        hyperlink_resolver, table_style_list, chain,
       )
     "cxnSp" => render_connector_svg(shape, ctx, defs, image_resolver, theme~)
     "graphicFrame" =>
       render_graphic_frame_svg(
-        shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
+        shape,
+        ctx,
+        defs,
+        image_resolver,
+        part_resolver,
+        chart_part_resolver_factory,
         hyperlink_resolver,
+        table_style_list,
+        theme~,
       )
     "contentPart" => render_content_part_metadata(shape)
     _ => []
@@ -1605,6 +1787,48 @@ fn shape_cnvpr(shape : @xml.Element) -> @xml.Element? {
     None => None
     Some(nv) => first_child_named(nv, "cNvPr")
   }
+}
+
+///|
+fn nonvisual_lock_attrs(shape : @xml.Element) -> Array[@xml.Attribute] {
+  let (nv_local, c_nv_local, lock_local) = match shape.name.local_name {
+    "sp" => ("nvSpPr", "cNvSpPr", "spLocks")
+    "pic" => ("nvPicPr", "cNvPicPr", "picLocks")
+    "cxnSp" => ("nvCxnSpPr", "cNvCxnSpPr", "cxnSpLocks")
+    "grpSp" => ("nvGrpSpPr", "cNvGrpSpPr", "grpSpLocks")
+    "graphicFrame" =>
+      ("nvGraphicFramePr", "cNvGraphicFramePr", "graphicFrameLocks")
+    _ => return []
+  }
+  let nv = match first_child_named(shape, nv_local) {
+    None => return []
+    Some(v) => v
+  }
+  let c_nv = match first_child_named(nv, c_nv_local) {
+    None => return []
+    Some(v) => v
+  }
+  let locks = match first_child_named(c_nv, lock_local) {
+    None => return []
+    Some(v) => v
+  }
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("data-ooxml-locks", lock_local),
+  ]
+  let flags : Array[String] = []
+  for attr in locks.attributes {
+    let local_name = attr.name.local_name
+    if local_name != "__cat_target" {
+      flags.push(local_name + "=" + attr.value)
+    }
+  }
+  if flags.length() > 0 {
+    attrs.push(@markup.attr("data-ooxml-lock-flags", flags.join(" ")))
+    attrs.push(
+      @markup.attr("data-ooxml-lock-flag-count", flags.length().to_string()),
+    )
+  }
+  attrs
 }
 
 ///|
@@ -1940,6 +2164,7 @@ fn render_sp_shape_svg(
     h,
     ctx,
     defs,
+    image_resolver,
     hyperlink_resolver,
     master_lst_style~,
   )
@@ -1961,6 +2186,9 @@ fn render_sp_shape_svg(
     g_attrs.push(a)
   }
   for a in style_metadata {
+    g_attrs.push(a)
+  }
+  for a in nonvisual_lock_attrs(shape) {
     g_attrs.push(a)
   }
   // §20.1.9.8 `<a:custGeom>` — surface every `<a:gd>` and `<a:cxn>`
@@ -2233,6 +2461,7 @@ fn nv_media_overlay_svg(
   let mut has_wav = false
   let mut has_hlink_click = false
   let mut has_hlink_hover = false
+  let mut audio_cd_timing = ""
   match first_child_named(nv, "cNvPr") {
     None => ()
     Some(c) =>
@@ -2252,6 +2481,10 @@ fn nv_media_overlay_svg(
       for kid in c.children {
         if kid is @xml.Node::Element(e) {
           match e.name.local_name {
+            "audioCd" => {
+              has_audio = true
+              audio_cd_timing = audio_cd_timing_value(e)
+            }
             "audio" | "audioFile" => has_audio = true
             "video" | "videoFile" => has_video = true
             "quickTimeFile" => has_quicktime = true
@@ -2290,39 +2523,40 @@ fn nv_media_overlay_svg(
     let cy = s * 0.5
     let box_w = s * 0.3
     let box_h = s * 0.4
+    let attrs : Array[@xml.Attribute] = [
+      @markup.attr("class", "ooxml-audio-marker"),
+    ]
+    if audio_cd_timing != "" {
+      attrs.push(@markup.attr("data-ooxml-audio-cd", audio_cd_timing))
+    }
     glyphs.push(
-      @markup.elem_ns(
-        "g",
-        @markup.svg_ns,
-        [@markup.attr("class", "ooxml-audio-marker")],
-        [
-          @markup.elem_ns(
-            "rect",
-            @markup.svg_ns,
-            [
-              @markup.attr("x", format_double(cx - box_w * 0.5)),
-              @markup.attr("y", format_double(cy - box_h * 0.5)),
-              @markup.attr("width", format_double(box_w)),
-              @markup.attr("height", format_double(box_h)),
-              @markup.attr("fill", "#444"),
-            ],
-            [],
-          ),
-          @markup.elem_ns(
-            "circle",
-            @markup.svg_ns,
-            [
-              @markup.attr("cx", format_double(cx + box_w * 0.6)),
-              @markup.attr("cy", format_double(cy)),
-              @markup.attr("r", format_double(s * 0.08)),
-              @markup.attr("fill", "none"),
-              @markup.attr("stroke", "#444"),
-              @markup.attr("stroke-width", format_double(s * 0.02)),
-            ],
-            [],
-          ),
-        ],
-      ),
+      @markup.elem_ns("g", @markup.svg_ns, attrs, [
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", format_double(cx - box_w * 0.5)),
+            @markup.attr("y", format_double(cy - box_h * 0.5)),
+            @markup.attr("width", format_double(box_w)),
+            @markup.attr("height", format_double(box_h)),
+            @markup.attr("fill", "#444"),
+          ],
+          [],
+        ),
+        @markup.elem_ns(
+          "circle",
+          @markup.svg_ns,
+          [
+            @markup.attr("cx", format_double(cx + box_w * 0.6)),
+            @markup.attr("cy", format_double(cy)),
+            @markup.attr("r", format_double(s * 0.08)),
+            @markup.attr("fill", "none"),
+            @markup.attr("stroke", "#444"),
+            @markup.attr("stroke-width", format_double(s * 0.02)),
+          ],
+          [],
+        ),
+      ]),
     )
   }
   // Video / quickTime — play triangle.  Single glyph even if both
@@ -2384,6 +2618,29 @@ fn nv_media_overlay_svg(
     )
   }
   glyphs
+}
+
+///|
+fn audio_cd_timing_value(audio_cd : @xml.Element) -> String {
+  let st = audio_cd_time_value(audio_cd, "st")
+  let end = audio_cd_time_value(audio_cd, "end")
+  if st == "" && end == "" {
+    ""
+  } else {
+    "st=" + st + ";end=" + end
+  }
+}
+
+///|
+fn audio_cd_time_value(audio_cd : @xml.Element, local_name : String) -> String {
+  match first_child_named(audio_cd, local_name) {
+    None => ""
+    Some(t) => {
+      let track = attr_value(t, "track").unwrap_or("")
+      let time = attr_value(t, "time").unwrap_or("")
+      track + ":" + time
+    }
+  }
 }
 
 ///|
@@ -2522,6 +2779,28 @@ fn build_line_attrs(
     attrs.push(@markup.attr("stroke-linejoin", "round"))
   } else if has_child_named(line, "bevel") {
     attrs.push(@markup.attr("stroke-linejoin", "bevel"))
+  } else {
+    match first_child_named(line, "miter") {
+      Some(miter) =>
+        match attr_value(miter, "lim") {
+          Some(_) => {
+            let limit = parse_st_positive_fixed_percentage(
+                attr_value(miter, "lim"),
+              ) /
+              100.0
+            if limit > 0.0 {
+              attrs.push(
+                @markup.attr(
+                  "stroke-miterlimit",
+                  format_double_for_filter(limit),
+                ),
+              )
+            }
+          }
+          None => ()
+        }
+      None => ()
+    }
   }
   // §20.1.8.37/.57 headEnd / tailEnd line-end markers.
   for a in marker_attrs.marker_start_attrs {
@@ -3782,16 +4061,82 @@ fn warp_first_run_pr(tx_body : @xml.Element) -> @xml.Element? {
 }
 
 ///|
+fn shape_text_body(shape : @xml.Element) -> @xml.Element? {
+  match first_child_named(shape, "txBody") {
+    Some(tb) => Some(tb)
+    None =>
+      match first_child_named(shape, "txSp") {
+        Some(tx_sp) => first_child_named(tx_sp, "txBody")
+        None => None
+      }
+  }
+}
+
+///|
+fn shape_text_uses_shape_rect(shape : @xml.Element) -> Bool {
+  match first_child_named(shape, "txSp") {
+    Some(tx_sp) => first_child_named(tx_sp, "useSpRect") is Some(_)
+    None => false
+  }
+}
+
+///|
+fn apply_shape_text_rect_clip(
+  text_svg : Array[@xml.Node],
+  shape : @xml.Element,
+  defs : SvgDefsCollector,
+  box_w : Double,
+  box_h : Double,
+) -> Array[@xml.Node] {
+  if !shape_text_uses_shape_rect(shape) {
+    return text_svg
+  }
+  let clip_id = defs.next_id("text-shape-rect")
+  defs.add_def(
+    @markup.elem_ns(
+      "clipPath",
+      @markup.svg_ns,
+      [
+        @markup.attr("id", clip_id),
+        @markup.attr("clipPathUnits", "userSpaceOnUse"),
+      ],
+      [
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", "0"),
+            @markup.attr("y", "0"),
+            @markup.attr("width", format_double(box_w)),
+            @markup.attr("height", format_double(box_h)),
+          ],
+          [],
+        ),
+      ],
+    ),
+  )
+  [
+    @markup.elem_ns(
+      "g",
+      @markup.svg_ns,
+      [@markup.attr("clip-path", "url(#" + clip_id + ")")],
+      text_svg,
+    ),
+  ]
+}
+
+///|
 fn render_shape_text_svg(
   shape : @xml.Element,
   w_emu : Double,
   h_emu : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  image_resolver : (String) -> ResolvedImage?,
   hyperlink_resolver : (String) -> String?,
   master_lst_style? : @xml.Element? = None,
 ) -> Array[@xml.Node] {
-  let tx_body = first_child_named(shape, "txBody")
+  let tx_body = shape_text_body(shape)
   match tx_body {
     None => []
     Some(tb) => {
@@ -3803,7 +4148,10 @@ fn render_shape_text_svg(
       let box_w_px0 = w_emu / emu_per_px
       let box_h_px0 = h_emu / emu_per_px
       match render_warped_text(tb, box_w_px0, box_h_px0, ctx, defs) {
-        Some(warp_nodes) =>
+        Some(warp_nodes) => {
+          let clipped_warp = apply_shape_text_rect_clip(
+            warp_nodes, shape, defs, box_w_px0, box_h_px0,
+          )
           return [
             @markup.elem_ns(
               "g",
@@ -3814,9 +4162,10 @@ fn render_shape_text_svg(
                   "scale(" + format_double(emu_per_px) + ")",
                 ),
               ],
-              warp_nodes,
+              clipped_warp,
             ),
           ]
+        }
         None => ()
       }
       let input = build_layout_input(tb, w_emu, h_emu, ctx, master_lst_style~)
@@ -3824,7 +4173,9 @@ fn render_shape_text_svg(
         return []
       }
       let result = layout_text_body(input)
-      let inner = render_layout_result_svg(result, defs, hyperlink_resolver)
+      let inner = render_layout_result_svg(
+        result, defs, image_resolver, hyperlink_resolver,
+      )
       if inner.length() == 0 {
         return []
       }
@@ -3843,24 +4194,46 @@ fn render_shape_text_svg(
       )
       let aa = apply_force_anti_alias(clipped, body_pr)
       let vert = apply_vertical_text_transform(aa, body_pr, box_w_px, box_h_px)
+      let shape_rect = apply_shape_text_rect_clip(
+        vert, shape, defs, box_w_px, box_h_px,
+      )
       // Scale from CSS pixels back into EMU coordinate space. The
       // transforms above operate in CSS pixels so the scale wraps the
       // entire post-transform tree.
-      [
-        @markup.elem_ns(
-          "g",
-          @markup.svg_ns,
-          [
-            @markup.attr(
-              "transform",
-              "scale(" + format_double(emu_per_px) + ")",
-            ),
-          ],
-          vert,
-        ),
+      let text_group_attrs : Array[@xml.Attribute] = [
+        @markup.attr("transform", "scale(" + format_double(emu_per_px) + ")"),
       ]
+      match body_pr_auto_fit_attr(body_pr) {
+        Some(attr) => text_group_attrs.push(attr)
+        None => ()
+      }
+      [@markup.elem_ns("g", @markup.svg_ns, text_group_attrs, shape_rect)]
     }
   }
+}
+
+///|
+fn body_pr_auto_fit_attr(body_pr : @xml.Element?) -> @xml.Attribute? {
+  let bp = match body_pr {
+    Some(v) => v
+    None => return None
+  }
+  for child in bp.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "noAutofit" =>
+            return Some(@markup.attr("data-ooxml-text-auto-fit", "none"))
+          "spAutoFit" =>
+            return Some(@markup.attr("data-ooxml-text-auto-fit", "shape"))
+          "normAutofit" =>
+            return Some(@markup.attr("data-ooxml-text-auto-fit", "normal"))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|
@@ -4184,6 +4557,7 @@ fn apply_auto_num_counter(
   let new_bullet : BulletConfig = {
     char: new_char,
     font_size: bullet.font_size,
+    font_size_percent: bullet.font_size_percent,
     color: bullet.color,
     font_family: bullet.font_family,
     image_url: bullet.image_url,
@@ -4463,7 +4837,7 @@ fn build_paragraph_input(
   // §21.1.2.2.5 defTabSz — default tab stop size on `<a:pPr>`
   // (EMU). Converted to CSS pixels.
   let default_tab_size = p_pr_emu_with_lvl(
-      p_pr, lvl_default_p_prs, "defTabSz", 0.0,
+      p_pr, lvl_default_p_prs, "defTabSz", 914400.0,
     ) /
     emu_per_px
   // §21.1.2.2.9 tabLst — explicit tab stop list under `<a:pPr>`.
@@ -4492,14 +4866,22 @@ fn build_paragraph_input(
   // §21.1.2.4.4-8 bullets — `<a:buNone>` / `<a:buChar>` /
   // `<a:buAutoNum>` / `<a:buBlip>` plus `<a:buFont>` /
   // `<a:buClr>` / `<a:buSzPts>` / `<a:buSzPct>`.
-  let raw_bullet = p_pr_with_lvl_fn(p_pr, lvl_default_p_prs, fn(el) {
-    parse_bullet_config(el, ctx)
-  })
+  let raw_bullet = resolve_paragraph_bullet_config(p_pr, lvl_default_p_prs, ctx)
   // §21.1.2.4.12 lstStyle / §21.1.2.3.27 defRPr — the run-default
-  // cascade is the `<a:defRPr>` of each lvl default in order, so a run
-  // lacking its own rPr inherits from the shape's lstStyle and then the
-  // master's `<p:txStyles>`.
+  // cascade starts at the paragraph's direct `<a:pPr>/<a:defRPr>`,
+  // then falls through to the `<a:defRPr>` of each lvl default in
+  // order, so a run lacking its own rPr inherits from direct paragraph
+  // properties, the shape's lstStyle, and then the master's
+  // `<p:txStyles>`.
   let lvl_default_r_prs : Array[@xml.Element] = []
+  match direct_p_pr {
+    Some(dp) =>
+      match first_child_named(dp, "defRPr") {
+        Some(d) => lvl_default_r_prs.push(d)
+        None => ()
+      }
+    None => ()
+  }
   for l in lvl_default_p_prs {
     match first_child_named(l, "defRPr") {
       Some(d) => lvl_default_r_prs.push(d)
@@ -4512,6 +4894,10 @@ fn build_paragraph_input(
       Element(e) =>
         match e.name.local_name {
           "r" => {
+            let s = build_run_span(e, ctx, lvl_default_r_prs)
+            spans.push(s)
+          }
+          "fld" => {
             let s = build_run_span(e, ctx, lvl_default_r_prs)
             spans.push(s)
           }
@@ -4788,6 +5174,48 @@ fn parse_tab_stops(p_pr : @xml.Element) -> Array[LayoutTabStop] {
 }
 
 ///|
+fn p_pr_has_bullet_declaration(p_pr : @xml.Element) -> Bool {
+  match first_child_named(p_pr, "buNone") {
+    Some(_) => return true
+    None => ()
+  }
+  match first_child_named(p_pr, "buChar") {
+    Some(_) => return true
+    None => ()
+  }
+  match first_child_named(p_pr, "buAutoNum") {
+    Some(_) => return true
+    None => ()
+  }
+  match first_child_named(p_pr, "buBlip") {
+    Some(_) => return true
+    None => ()
+  }
+  false
+}
+
+///|
+fn resolve_paragraph_bullet_config(
+  direct : @xml.Element?,
+  lvl_defaults : Array[@xml.Element],
+  ctx : ColorResolveContext,
+) -> BulletConfig? {
+  match direct {
+    Some(d) =>
+      if p_pr_has_bullet_declaration(d) {
+        return parse_bullet_config(d, ctx)
+      }
+    None => ()
+  }
+  for l in lvl_defaults {
+    if p_pr_has_bullet_declaration(l) {
+      return parse_bullet_config(l, ctx)
+    }
+  }
+  None
+}
+
+///|
 /// §21.1.2.4.4-8 — read the bullet specification from `<a:pPr>`'s
 /// `<a:buNone>` / `<a:buChar>` / `<a:buAutoNum>` / `<a:buBlip>`
 /// child, plus the supporting `<a:buFont>` / `<a:buClr>` /
@@ -4823,35 +5251,39 @@ fn parse_bullet_config(
   //   and let the renderer omit `font-family=""` so the SVG
   //   text inherits the parent's font.  Consumers that need
   //   the actual font name can recompute it from `<a:rPr>`.
-  let font_family = match first_child_named(p_pr, "buFont") {
-    Some(el) =>
-      match attr_value(el, "typeface") {
-        Some(t) =>
-          match ColorResolveContext::resolve_theme_typeface(ctx, t) {
-            Some(resolved) => resolved
-            None => t
-          }
-        // `<a:buFont>` present but @typeface absent — schema
-        // violation; defer to the inherited run typeface.
-        None => ""
-      }
-    // `<a:buFont>` absent — spec inheritance from the run.
-    None => ""
+  let font_family = if first_child_named(p_pr, "buFontTx") is Some(_) {
+    ""
+  } else {
+    match first_child_named(p_pr, "buFont") {
+      Some(el) =>
+        match attr_value(el, "typeface") {
+          Some(t) =>
+            match ColorResolveContext::resolve_theme_typeface(ctx, t) {
+              Some(resolved) => resolved
+              None => t
+            }
+          // `<a:buFont>` present but @typeface absent — schema
+          // violation; defer to the inherited run typeface.
+          None => ""
+        }
+      // `<a:buFont>` absent — spec inheritance from the run.
+      None => ""
+    }
   }
   // Bullet colour — read `<a:buClr>/<a:srgbClr @val>`. Falls back
   // to consumer-defined "" so the consumer's currentColor takes
   // over (spec leaves bullet colour to inherit from text).
-  let color = match first_child_named(p_pr, "buClr") {
-    Some(el) =>
-      match first_child_named(el, "srgbClr") {
-        Some(rgb) =>
-          match attr_value(rgb, "val") {
-            Some(hex) => "#" + hex
-            None => ""
-          }
-        None => ""
-      }
-    None => ""
+  let color = if first_child_named(p_pr, "buClrTx") is Some(_) {
+    ""
+  } else {
+    match first_child_named(p_pr, "buClr") {
+      Some(el) =>
+        match @paint.resolve_solid_fill(el, ctx~) {
+          Some(rc) => @paint.format_resolved_color(rc)
+          None => ""
+        }
+      None => ""
+    }
   }
   // Bullet size: §21.1.2.4.11 buSzPct (1/1000 % of run size) or
   // §21.1.2.4.12 buSzPts (1/100 pt absolute). We surface the
@@ -4859,18 +5291,35 @@ fn parse_bullet_config(
   // the run's font size which is computed later — we approximate
   // by setting font_size = 0.0 and letting the layout engine
   // pick the run size.
-  let font_size = match first_child_named(p_pr, "buSzPts") {
+  let font_size_percent : Double? = match first_child_named(p_pr, "buSzPct") {
     Some(el) =>
       match attr_value(el, "val") {
         Some(v) =>
           try @string.parse_double(v) catch {
-            _ => 0.0
+            _ => None
           } noraise {
-            n => n / 100.0
+            n => Some(n / 1000.0)
           }
-        None => 0.0
+        None => None
       }
-    None => 0.0
+    None => None
+  }
+  let font_size = if first_child_named(p_pr, "buSzTx") is Some(_) {
+    0.0
+  } else {
+    match first_child_named(p_pr, "buSzPts") {
+      Some(el) =>
+        match attr_value(el, "val") {
+          Some(v) =>
+            try @string.parse_double(v) catch {
+              _ => 0.0
+            } noraise {
+              n => n / 100.0
+            }
+          None => 0.0
+        }
+      None => 0.0
+    }
   }
   let char_str = match bu_char_text {
     Some(c) => c
@@ -4894,7 +5343,14 @@ fn parse_bullet_config(
   if char_str.length() == 0 && image_url is None {
     return None
   }
-  Some({ char: char_str, font_size, color, font_family, image_url })
+  Some({
+    char: char_str,
+    font_size,
+    font_size_percent,
+    color,
+    font_family,
+    image_url,
+  })
 }
 
 ///|
@@ -4929,8 +5385,12 @@ fn resolve_bullet_inheritance(
     None => return bullet
     Some(s) => s
   }
+  let inherited_size = match bullet.font_size_percent {
+    Some(pct) => src.font_size * pct / 100.0
+    None => src.font_size
+  }
   let font_size = if bullet.font_size <= 0.0 {
-    src.font_size
+    inherited_size
   } else {
     bullet.font_size
   }
@@ -4943,6 +5403,7 @@ fn resolve_bullet_inheritance(
   {
     char: bullet.char,
     font_size,
+    font_size_percent: None,
     color,
     font_family,
     image_url: bullet.image_url,
@@ -5073,7 +5534,15 @@ fn build_run_span(
   // treatment is reserved for underline.
   let underline_style_raw : String? = match r_pr_attr("u") {
     Some(v) => if v != "none" { Some(v) } else { None }
-    None => None
+    None =>
+      if r_pr_child("uLn") is Some(_) ||
+        r_pr_child("uLnTx") is Some(_) ||
+        r_pr_child("uFill") is Some(_) ||
+        r_pr_child("uFillTx") is Some(_) {
+        Some("sng")
+      } else {
+        None
+      }
   }
   let text_decoration : String? = {
     let mut strike = false
@@ -5148,7 +5617,11 @@ fn build_run_span(
   }
   // §21.1.2.3.12 rtl — xsd:boolean.  true flips the run
   // direction to right-to-left.
-  let direction = if parse_xsd_boolean_or(r_pr_attr("rtl"), false) {
+  let rtl_child = match r_pr_child("rtl") {
+    Some(el) => parse_xsd_boolean_or(attr_value(el, "val"), true)
+    None => false
+  }
+  let direction = if parse_xsd_boolean_or(r_pr_attr("rtl"), false) || rtl_child {
     "rtl"
   } else {
     "ltr"
@@ -5174,6 +5647,14 @@ fn build_run_span(
       match @paint.resolve_solid_fill(src, ctx~) {
         Some(rc) => @paint.format_resolved_color(rc)
         None => "currentColor"
+      }
+  }
+  let highlight_color = match r_pr_child("highlight") {
+    None => None
+    Some(h) =>
+      match @paint.resolve_solid_fill(h, ctx~) {
+        Some(rc) => Some(@paint.format_resolved_color(rc))
+        None => None
       }
   }
   // §20.1.2.2.24 `<a:ln>` — text outline (stroke) declared on the
@@ -5214,6 +5695,27 @@ fn build_run_span(
   let text_fill : TextFillConfig? = match fill_source {
     None => None
     Some(src) => resolve_text_fill_choice(src, ctx~)
+  }
+  let underline_color = match r_pr_child("uLn") {
+    Some(uln) =>
+      match @paint.resolve_solid_fill(uln, ctx~) {
+        Some(rc) => Some(@paint.format_resolved_color(rc))
+        None => None
+      }
+    None =>
+      match r_pr_child("uFill") {
+        Some(ufill) =>
+          match @paint.resolve_solid_fill(ufill, ctx~) {
+            Some(rc) => Some(@paint.format_resolved_color(rc))
+            None => None
+          }
+        None =>
+          if r_pr_child("uLnTx") is Some(_) || r_pr_child("uFillTx") is Some(_) {
+            Some(color)
+          } else {
+            None
+          }
+      }
   }
   // §21.1.2.3.5 `<a:hlinkClick>` carries the click-time hyperlink
   // identifier (the `r:id` resolves through the slide relationships
@@ -5278,7 +5780,7 @@ fn build_run_span(
     letter_spacing,
     is_break: false,
     direction,
-    highlight_color: None,
+    highlight_color,
     text_transform,
     link_id,
     link_tooltip,
@@ -5288,7 +5790,7 @@ fn build_run_span(
     text_outline,
     text_fill,
     kerning,
-    underline_color: None,
+    underline_color,
     underline_style: underline_style_raw,
   }
 }
@@ -6148,6 +6650,41 @@ fn build_bullet_text_node(
 }
 
 ///|
+fn build_bullet_image_node(
+  bullet : BulletConfig,
+  bullet_x : Double,
+  baseline_y : Double,
+  image_resolver : (String) -> ResolvedImage?,
+) -> @xml.Node? {
+  let rid = match bullet.image_url {
+    Some(v) => v
+    None => return None
+  }
+  let img = match image_resolver(rid) {
+    Some(v) => v
+    None => return None
+  }
+  let size = bullet.font_size * @glyph.pt_to_px
+  let data_uri = "data:" + img.mime_type + ";base64," + img.base64_data
+  Some(
+    @markup.elem_ns(
+      "image",
+      @markup.svg_ns,
+      [
+        @markup.attr("href", data_uri),
+        @markup.attr("x", format_double(bullet_x)),
+        @markup.attr("y", format_double(baseline_y - size * 0.85)),
+        @markup.attr("width", format_double(size)),
+        @markup.attr("height", format_double(size)),
+        @markup.attr("preserveAspectRatio", "xMidYMid meet"),
+        @markup.attr("data-ooxml-bullet-image-r-id", rid),
+      ],
+      [],
+    ),
+  )
+}
+
+///|
 /// Render every paragraph / line / span from a `LayoutResult` to SVG
 /// `<text>` elements positioned in CSS pixels.  The caller wraps the
 /// result in a scale transform to map back to EMU.
@@ -6155,6 +6692,7 @@ fn build_bullet_text_node(
 fn render_layout_result_svg(
   result : LayoutResult,
   defs : SvgDefsCollector,
+  image_resolver : (String) -> ResolvedImage?,
   hyperlink_resolver : (String) -> String?,
 ) -> Array[@xml.Node] {
   let nodes : Array[@xml.Node] = []
@@ -6165,21 +6703,33 @@ fn render_layout_result_svg(
     // the text origin: `bullet_x = line.x - bullet_width` when the
     // text snapped to `margin_left`, and `bullet_x = line.x -
     // bullet_width` regardless (see `calc_line_x` for the snap).
-    // Image bullets (`<a:buBlip>`) are skipped — image rendering
-    // through the rels graph is not wired through this path yet.
+    // Image bullets (`<a:buBlip>`) render only when their rId resolves
+    // through the slide relationship graph; unresolved image bullets
+    // are not downgraded to text bullets.
     if para.lines.length() > 0 {
       match para.bullet {
         None => ()
-        Some(b) =>
-          if b.image_url is None && b.char.length() > 0 {
-            let first_line = para.lines[0]
-            let bullet_node = build_bullet_text_node(
+        Some(b) => {
+          let first_line = para.lines[0]
+          match
+            build_bullet_image_node(
               b,
               para.bullet_x,
               first_line.y,
-            )
-            nodes.push(bullet_node)
+              image_resolver,
+            ) {
+            Some(img_node) => nodes.push(img_node)
+            None =>
+              if b.image_url is None && b.char.length() > 0 {
+                let bullet_node = build_bullet_text_node(
+                  b,
+                  para.bullet_x,
+                  first_line.y,
+                )
+                nodes.push(bullet_node)
+              }
           }
+        }
       }
     }
     for line in para.lines {
@@ -6338,8 +6888,28 @@ fn render_layout_result_svg(
           cursor,
           span.span,
         )
+        let rendered_text_children : Array[@xml.Node] = []
+        match span.span.mouse_over_link_tooltip {
+          Some(t) =>
+            rendered_text_children.push(
+              @markup.elem_ns("title", @markup.svg_ns, [], [@markup.text(t)]),
+            )
+          None =>
+            match span.span.mouse_over_link_id {
+              Some(rid) =>
+                rendered_text_children.push(
+                  @markup.elem_ns("title", @markup.svg_ns, [], [
+                    @markup.text(rid),
+                  ]),
+                )
+              None => ()
+            }
+        }
+        for child in text_children {
+          rendered_text_children.push(child)
+        }
         let text_node = @markup.elem_ns(
-          "text", @markup.svg_ns, text_attrs, text_children,
+          "text", @markup.svg_ns, text_attrs, rendered_text_children,
         )
         // §21.1.2.3.5 / §21.1.2.3.7 — link wrapping: wrap the `<text>`
         // in a hyperlink anchor.  The `link_id` carries the raw r:id
@@ -6987,6 +7557,7 @@ fn render_picture_svg(
     Some((rid, img, bf)) => {
       // <a:srcRect> crop attributes in 1/1000ths of a percent.
       let (l, t, r, b) = read_src_rect_percent(bf)
+      let (fill_l, fill_t, fill_r, fill_b) = read_stretch_fill_rect_percent(bf)
       // §20.1.8.55 EG_FillModeProperties — `<a:stretch>` vs
       // `<a:tile>` choice. Tile mode IS rendered below as an SVG
       // `<pattern>` (see `build_tiled_blip_fill`); the
@@ -7017,6 +7588,9 @@ fn render_picture_svg(
         g_attrs.push(a)
       }
       for a in ooxml_id {
+        g_attrs.push(a)
+      }
+      for a in nonvisual_lock_attrs(pic) {
         g_attrs.push(a)
       }
       if tile {
@@ -7055,11 +7629,21 @@ fn render_picture_svg(
       let g_children : Array[@xml.Node] = match tile_nodes {
         Some(nodes) => nodes
         None =>
-          if l != 0.0 || t != 0.0 || r != 0.0 || b != 0.0 {
+          if l != 0.0 ||
+            t != 0.0 ||
+            r != 0.0 ||
+            b != 0.0 ||
+            fill_l != 0.0 ||
+            fill_t != 0.0 ||
+            fill_r != 0.0 ||
+            fill_b != 0.0 {
             // §20.1.8.55: build a clipPath and stretch the image so that
             // the visible portion fills the shape exactly.
+            let (dx, dy, dw, dh) = compute_fill_rect_layout(
+              w, h, fill_l, fill_t, fill_r, fill_b,
+            )
             let (ix, iy, iw, ih) = compute_cropped_image_layout(
-              w, h, l, t, r, b,
+              dw, dh, l, t, r, b,
             )
             let clip_id = defs.next_id("img-clip")
             defs.add_def(
@@ -7072,10 +7656,10 @@ fn render_picture_svg(
                     "rect",
                     @markup.svg_ns,
                     [
-                      @markup.attr("x", "0"),
-                      @markup.attr("y", "0"),
-                      @markup.attr("width", format_double(w)),
-                      @markup.attr("height", format_double(h)),
+                      @markup.attr("x", format_double(dx)),
+                      @markup.attr("y", format_double(dy)),
+                      @markup.attr("width", format_double(dw)),
+                      @markup.attr("height", format_double(dh)),
                     ],
                     [],
                   ),
@@ -7093,8 +7677,8 @@ fn render_picture_svg(
                     @markup.svg_ns,
                     [
                       @markup.attr("href", data_uri),
-                      @markup.attr("x", format_double(ix)),
-                      @markup.attr("y", format_double(iy)),
+                      @markup.attr("x", format_double(dx + ix)),
+                      @markup.attr("y", format_double(dy + iy)),
                       @markup.attr("width", format_double(iw)),
                       @markup.attr("height", format_double(ih)),
                       @markup.attr("preserveAspectRatio", aspect),
@@ -7137,6 +7721,23 @@ fn render_picture_svg(
 }
 
 ///|
+/// Read `<a:stretch>/<a:fillRect l="..." t="..." r="..." b="...">`
+/// percentages. The rectangle is a destination inset inside the
+/// picture's shape box; defaults are all zero, meaning the full box.
+fn read_stretch_fill_rect_percent(
+  blip_fill : @xml.Element,
+) -> (Double, Double, Double, Double) {
+  match first_child_named(blip_fill, "stretch") {
+    None => (0.0, 0.0, 0.0, 0.0)
+    Some(stretch) =>
+      match first_child_named(stretch, "fillRect") {
+        None => (0.0, 0.0, 0.0, 0.0)
+        Some(fr) => read_relative_rect_percent(fr)
+      }
+  }
+}
+
+///|
 /// Read `<a:srcRect l="..." t="..." r="..." b="...">` percentages.
 /// Values are stored as 1/1000ths of a percent (0..100000).  We return
 /// them as plain percentages in (0..100).
@@ -7145,21 +7746,46 @@ fn read_src_rect_percent(
 ) -> (Double, Double, Double, Double) {
   match first_child_named(blip_fill, "srcRect") {
     None => (0.0, 0.0, 0.0, 0.0)
-    Some(sr) => {
-      let pick = (name : String) => {
-        match attr_value(sr, name) {
-          None => 0.0
-          Some(v) =>
-            try @string.parse_double(v) catch {
-              _ => 0.0
-            } noraise {
-              d => d / 1000.0
-            }
+    Some(sr) => read_relative_rect_percent(sr)
+  }
+}
+
+///|
+fn read_relative_rect_percent(
+  rect : @xml.Element,
+) -> (Double, Double, Double, Double) {
+  let pick = (name : String) => {
+    match attr_value(rect, name) {
+      None => 0.0
+      Some(v) =>
+        try @string.parse_double(v) catch {
+          _ => 0.0
+        } noraise {
+          d => d / 1000.0
         }
-      }
-      (pick("l"), pick("t"), pick("r"), pick("b"))
     }
   }
+  (pick("l"), pick("t"), pick("r"), pick("b"))
+}
+
+///|
+fn compute_fill_rect_layout(
+  w : Double,
+  h : Double,
+  l : Double,
+  t : Double,
+  r : Double,
+  b : Double,
+) -> (Double, Double, Double, Double) {
+  let visible_w = 100.0 - l - r
+  let visible_h = 100.0 - t - b
+  let safe_w = if visible_w < 0.001 { 0.001 } else { visible_w }
+  let safe_h = if visible_h < 0.001 { 0.001 } else { visible_h }
+  let x = w * (l / 100.0)
+  let y = h * (t / 100.0)
+  let dw = w * (safe_w / 100.0)
+  let dh = h * (safe_h / 100.0)
+  (x, y, dw, dh)
 }
 
 ///|
@@ -7200,6 +7826,7 @@ fn render_group_svg(
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
   chain : @ph_resolver.SlideChain?,
 ) -> Array[@xml.Node] {
   let grp_sp_pr = first_child_named(grp, "grpSpPr")
@@ -7219,6 +7846,9 @@ fn render_group_svg(
     g_attrs.push(a)
   }
   for a in ooxml_id_attr(grp) {
+    g_attrs.push(a)
+  }
+  for a in nonvisual_lock_attrs(grp) {
     g_attrs.push(a)
   }
   let g_children : Array[@xml.Node] = []
@@ -7247,6 +7877,7 @@ fn render_group_svg(
               part_resolver,
               chart_part_resolver_factory,
               hyperlink_resolver,
+              table_style_list,
               chain~,
             ) {
             g_children.push(n)
@@ -7434,6 +8065,9 @@ fn render_connector_svg(
   for a in cxn_endpoints_attr {
     g_attrs.push(a)
   }
+  for a in nonvisual_lock_attrs(cxn) {
+    g_attrs.push(a)
+  }
   // §20.1.10.15 — a compound connector layers parallel strokes on the
   // single connector path.  A connector has no shape fill, so the gap
   // is carved with white (`gap_color_from_fill` default) — documented
@@ -7527,6 +8161,67 @@ fn connector_path_data(sp_pr : @xml.Element?, w : Double, h : Double) -> String 
 // =============================================================================
 
 ///|
+const DML_LOCKED_CANVAS_GRAPHIC_DATA_URI : String = "http://schemas.openxmlformats.org/drawingml/2006/lockedCanvas"
+
+///|
+fn is_locked_canvas_graphic_data_uri(uri : String) -> Bool {
+  uri == DML_LOCKED_CANVAS_GRAPHIC_DATA_URI ||
+  uri == "http://purl.oclc.org/ooxml/drawingml/lockedCanvas"
+}
+
+///|
+fn locked_canvas_root_from_graphic_frame(frame : @xml.Element) -> @xml.Element? {
+  match first_child_named(frame, "graphic") {
+    None => None
+    Some(g) =>
+      match first_child_named(g, "graphicData") {
+        None => None
+        Some(gd) => {
+          let uri = attr_value(gd, "uri").unwrap_or("")
+          if !is_locked_canvas_graphic_data_uri(uri) {
+            return None
+          }
+          first_child_named(gd, "lockedCanvas")
+        }
+      }
+  }
+}
+
+///|
+fn render_locked_canvas_graphic_frame_nodes(
+  frame : @xml.Element,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  image_resolver : (String) -> ResolvedImage?,
+  part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
+) -> Array[@xml.Node] {
+  let root = match locked_canvas_root_from_graphic_frame(frame) {
+    Some(r) => r
+    None => return []
+  }
+  let locked = try @dml_shape.CT_GvmlLockedCanvas::new(root) catch {
+    _ => return []
+  } noraise {
+    v => v
+  }
+  let nodes = render_group_svg(
+    locked.element,
+    ctx,
+    defs,
+    image_resolver,
+    part_resolver,
+    chart_part_resolver_factory,
+    hyperlink_resolver,
+    table_style_list,
+    None,
+  )
+  nodes
+}
+
+///|
 /// Render a `<p:graphicFrame>` (chart, table, diagram, OLE).
 /// @source web-pptx packages/@aurochs-renderer/pptx/src/svg/slide-shapes.ts:575 (renderGraphicFrameSvg)
 ///
@@ -7541,6 +8236,8 @@ fn render_graphic_frame_svg(
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   hyperlink_resolver : (String) -> String?,
+  table_style_list : @a.CT_TableStyleList?,
+  theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
   // §19.3.1.21: `<p:graphicFrame>` uses `<p:xfrm>` (PresentationML
   // namespace) for transform, not `<a:xfrm>` inside `<p:spPr>`.
@@ -7560,7 +8257,7 @@ fn render_graphic_frame_svg(
   // and emit a full table rendering. Otherwise fall back to the
   // labelled placeholder.
   let table_nodes = render_graphic_frame_table_nodes(
-    frame, w, h, ctx, defs, hyperlink_resolver,
+    frame, w, h, ctx, defs, hyperlink_resolver, table_style_list,
   )
   // §19.3.1.16 / §15.2.7 OLE — look for a `<p:oleObj>` carrying a
   // `<p:pic>` (modern preview path) or a sibling `<p:pic>` so we can
@@ -7575,7 +8272,7 @@ fn render_graphic_frame_svg(
   // parts cannot be resolved, the function returns `[]` and we
   // fall back to the placeholder branch below.
   let diagram_nodes : Array[@xml.Node] = if is_diagram_graphic_frame(frame) {
-    render_diagram_svg(frame, w, h, part_resolver, ctx)
+    render_diagram_svg(frame, w, h, part_resolver, ctx, defs, theme~)
   } else {
     []
   }
@@ -7600,11 +8297,25 @@ fn render_graphic_frame_svg(
   } else {
     []
   }
+  // §20.3 DrawingML lockedCanvas — `<a:graphicData
+  // uri="…/lockedCanvas"><lc:lockedCanvas>…</lc:lockedCanvas>` hosts
+  // GVML group-shape children (`a:sp`, `a:cxnSp`, `a:pic`,
+  // `a:graphicFrame`, `a:grpSp`). After validating the lockedCanvas
+  // root with the DrawingML shape subpackage, dispatch the children
+  // through the same local-name-based shape renderer used for
+  // PresentationML group shapes.
+  let locked_canvas_nodes = render_locked_canvas_graphic_frame_nodes(
+    frame, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
+    hyperlink_resolver, table_style_list,
+  )
   let g_attrs : Array[@xml.Attribute] = []
   for a in transform_attrs {
     g_attrs.push(a)
   }
   for a in ooxml_id {
+    g_attrs.push(a)
+  }
+  for a in nonvisual_lock_attrs(frame) {
     g_attrs.push(a)
   }
   let g_children : Array[@xml.Node] = if table_nodes.length() > 0 {
@@ -7615,6 +8326,8 @@ fn render_graphic_frame_svg(
     diagram_nodes
   } else if chart_nodes.length() > 0 {
     chart_nodes
+  } else if locked_canvas_nodes.length() > 0 {
+    locked_canvas_nodes
   } else {
     // §19.3.1.21 — `<p:graphicFrame>` carries an `<a:graphic>`
     // payload whose `<a:graphicData @uri>` selects the sub-grammar
@@ -7970,6 +8683,129 @@ fn attr_value_local(e : @xml.Element, name : String) -> String? {
 }
 
 ///|
+fn first_element_child_local_name(e : @xml.Element) -> String? {
+  for child in e.children {
+    if child is @xml.Node::Element(ce) {
+      return Some(ce.name.local_name)
+    }
+  }
+  None
+}
+
+///|
+fn element_child_local_names(e : @xml.Element) -> String {
+  let names : Array[String] = []
+  for child in e.children {
+    if child is @xml.Node::Element(ce) {
+      names.push(ce.name.local_name)
+    }
+  }
+  names.join(" ")
+}
+
+///|
+fn theme_push_attr_if_present(
+  out : Array[@xml.Attribute],
+  name : String,
+  value : String?,
+) -> Unit {
+  match value {
+    Some(v) => out.push(@markup.attr(name, v))
+    None => ()
+  }
+}
+
+///|
+fn theme_text_font_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  font : @xml.Element,
+) -> Unit {
+  theme_push_attr_if_present(
+    out,
+    prefix + "-typeface",
+    attr_value_local(font, "typeface"),
+  )
+  theme_push_attr_if_present(
+    out,
+    prefix + "-panose",
+    attr_value_local(font, "panose"),
+  )
+  theme_push_attr_if_present(
+    out,
+    prefix + "-pitchFamily",
+    attr_value_local(font, "pitchFamily"),
+  )
+  theme_push_attr_if_present(
+    out,
+    prefix + "-charset",
+    attr_value_local(font, "charset"),
+  )
+}
+
+///|
+fn theme_font_collection_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  collection : @xml.Element,
+) -> Unit {
+  let names = element_child_local_names(collection)
+  if names.length() > 0 {
+    out.push(@markup.attr(prefix + "-children", names))
+  }
+  match first_child_local(collection, "latin") {
+    Some(font) => theme_text_font_attrs(out, prefix + "-latin", font)
+    None => ()
+  }
+  match first_child_local(collection, "ea") {
+    Some(font) => theme_text_font_attrs(out, prefix + "-ea", font)
+    None => ()
+  }
+  match first_child_local(collection, "cs") {
+    Some(font) => theme_text_font_attrs(out, prefix + "-cs", font)
+    None => ()
+  }
+  let supplemental : Array[String] = []
+  for child in collection.children {
+    match child {
+      Element(ce) if ce.name.local_name == "font" => {
+        let script = attr_value_local(ce, "script").unwrap_or("")
+        let face = attr_value_local(ce, "typeface").unwrap_or("")
+        supplemental.push(script + ":" + face)
+      }
+      _ => ()
+    }
+  }
+  if supplemental.length() > 0 {
+    out.push(
+      @markup.attr(prefix + "-supplemental-fonts", supplemental.join("|")),
+    )
+  }
+  out.push(
+    @markup.attr(
+      prefix + "-supplemental-font-count",
+      supplemental.length().to_string(),
+    ),
+  )
+}
+
+///|
+fn theme_custom_color_items(list : @xml.Element) -> String {
+  let items : Array[String] = []
+  for child in list.children {
+    match child {
+      Element(ce) if ce.name.local_name == "custClr" => {
+        let name = attr_value_local(ce, "name").unwrap_or("")
+        let color = first_element_child_local_name(ce).unwrap_or("")
+        items.push(name + ":" + color)
+      }
+      _ => ()
+    }
+  }
+  items.join("|")
+}
+
+///|
 /// §20.1.6.9 CT_OfficeStyleSheet — surface every recognised
 /// theme-level child as `data-ooxml-theme-*` attributes on the
 /// slide-render root `<svg>`.  Mirrors `pml_presentation_metadata_attrs`
@@ -8029,6 +8865,20 @@ fn pml_theme_metadata_attrs(
               out.push(@markup.attr("data-ooxml-theme-font-scheme-name", v))
             None => ()
           }
+          match first_child_local(fs, "majorFont") {
+            Some(fc) =>
+              theme_font_collection_attrs(
+                out, "data-ooxml-theme-font-major", fc,
+              )
+            None => ()
+          }
+          match first_child_local(fs, "minorFont") {
+            Some(fc) =>
+              theme_font_collection_attrs(
+                out, "data-ooxml-theme-font-minor", fc,
+              )
+            None => ()
+          }
         }
       }
       // §20.1.4.1.14 fmtScheme — per-section entry counts.
@@ -8060,6 +8910,15 @@ fn pml_theme_metadata_attrs(
                     n.to_string(),
                   ),
                 )
+                let names = element_child_local_names(sec)
+                if names.length() > 0 {
+                  out.push(
+                    @markup.attr(
+                      "data-ooxml-theme-fmt-scheme-" + section + "-children",
+                      names,
+                    ),
+                  )
+                }
               }
             }
           }
@@ -8133,6 +8992,10 @@ fn pml_theme_metadata_attrs(
       out.push(
         @markup.attr("data-ooxml-theme-cust-clr-lst-count", n.to_string()),
       )
+      let items = theme_custom_color_items(cc)
+      if items.length() > 0 {
+        out.push(@markup.attr("data-ooxml-theme-cust-clr-lst-items", items))
+      }
     }
   }
   // §20.1.2.2.13 root extLst — extension count.

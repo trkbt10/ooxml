@@ -196,6 +196,40 @@ fn chart_series_color(ctx : ColorResolveContext, index : Int) -> String {
 }
 
 ///|
+/// §21.2.2.30 clrMapOvr — chart-space colour map override.  The
+/// element is a direct a:CT_ColorMapping attribute set, unlike
+/// PresentationML's `<p:clrMapOvr>/<a:overrideClrMapping>` wrapper.
+fn chart_color_mapped_context(
+  chart_space : @xml.Element,
+  ctx : ColorResolveContext,
+) -> ColorResolveContext {
+  let clr_map = match first_child_named(chart_space, "clrMapOvr") {
+    Some(e) => e
+    None => return ctx
+  }
+  let override_map : Map[String, String] = Map([], capacity=0)
+  let mut saw = false
+  for
+    slot in [
+      "bg1", "tx1", "bg2", "tx2", "accent1", "accent2", "accent3", "accent4", "accent5",
+      "accent6", "hlink", "folHlink",
+    ] {
+    match attr_value(clr_map, slot) {
+      Some(target) => {
+        override_map[slot] = target
+        saw = true
+      }
+      None => ()
+    }
+  }
+  if saw {
+    ctx.with_maps(ctx.color_map, Some(override_map))
+  } else {
+    ctx
+  }
+}
+
+///|
 /// §21.2.2.171 ser — resolve the fill for series index `si`.  Delegates
 /// to `resolve_series_fill`, which handles the full §20.1.8
 /// EG_FillProperties surface (solid / gradient / pattern) and registers a
@@ -325,6 +359,14 @@ priv struct DataLabelConfig {
   show_cat_name : Bool
   show_percent : Bool
   show_ser_name : Bool
+  show_bubble_size : Bool
+  show_legend_key : Bool
+  /// §21.2.2.138 numFmt — label numeric format.  Applies to the
+  /// numeric value part and, for bubble labels, the bubble-size part.
+  num_fmt : String?
+  /// §21.2.2.182 separator — text inserted between visible label
+  /// components.  The Office default is comma+space.
+  separator : String
   /// §21.2.2.48 dLblPos (ST_DLblPos) — label placement: "ctr",
   /// "inEnd", "inBase", "outEnd", "bestFit", "l/r/t/b".  Empty when
   /// unspecified (renderer default placement).
@@ -333,6 +375,25 @@ priv struct DataLabelConfig {
   /// to an externally-placed label (pie / doughnut).  Default true
   /// when `<c:leaderLines>` is present.
   show_leader_lines : Bool
+  /// §21.2.2.92 leaderLines — retained CT_ChartLines element so the
+  /// renderer can consume `<c:spPr>/<a:ln>` styling.
+  leader_lines : @xml.Element?
+  /// §21.2.2.47 dLbl — point-level overrides keyed by `<c:idx>`.
+  overrides : Array[DataLabelPointOverride]
+}
+
+///|
+priv struct DataLabelPointOverride {
+  idx : Int
+  show_val : Bool?
+  show_cat_name : Bool?
+  show_percent : Bool?
+  show_ser_name : Bool?
+  show_bubble_size : Bool?
+  show_legend_key : Bool?
+  num_fmt : String?
+  separator : String?
+  pos : String?
 }
 
 ///|
@@ -357,28 +418,216 @@ fn read_data_labels(elem : @xml.Element) -> DataLabelConfig? {
     Some(e) => chart_bool_default_true(e)
     None => false
   }
+  let show_bubble_size = match first_child_named(dl, "showBubbleSize") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+  let show_legend_key = match first_child_named(dl, "showLegendKey") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+  let num_fmt : String? = match first_child_named(dl, "numFmt") {
+    Some(e) => {
+      let fmt = attr_or(e, "formatCode", "")
+      if fmt.length() > 0 {
+        Some(fmt)
+      } else {
+        None
+      }
+    }
+    None => None
+  }
+  let separator = match first_child_named(dl, "separator") {
+    Some(e) => {
+      let text = element_text_content(e)
+      if text.length() > 0 {
+        text
+      } else {
+        ", "
+      }
+    }
+    None => ", "
+  }
   // §21.2.2.48 dLblPos.
   let pos = match first_child_named(dl, "dLblPos") {
     Some(e) => attr_or(e, "val", "")
     None => ""
   }
   // §21.2.2.187 showLeaderLines (or the presence of <c:leaderLines>).
+  let leader_lines = first_child_named(dl, "leaderLines")
   let show_leader_lines = match first_child_named(dl, "showLeaderLines") {
     Some(e) => chart_bool_default_true(e)
-    None => first_child_named(dl, "leaderLines") is Some(_)
+    None => leader_lines is Some(_)
   }
-  if show_val || show_cat_name || show_percent || show_ser_name {
+  let overrides = read_data_label_overrides(dl)
+  if show_val ||
+    show_cat_name ||
+    show_percent ||
+    show_ser_name ||
+    show_bubble_size ||
+    show_legend_key ||
+    overrides.length() > 0 {
     Some({
       show_val,
       show_cat_name,
       show_percent,
       show_ser_name,
+      show_bubble_size,
+      show_legend_key,
+      num_fmt,
+      separator,
       pos,
       show_leader_lines,
+      leader_lines,
+      overrides,
     })
   } else {
     None
   }
+}
+
+///|
+fn read_optional_label_bool(
+  parent : @xml.Element,
+  child_name : String,
+) -> Bool? {
+  match first_child_named(parent, child_name) {
+    Some(e) => Some(chart_bool_default_true(e))
+    None => None
+  }
+}
+
+///|
+fn read_data_label_overrides(
+  dl : @xml.Element,
+) -> Array[DataLabelPointOverride] {
+  let out : Array[DataLabelPointOverride] = []
+  for ch in dl.children {
+    match ch {
+      @xml.Node::Element(dlbl) =>
+        if dlbl.name.local_name == "dLbl" {
+          match first_child_named(dlbl, "idx") {
+            Some(idx_elem) => {
+              let idx = parse_int_lenient(attr_or(idx_elem, "val", "-1"))
+              if idx >= 0 {
+                let num_fmt : String? = match
+                  first_child_named(dlbl, "numFmt") {
+                  Some(e) => {
+                    let fmt = attr_or(e, "formatCode", "")
+                    if fmt.length() > 0 {
+                      Some(fmt)
+                    } else {
+                      None
+                    }
+                  }
+                  None => None
+                }
+                let separator : String? = match
+                  first_child_named(dlbl, "separator") {
+                  Some(e) => {
+                    let text = element_text_content(e)
+                    if text.length() > 0 {
+                      Some(text)
+                    } else {
+                      None
+                    }
+                  }
+                  None => None
+                }
+                let pos : String? = match first_child_named(dlbl, "dLblPos") {
+                  Some(e) => {
+                    let p = attr_or(e, "val", "")
+                    if p.length() > 0 {
+                      Some(p)
+                    } else {
+                      None
+                    }
+                  }
+                  None => None
+                }
+                out.push({
+                  idx,
+                  show_val: read_optional_label_bool(dlbl, "showVal"),
+                  show_cat_name: read_optional_label_bool(dlbl, "showCatName"),
+                  show_percent: read_optional_label_bool(dlbl, "showPercent"),
+                  show_ser_name: read_optional_label_bool(dlbl, "showSerName"),
+                  show_bubble_size: read_optional_label_bool(
+                    dlbl, "showBubbleSize",
+                  ),
+                  show_legend_key: read_optional_label_bool(
+                    dlbl, "showLegendKey",
+                  ),
+                  num_fmt,
+                  separator,
+                  pos,
+                })
+              }
+            }
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+fn data_label_bool_override(value : Bool?, base : Bool) -> Bool {
+  match value {
+    Some(v) => v
+    None => base
+  }
+}
+
+///|
+fn data_label_effective_config(
+  cfg : DataLabelConfig,
+  idx : Int,
+) -> DataLabelConfig {
+  for ov in cfg.overrides {
+    if ov.idx == idx {
+      return {
+        show_val: data_label_bool_override(ov.show_val, cfg.show_val),
+        show_cat_name: data_label_bool_override(
+          ov.show_cat_name,
+          cfg.show_cat_name,
+        ),
+        show_percent: data_label_bool_override(
+          ov.show_percent,
+          cfg.show_percent,
+        ),
+        show_ser_name: data_label_bool_override(
+          ov.show_ser_name,
+          cfg.show_ser_name,
+        ),
+        show_bubble_size: data_label_bool_override(
+          ov.show_bubble_size,
+          cfg.show_bubble_size,
+        ),
+        show_legend_key: data_label_bool_override(
+          ov.show_legend_key,
+          cfg.show_legend_key,
+        ),
+        num_fmt: match ov.num_fmt {
+          Some(fmt) => Some(fmt)
+          None => cfg.num_fmt
+        },
+        separator: match ov.separator {
+          Some(sep) => sep
+          None => cfg.separator
+        },
+        pos: match ov.pos {
+          Some(p) => p
+          None => cfg.pos
+        },
+        show_leader_lines: cfg.show_leader_lines,
+        leader_lines: cfg.leader_lines,
+        overrides: [],
+      }
+    }
+  }
+  cfg
 }
 
 ///|
@@ -534,6 +783,692 @@ fn render_data_table(
     }
   }
   nodes
+}
+
+///|
+/// §21.2.2.69 / §21.2.2.11 / §21.2.2.191 CT_Surface — a chart
+/// floor/backWall/sideWall style projected into SVG attributes.
+priv struct ChartSurfaceStyle {
+  fill : String
+  stroke : String
+  stroke_width : Double?
+  dasharray : String?
+  linecap : String?
+}
+
+///|
+fn chart_surface_thickness_percent(surface : @xml.Element) -> Double? {
+  match first_child_named(surface, "thickness") {
+    Some(t) => {
+      let raw = attr_or(t, "val", "")
+      if chart_number_literal_present(raw) {
+        let pct = parse_double_lenient(raw)
+        Some(if pct < 0.0 { 0.0 } else { pct })
+      } else {
+        None
+      }
+    }
+    None => None
+  }
+}
+
+///|
+fn chart_surface_thickness_px(
+  surface : @xml.Element,
+  plot_w : Double,
+  plot_h : Double,
+) -> Double? {
+  match chart_surface_thickness_percent(surface) {
+    Some(pct) => {
+      let basis = if plot_w < plot_h { plot_w } else { plot_h }
+      Some(basis * pct / 100.0)
+    }
+    None => None
+  }
+}
+
+///|
+fn chart_line_svg_cap(ln : @xml.Element) -> String? {
+  match attr_value(ln, "cap") {
+    Some("rnd") => Some("round")
+    Some("sq") => Some("square")
+    Some("flat") => Some("butt")
+    _ => None
+  }
+}
+
+///|
+fn chart_line_svg_dasharray(ln : @xml.Element, stroke_w : Double) -> String? {
+  let dash = match first_child_named(ln, "prstDash") {
+    Some(d) =>
+      match attr_value(d, "val") {
+        Some(v) => v
+        None => return None
+      }
+    None => return None
+  }
+  let unit = fn(a : Double, b : Double) -> String {
+    format_double(stroke_w * a) + " " + format_double(stroke_w * b)
+  }
+  match dash {
+    "solid" => None
+    "dot" | "sysDot" => Some(unit(1.0, 2.0))
+    "dash" | "sysDash" => Some(unit(4.0, 3.0))
+    "lgDash" => Some(unit(8.0, 3.0))
+    "dashDot" | "sysDashDot" =>
+      Some(
+        format_double(stroke_w * 4.0) +
+        " " +
+        format_double(stroke_w * 2.0) +
+        " " +
+        format_double(stroke_w) +
+        " " +
+        format_double(stroke_w * 2.0),
+      )
+    "lgDashDot" =>
+      Some(
+        format_double(stroke_w * 8.0) +
+        " " +
+        format_double(stroke_w * 2.0) +
+        " " +
+        format_double(stroke_w) +
+        " " +
+        format_double(stroke_w * 2.0),
+      )
+    "lgDashDotDot" =>
+      Some(
+        format_double(stroke_w * 8.0) +
+        " " +
+        format_double(stroke_w * 2.0) +
+        " " +
+        format_double(stroke_w) +
+        " " +
+        format_double(stroke_w * 2.0) +
+        " " +
+        format_double(stroke_w) +
+        " " +
+        format_double(stroke_w * 2.0),
+      )
+    _ => None
+  }
+}
+
+///|
+/// §21.2.2.27 CT_ChartLines — resolved SVG stroke style for chart line
+/// carrier elements (`dropLines`, `hiLowLines`, `serLines`, gridlines, ...).
+priv struct ChartLineStyle {
+  stroke : String
+  stroke_width : Double
+  dasharray : String?
+  linecap : String?
+}
+
+///|
+/// §20.1.2.2.24 ln/@w — line widths are stored in EMUs. SVG uses CSS
+/// pixels here, and the project-wide 96dpi conversion is
+/// 914400 / 96 = 9525 EMUs per px.
+fn chart_line_width_px(ln : @xml.Element, default_width : Double) -> Double? {
+  match attr_value(ln, "w") {
+    Some(raw) =>
+      if chart_number_literal_present(raw) {
+        let emu = parse_double_lenient(raw)
+        if emu > 0.0 {
+          Some(emu / 9525.0)
+        } else {
+          None
+        }
+      } else {
+        None
+      }
+    None => Some(default_width)
+  }
+}
+
+///|
+/// §21.2.2.27 CT_ChartLines / §20.1.2.2.24 ln — resolve line carrier
+/// styling through the same DrawingML fill resolver used by series and
+/// surfaces. Explicit `<a:noFill/>` suppresses the line.
+fn chart_lines_style(
+  chart_lines : @xml.Element,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  id_hint : String,
+  default_stroke : String,
+  default_width : Double,
+  default_dasharray? : String? = None,
+) -> ChartLineStyle? {
+  let mut stroke = default_stroke
+  let mut stroke_width = default_width
+  let mut dasharray : String? = None
+  let mut linecap : String? = None
+  let mut saw_line_properties = false
+  match first_child_named(chart_lines, "spPr") {
+    Some(sp_pr) =>
+      match first_child_named(sp_pr, "ln") {
+        Some(ln) => {
+          saw_line_properties = true
+          match first_child_named(ln, "noFill") {
+            Some(_) => return None
+            None => ()
+          }
+          match chart_line_width_px(ln, default_width) {
+            Some(w) => stroke_width = w
+            None => return None
+          }
+          let resolved = resolve_sppr_fill(ln, ctx, defs, id_hint)
+          if resolved.length() > 0 {
+            stroke = resolved
+          }
+          dasharray = chart_line_svg_dasharray(ln, stroke_width)
+          linecap = chart_line_svg_cap(ln)
+        }
+        None => ()
+      }
+    None => ()
+  }
+  if !saw_line_properties {
+    dasharray = default_dasharray
+  }
+  Some({ stroke, stroke_width, dasharray, linecap })
+}
+
+///|
+fn push_chart_line_style_attrs(
+  attrs : Array[@xml.Attribute],
+  style : ChartLineStyle,
+) -> Unit {
+  attrs.push(@markup.attr("stroke", style.stroke))
+  attrs.push(@markup.attr("stroke-width", format_double(style.stroke_width)))
+  match style.dasharray {
+    Some(v) => attrs.push(@markup.attr("stroke-dasharray", v))
+    None => ()
+  }
+  match style.linecap {
+    Some(v) => attrs.push(@markup.attr("stroke-linecap", v))
+    None => ()
+  }
+}
+
+///|
+fn chart_surface_style(
+  surface : @xml.Element,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  id_hint : String,
+) -> ChartSurfaceStyle {
+  let fill = match first_child_named(surface, "spPr") {
+    Some(sp_pr) => {
+      let resolved = resolve_sppr_fill(sp_pr, ctx, defs, id_hint + "-fill")
+      if resolved.length() > 0 {
+        resolved
+      } else {
+        "none"
+      }
+    }
+    None => "none"
+  }
+  let mut stroke = "none"
+  let mut stroke_width : Double? = None
+  let mut dasharray : String? = None
+  let mut linecap : String? = None
+  match first_child_named(surface, "spPr") {
+    Some(sp_pr) =>
+      match first_child_named(sp_pr, "ln") {
+        Some(ln) => {
+          let width_raw = attr_or(ln, "w", "")
+          if chart_number_literal_present(width_raw) {
+            let width = parse_double_lenient(width_raw)
+            if width > 0.0 {
+              let resolved_stroke = resolve_sppr_fill(
+                ln,
+                ctx,
+                defs,
+                id_hint + "-line",
+              )
+              if resolved_stroke.length() > 0 {
+                stroke = resolved_stroke
+                stroke_width = Some(width)
+                dasharray = chart_line_svg_dasharray(ln, width)
+                linecap = chart_line_svg_cap(ln)
+              }
+            }
+          }
+        }
+        None => ()
+      }
+    None => ()
+  }
+  { fill, stroke, stroke_width, dasharray, linecap }
+}
+
+///|
+fn chart_surface_push_picture_attrs(
+  surface : @xml.Element,
+  attrs : Array[@xml.Attribute],
+) -> Unit {
+  let po = match first_child_named(surface, "pictureOptions") {
+    Some(e) => e
+    None => return
+  }
+  let add_child_val = fn(child : String, data_attr : String) -> Unit {
+    match first_child_named(po, child) {
+      Some(e) =>
+        match attr_value(e, "val") {
+          Some(v) => attrs.push(@markup.attr(data_attr, v))
+          None => ()
+        }
+      None => ()
+    }
+  }
+  add_child_val("applyToFront", "data-ooxml-picture-apply-front")
+  add_child_val("applyToSides", "data-ooxml-picture-apply-sides")
+  add_child_val("applyToEnd", "data-ooxml-picture-apply-end")
+  add_child_val("pictureFormat", "data-ooxml-picture-format")
+  add_child_val("pictureStackUnit", "data-ooxml-picture-stack-unit")
+}
+
+///|
+fn render_chart_surface_rect(
+  surface : @xml.Element,
+  data_ooxml : String,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  id_hint : String,
+) -> @xml.Node? {
+  if width <= 0.0 || height <= 0.0 {
+    return None
+  }
+  let style = chart_surface_style(surface, ctx, defs, id_hint)
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("x", format_double(x)),
+    @markup.attr("y", format_double(y)),
+    @markup.attr("width", format_double(width)),
+    @markup.attr("height", format_double(height)),
+    @markup.attr("fill", style.fill),
+    @markup.attr("stroke", style.stroke),
+    @markup.attr("data-ooxml", data_ooxml),
+  ]
+  match chart_surface_thickness_percent(surface) {
+    Some(pct) =>
+      attrs.push(@markup.attr("data-ooxml-thickness", format_double(pct) + "%"))
+    None => ()
+  }
+  match style.stroke_width {
+    Some(w) => attrs.push(@markup.attr("stroke-width", format_double(w)))
+    None => ()
+  }
+  match style.dasharray {
+    Some(v) => attrs.push(@markup.attr("stroke-dasharray", v))
+    None => ()
+  }
+  match style.linecap {
+    Some(v) => attrs.push(@markup.attr("stroke-linecap", v))
+    None => ()
+  }
+  chart_surface_push_picture_attrs(surface, attrs)
+  Some(@markup.elem_ns("rect", @markup.svg_ns, attrs, []))
+}
+
+///|
+fn render_chart_surface_floor(
+  surface : @xml.Element,
+  px : Double,
+  py : Double,
+  pw : Double,
+  ph : Double,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+) -> @xml.Node? {
+  match chart_surface_thickness_px(surface, pw, ph) {
+    Some(t) =>
+      render_chart_surface_rect(
+        surface,
+        "chart-floor",
+        px,
+        py + ph - t,
+        pw,
+        t,
+        ctx,
+        defs,
+        "chart-floor",
+      )
+    None => None
+  }
+}
+
+///|
+fn render_chart_surface_back_wall(
+  surface : @xml.Element,
+  px : Double,
+  py : Double,
+  pw : Double,
+  ph : Double,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+) -> @xml.Node? {
+  match chart_surface_thickness_px(surface, pw, ph) {
+    Some(t) =>
+      render_chart_surface_rect(
+        surface, "chart-back-wall", px, py, pw, t, ctx, defs, "chart-back-wall",
+      )
+    None => None
+  }
+}
+
+///|
+fn render_chart_surface_side_wall(
+  surface : @xml.Element,
+  px : Double,
+  py : Double,
+  pw : Double,
+  ph : Double,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+) -> @xml.Node? {
+  match chart_surface_thickness_px(surface, pw, ph) {
+    Some(t) =>
+      render_chart_surface_rect(
+        surface, "chart-side-wall", px, py, t, ph, ctx, defs, "chart-side-wall",
+      )
+    None => None
+  }
+}
+
+///|
+/// §21.2.2.228 CT_View3D — chart-level 3D camera controls.
+/// Defaults mirror the generated domain model from dml-chart.xsd:
+/// rotX/rotY default to 0, hPercent/depthPercent to 100%, perspective to 30.
+priv struct ChartView3DConfig {
+  rot_x : Double
+  h_percent : Double
+  rot_y : Double
+  depth_percent : Double
+  r_ang_ax : Bool
+  perspective : Double
+}
+
+///|
+fn chart_clamp_double(v : Double, lo : Double, hi : Double) -> Double {
+  if v < lo {
+    lo
+  } else if v > hi {
+    hi
+  } else {
+    v
+  }
+}
+
+///|
+fn chart_number_literal_present(s : String) -> Bool {
+  if s.length() == 0 {
+    return false
+  }
+  let mut i = 0
+  if s[0:1] == "-" || s[0:1] == "+" {
+    i = 1
+  }
+  let mut saw_digit = false
+  while i < s.length() {
+    let ch = s[i:i + 1]
+    if ch >= "0" && ch <= "9" {
+      saw_digit = true
+      i = i + 1
+    } else if ch == "." {
+      i = i + 1
+    } else {
+      break
+    }
+  }
+  saw_digit
+}
+
+///|
+fn chart_view3d_child_number(
+  view : @xml.Element,
+  local_name : String,
+  schema_default : Double,
+) -> Double {
+  match first_child_named(view, local_name) {
+    Some(e) => {
+      let raw = attr_or(e, "val", "")
+      if chart_number_literal_present(raw) {
+        parse_double_lenient(raw)
+      } else {
+        schema_default
+      }
+    }
+    None => schema_default
+  }
+}
+
+///|
+fn read_chart_view3d_config(view : @xml.Element) -> ChartView3DConfig {
+  let rot_x = chart_clamp_double(
+    chart_view3d_child_number(view, "rotX", 0.0),
+    -90.0,
+    90.0,
+  )
+  let h_percent = chart_clamp_double(
+    chart_view3d_child_number(view, "hPercent", 100.0),
+    5.0,
+    500.0,
+  )
+  let rot_y = chart_clamp_double(
+    chart_view3d_child_number(view, "rotY", 0.0),
+    0.0,
+    360.0,
+  )
+  let depth_percent = chart_clamp_double(
+    chart_view3d_child_number(view, "depthPercent", 100.0),
+    20.0,
+    2000.0,
+  )
+  let r_ang_ax = match first_child_named(view, "rAngAx") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+  let perspective = chart_clamp_double(
+    chart_view3d_child_number(view, "perspective", 30.0),
+    0.0,
+    240.0,
+  )
+  { rot_x, h_percent, rot_y, depth_percent, r_ang_ax, perspective }
+}
+
+///|
+fn chart_svg_points(points : Array[(Double, Double)]) -> String {
+  let buf = StringBuilder::new()
+  for i, point in points {
+    let (x, y) = point
+    if i > 0 {
+      buf.write_string(" ")
+    }
+    buf.write_string(format_double(x))
+    buf.write_string(",")
+    buf.write_string(format_double(y))
+  }
+  buf.to_string()
+}
+
+///|
+fn chart_view3d_payload_transform(
+  cfg : ChartView3DConfig,
+  plot_x : Double,
+  plot_y : Double,
+  plot_w : Double,
+  plot_h : Double,
+) -> String {
+  let cx = plot_x + plot_w / 2.0
+  let cy = plot_y + plot_h / 2.0
+  let h_scale = chart_clamp_double(cfg.h_percent / 100.0, 0.05, 5.0)
+  let depth_scale = chart_clamp_double(cfg.depth_percent / 100.0, 0.2, 20.0)
+  let perspective_scale = chart_clamp_double(cfg.perspective / 240.0, 0.0, 1.0)
+  let a = 1.0 - perspective_scale * 0.08
+  let b = -(cfg.rot_x / 90.0) * 0.12 - depth_scale * 0.003
+  let r_ang_ax_skew = if cfg.r_ang_ax { 0.04 } else { 0.0 }
+  let c = cfg.rot_y / 360.0 * 0.18 + depth_scale * 0.005 + r_ang_ax_skew
+  let d = 1.0 + (h_scale - 1.0) * 0.12
+  let e = cx - a * cx - c * cy
+  let f = cy - b * cx - d * cy
+  "matrix(" +
+  format_double(a) +
+  " " +
+  format_double(b) +
+  " " +
+  format_double(c) +
+  " " +
+  format_double(d) +
+  " " +
+  format_double(e) +
+  " " +
+  format_double(f) +
+  ")"
+}
+
+///|
+fn render_chart_view3d_marker(
+  view : @xml.Element,
+  plot_x : Double,
+  plot_y : Double,
+  plot_w : Double,
+  frame_h : Double,
+) -> @xml.Node {
+  let cfg = read_chart_view3d_config(view)
+  let min_size = if frame_h * 0.018 < 4.0 { 4.0 } else { frame_h * 0.018 }
+  let front_w = min_size * 1.45
+  let front_h = min_size * chart_clamp_double(cfg.h_percent / 100.0, 0.05, 5.0)
+  let depth = min_size *
+    chart_clamp_double(cfg.depth_percent / 100.0, 0.2, 20.0)
+  let base_depth_dx = depth * 0.35
+  let base_depth_dy = -depth * 0.2
+  let rot_y_dx = depth * (cfg.rot_y / 30.0)
+  let rot_x_dy = depth * (cfg.rot_x / 30.0)
+  let right_angle_dx = if cfg.r_ang_ax { front_w * 0.28 } else { 0.0 }
+  let perspective_scale = 1.0 -
+    0.45 * chart_clamp_double(cfg.perspective / 240.0, 0.0, 1.0)
+  let back_w = front_w * perspective_scale
+  let back_h = front_h * perspective_scale
+  let dx = base_depth_dx + rot_y_dx + right_angle_dx
+  let dy = base_depth_dy - rot_x_dy
+  let abs_dx = if dx < 0.0 { -dx } else { dx }
+  let abs_dy = if dy < 0.0 { -dy } else { dy }
+  let x = plot_x + plot_w - front_w - abs_dx - min_size * 0.65
+  let y = plot_y + min_size * 0.65 + abs_dy
+  let bx = x + dx
+  let by = y + dy
+  let front = [
+    (x, y),
+    (x + front_w, y),
+    (x + front_w, y + front_h),
+    (x, y + front_h),
+  ]
+  let back = [
+    (bx, by),
+    (bx + back_w, by),
+    (bx + back_w, by + back_h),
+    (bx, by + back_h),
+  ]
+  let side = [
+    (x + front_w, y),
+    (bx + back_w, by),
+    (bx + back_w, by + back_h),
+    (x + front_w, y + front_h),
+  ]
+  let top = [(x, y), (bx, by), (bx + back_w, by), (x + front_w, y)]
+  let stroke_w = if frame_h * 0.001 < 0.35 { 0.35 } else { frame_h * 0.001 }
+  @markup.elem_ns(
+    "g",
+    @markup.svg_ns,
+    [@markup.attr("data-ooxml", "chart-view3d")],
+    [
+      @markup.elem_ns(
+        "polygon",
+        @markup.svg_ns,
+        [
+          @markup.attr("points", chart_svg_points(back)),
+          @markup.attr("fill", "#d8d8d8"),
+          @markup.attr("stroke", "#8a8a8a"),
+          @markup.attr("stroke-width", format_double(stroke_w)),
+          @markup.attr("data-ooxml", "chart-view3d-back"),
+        ],
+        [],
+      ),
+      @markup.elem_ns(
+        "polygon",
+        @markup.svg_ns,
+        [
+          @markup.attr("points", chart_svg_points(side)),
+          @markup.attr("fill", "#c8c8c8"),
+          @markup.attr("stroke", "#8a8a8a"),
+          @markup.attr("stroke-width", format_double(stroke_w)),
+          @markup.attr("data-ooxml", "chart-view3d-side"),
+        ],
+        [],
+      ),
+      @markup.elem_ns(
+        "polygon",
+        @markup.svg_ns,
+        [
+          @markup.attr("points", chart_svg_points(top)),
+          @markup.attr("fill", "#eeeeee"),
+          @markup.attr("stroke", "#8a8a8a"),
+          @markup.attr("stroke-width", format_double(stroke_w)),
+          @markup.attr("data-ooxml", "chart-view3d-top"),
+        ],
+        [],
+      ),
+      @markup.elem_ns(
+        "polygon",
+        @markup.svg_ns,
+        [
+          @markup.attr("points", chart_svg_points(front)),
+          @markup.attr("fill", "#f5f5f5"),
+          @markup.attr("stroke", "#6f6f6f"),
+          @markup.attr("stroke-width", format_double(stroke_w)),
+          @markup.attr("data-ooxml", "chart-view3d-front"),
+        ],
+        [],
+      ),
+    ],
+  )
+}
+
+///|
+fn chart_nodes_with_view3d_projection(
+  nodes : Array[@xml.Node],
+  view3d : ChartView3DConfig?,
+  plot_x : Double,
+  plot_y : Double,
+  plot_w : Double,
+  plot_h : Double,
+) -> Array[@xml.Node] {
+  if nodes.length() == 0 {
+    return []
+  }
+  match view3d {
+    Some(cfg) =>
+      [
+        @markup.elem_ns(
+          "g",
+          @markup.svg_ns,
+          [
+            @markup.attr(
+              "transform",
+              chart_view3d_payload_transform(
+                cfg, plot_x, plot_y, plot_w, plot_h,
+              ),
+            ),
+            @markup.attr("data-ooxml", "chart-view3d-payload"),
+          ],
+          nodes,
+        ),
+      ]
+    None => nodes
+  }
 }
 
 ///|
@@ -788,18 +1723,19 @@ fn render_trendline(
   stroke_width : Double,
   val_rev? : Bool = false,
   cat_rev? : Bool = false,
+  cat_cross_between? : String = "midCat",
 ) -> Array[@xml.Node] {
   let n = values.length()
   if n < 2 || max_v <= 0.0 {
     return []
   }
-  // §21.2.2.170 — category index → x honouring catAx maxMin.
+  // §21.2.2.34 / §21.2.2.170 — category coordinate → x honouring both
+  // valAx/crossBetween and catAx maxMin.
   let cat_px = fn(i : Double) -> Double {
-    // `i` is a (possibly fractional) 0-based category coordinate; when
-    // the category axis is reversed the coordinate is mirrored about
-    // the (n−1) span so the trendline tracks the reversed data points.
-    let coord = if cat_rev { (n - 1).to_double() - i } else { i }
-    px + coord * step
+    let _ = step
+    category_axis_fractional_position_for_cross(
+      px, pw, n, i, cat_rev, cat_cross_between,
+    )
   }
   let (ttype, order, period) = read_trendline_type(tl_elem)
   let dash = format_double(stroke_width * 3.0) +
@@ -1127,6 +2063,7 @@ fn render_trendline(
 /// Returns the error bar direction and value type.
 priv struct ErrBarConfig {
   err_dir : String
+  err_bar_type : String
   err_val_type : String
   val : Double
   /// §21.2.2.113 noEndCap — when present and `val="1"` (or truthy),
@@ -1152,6 +2089,10 @@ fn read_err_bars(ser : @xml.Element) -> ErrBarConfig? {
     Some(e) => attr_or(e, "val", "y")
     None => "y"
   }
+  let err_bar_type = match first_child_named(eb, "errBarType") {
+    Some(e) => attr_or(e, "val", "both")
+    None => "both"
+  }
   let err_val_type = match first_child_named(eb, "errValType") {
     Some(e) => attr_or(e, "val", "fixedVal")
     None => "fixedVal"
@@ -1176,7 +2117,15 @@ fn read_err_bars(ser : @xml.Element) -> ErrBarConfig? {
   // plus/minus arrays are provided.  Without any data, the renderer
   // has nothing to draw and we return None.
   if val > 0.0 || plus_values.length() > 0 || minus_values.length() > 0 {
-    Some({ err_dir, err_val_type, val, no_end_cap, plus_values, minus_values })
+    Some({
+      err_dir,
+      err_bar_type,
+      err_val_type,
+      val,
+      no_end_cap,
+      plus_values,
+      minus_values,
+    })
   } else {
     None
   }
@@ -1236,52 +2185,22 @@ fn render_err_bars(
     } else {
       minus_v / max_v * ph
     }
-    let err_px = err_px_plus
-    let _ = err_px_minus
+    let draw_plus = cfg.err_bar_type != "minus"
+    let draw_minus = cfg.err_bar_type != "plus"
     if cfg.err_dir == "y" || cfg.err_dir == "both" {
       // Vertical error bar with potentially asymmetric extents.
-      nodes.push(
-        @markup.elem_ns(
-          "line",
-          @markup.svg_ns,
-          [
-            @markup.attr("x1", format_double(x)),
-            @markup.attr("y1", format_double(y + up_dy * err_px_plus)),
-            @markup.attr("x2", format_double(x)),
-            @markup.attr("y2", format_double(y + dn_dy * err_px_minus)),
-            @markup.attr("stroke", color),
-            @markup.attr("stroke-width", format_double(stroke_width)),
-          ],
-          [],
-        ),
-      )
-      if !cfg.no_end_cap {
-        // Top cap.
+      if draw_plus || draw_minus {
+        let y1 = if draw_plus { y + up_dy * err_px_plus } else { y }
+        let y2 = if draw_minus { y + dn_dy * err_px_minus } else { y }
         nodes.push(
           @markup.elem_ns(
             "line",
             @markup.svg_ns,
             [
-              @markup.attr("x1", format_double(x - cap_w)),
-              @markup.attr("y1", format_double(y + up_dy * err_px)),
-              @markup.attr("x2", format_double(x + cap_w)),
-              @markup.attr("y2", format_double(y + up_dy * err_px)),
-              @markup.attr("stroke", color),
-              @markup.attr("stroke-width", format_double(stroke_width)),
-            ],
-            [],
-          ),
-        )
-        // Bottom cap.
-        nodes.push(
-          @markup.elem_ns(
-            "line",
-            @markup.svg_ns,
-            [
-              @markup.attr("x1", format_double(x - cap_w)),
-              @markup.attr("y1", format_double(y + dn_dy * err_px)),
-              @markup.attr("x2", format_double(x + cap_w)),
-              @markup.attr("y2", format_double(y + dn_dy * err_px)),
+              @markup.attr("x1", format_double(x)),
+              @markup.attr("y1", format_double(y1)),
+              @markup.attr("x2", format_double(x)),
+              @markup.attr("y2", format_double(y2)),
               @markup.attr("stroke", color),
               @markup.attr("stroke-width", format_double(stroke_width)),
             ],
@@ -1289,59 +2208,105 @@ fn render_err_bars(
           ),
         )
       }
+      if !cfg.no_end_cap {
+        if draw_plus {
+          // Plus-side cap.
+          nodes.push(
+            @markup.elem_ns(
+              "line",
+              @markup.svg_ns,
+              [
+                @markup.attr("x1", format_double(x - cap_w)),
+                @markup.attr("y1", format_double(y + up_dy * err_px_plus)),
+                @markup.attr("x2", format_double(x + cap_w)),
+                @markup.attr("y2", format_double(y + up_dy * err_px_plus)),
+                @markup.attr("stroke", color),
+                @markup.attr("stroke-width", format_double(stroke_width)),
+              ],
+              [],
+            ),
+          )
+        }
+        if draw_minus {
+          // Minus-side cap.
+          nodes.push(
+            @markup.elem_ns(
+              "line",
+              @markup.svg_ns,
+              [
+                @markup.attr("x1", format_double(x - cap_w)),
+                @markup.attr("y1", format_double(y + dn_dy * err_px_minus)),
+                @markup.attr("x2", format_double(x + cap_w)),
+                @markup.attr("y2", format_double(y + dn_dy * err_px_minus)),
+                @markup.attr("stroke", color),
+                @markup.attr("stroke-width", format_double(stroke_width)),
+              ],
+              [],
+            ),
+          )
+        }
+      }
     }
     if cfg.err_dir == "x" || cfg.err_dir == "both" {
       // §21.2.2.56 errDir="x" — horizontal error bars (scatter / bubble
       // charts).  Use per-direction magnitudes so plus/minus arrays
       // affect the bar's left / right reach independently.
-      nodes.push(
-        @markup.elem_ns(
-          "line",
-          @markup.svg_ns,
-          [
-            @markup.attr("x1", format_double(x - err_px_minus)),
-            @markup.attr("y1", format_double(y)),
-            @markup.attr("x2", format_double(x + err_px_plus)),
-            @markup.attr("y2", format_double(y)),
-            @markup.attr("stroke", color),
-            @markup.attr("stroke-width", format_double(stroke_width)),
-          ],
-          [],
-        ),
-      )
+      if draw_plus || draw_minus {
+        let x1 = if draw_minus { x - err_px_minus } else { x }
+        let x2 = if draw_plus { x + err_px_plus } else { x }
+        nodes.push(
+          @markup.elem_ns(
+            "line",
+            @markup.svg_ns,
+            [
+              @markup.attr("x1", format_double(x1)),
+              @markup.attr("y1", format_double(y)),
+              @markup.attr("x2", format_double(x2)),
+              @markup.attr("y2", format_double(y)),
+              @markup.attr("stroke", color),
+              @markup.attr("stroke-width", format_double(stroke_width)),
+            ],
+            [],
+          ),
+        )
+      }
       if !cfg.no_end_cap {
-        // Left cap.
-        nodes.push(
-          @markup.elem_ns(
-            "line",
-            @markup.svg_ns,
-            [
-              @markup.attr("x1", format_double(x - err_px_minus)),
-              @markup.attr("y1", format_double(y - cap_w)),
-              @markup.attr("x2", format_double(x - err_px_minus)),
-              @markup.attr("y2", format_double(y + cap_w)),
-              @markup.attr("stroke", color),
-              @markup.attr("stroke-width", format_double(stroke_width)),
-            ],
-            [],
-          ),
-        )
-        // Right cap.
-        nodes.push(
-          @markup.elem_ns(
-            "line",
-            @markup.svg_ns,
-            [
-              @markup.attr("x1", format_double(x + err_px_plus)),
-              @markup.attr("y1", format_double(y - cap_w)),
-              @markup.attr("x2", format_double(x + err_px_plus)),
-              @markup.attr("y2", format_double(y + cap_w)),
-              @markup.attr("stroke", color),
-              @markup.attr("stroke-width", format_double(stroke_width)),
-            ],
-            [],
-          ),
-        )
+        if draw_minus {
+          // Minus-side cap.
+          nodes.push(
+            @markup.elem_ns(
+              "line",
+              @markup.svg_ns,
+              [
+                @markup.attr("x1", format_double(x - err_px_minus)),
+                @markup.attr("y1", format_double(y - cap_w)),
+                @markup.attr("x2", format_double(x - err_px_minus)),
+                @markup.attr("y2", format_double(y + cap_w)),
+                @markup.attr("stroke", color),
+                @markup.attr("stroke-width", format_double(stroke_width)),
+              ],
+              [],
+            ),
+          )
+        }
+        if draw_plus {
+          // Plus-side cap.
+          nodes.push(
+            @markup.elem_ns(
+              "line",
+              @markup.svg_ns,
+              [
+                @markup.attr("x1", format_double(x + err_px_plus)),
+                @markup.attr("y1", format_double(y - cap_w)),
+                @markup.attr("x2", format_double(x + err_px_plus)),
+                @markup.attr("y2", format_double(y + cap_w)),
+                @markup.attr("stroke", color),
+                @markup.attr("stroke-width", format_double(stroke_width)),
+              ],
+              [],
+            ),
+          )
+        }
       }
     }
   }
@@ -1657,8 +2622,19 @@ fn build_data_label_text(
   cat_name : String,
   ser_name : String,
   total : Double,
+  bubble_size? : Double? = None,
+  value_num_fmt? : String? = None,
+  bubble_size_num_fmt? : String? = None,
 ) -> String {
   let parts : Array[String] = []
+  let value_fmt = match cfg.num_fmt {
+    Some(fmt) => Some(fmt)
+    None => value_num_fmt
+  }
+  let bubble_fmt = match cfg.num_fmt {
+    Some(fmt) => Some(fmt)
+    None => bubble_size_num_fmt
+  }
   if cfg.show_ser_name && ser_name.length() > 0 {
     parts.push(ser_name)
   }
@@ -1666,21 +2642,52 @@ fn build_data_label_text(
     parts.push(cat_name)
   }
   if cfg.show_val {
-    parts.push(format_axis_value(value))
+    parts.push(
+      match value_fmt {
+        Some(fmt) => format_axis_value_with_fmt(value, fmt)
+        None => format_axis_value(value)
+      },
+    )
   }
   if cfg.show_percent && total > 0.0 {
     let pct = value / total * 100.0
-    let pct_i = (pct + 0.5).to_int()
-    parts.push(pct_i.to_string() + "%")
+    parts.push(
+      match cfg.num_fmt {
+        Some(fmt) => format_axis_value_with_fmt(pct, fmt)
+        None => (pct + 0.5).to_int().to_string() + "%"
+      },
+    )
+  }
+  if cfg.show_bubble_size {
+    match bubble_size {
+      Some(v) =>
+        parts.push(
+          match bubble_fmt {
+            Some(fmt) => format_axis_value_with_fmt(v, fmt)
+            None => format_axis_value(v)
+          },
+        )
+      None => ()
+    }
   }
   let buf = StringBuilder::new()
   for i, p in parts {
     if i > 0 {
-      buf.write_string(", ")
+      buf.write_string(cfg.separator)
     }
     buf.write_string(p)
   }
   buf.to_string()
+}
+
+///|
+priv struct DataLabelPoint {
+  idx : Int
+  x : Double
+  y : Double
+  value : Double
+  cat_name : String
+  bubble_size : Double?
 }
 
 ///|
@@ -1689,24 +2696,66 @@ fn build_data_label_text(
 /// (negative = above, positive = below).
 fn render_data_labels(
   cfg : DataLabelConfig,
-  points : Array[(Double, Double, Double, String)],
+  points : Array[DataLabelPoint],
   ser_name : String,
   total : Double,
   w : Double,
   h : Double,
   offset_y : Double,
   style : ChartStyleDefaults,
+  legend_key_color? : String? = None,
+  value_num_fmt? : String? = None,
+  bubble_size_num_fmt? : String? = None,
+  show_over_max? : Bool = true,
+  max_value? : Double? = None,
 ) -> Array[@xml.Node] {
   let nodes : Array[@xml.Node] = []
   for pt in points {
-    let (x, y, value, cat_name) = pt
-    let text = build_data_label_text(cfg, value, cat_name, ser_name, total)
+    if !show_over_max && data_label_over_axis_max(pt.value, max_value) {
+      continue
+    }
+    let point_cfg = data_label_effective_config(cfg, pt.idx)
+    let label_y = pt.y + offset_y
+    if point_cfg.show_legend_key {
+      match legend_key_color {
+        Some(color) => {
+          let key_size = (if w < h { w } else { h }) * 0.022
+          nodes.push(
+            @markup.elem_ns(
+              "rect",
+              @markup.svg_ns,
+              [
+                @markup.attr("x", format_double(pt.x - key_size * 2.2)),
+                @markup.attr("y", format_double(label_y - key_size * 0.65)),
+                @markup.attr("width", format_double(key_size)),
+                @markup.attr("height", format_double(key_size)),
+                @markup.attr("fill", color),
+                @markup.attr("stroke", color),
+                @markup.attr("data-ooxml", "chart-data-label-legend-key"),
+              ],
+              [],
+            ),
+          )
+        }
+        None => ()
+      }
+    }
+    let text = build_data_label_text(
+      point_cfg,
+      pt.value,
+      pt.cat_name,
+      ser_name,
+      total,
+      bubble_size=pt.bubble_size,
+      value_num_fmt~,
+      bubble_size_num_fmt~,
+    )
     if text.length() > 0 {
       nodes.push(
         chart_text(
           text,
-          x,
-          y + offset_y,
+          pt.x,
+          label_y,
           w,
           h,
           anchor="middle",
@@ -1717,6 +2766,17 @@ fn render_data_labels(
     }
   }
   nodes
+}
+
+///|
+/// §21.2.2.206 showDLblsOverMax — compare data-label values only
+/// against a document-declared value-axis max. Auto scaling has no
+/// authored maximum for this boolean to consume.
+fn data_label_over_axis_max(value : Double, max_value : Double?) -> Bool {
+  match max_value {
+    Some(max_v) => value > max_v
+    None => false
+  }
 }
 
 ///|
@@ -1820,6 +2880,7 @@ pub fn render_chart_space(
   part_resolver? : (String) -> @xml.Element? = _ => None,
 ) -> @xml.Node {
   let (_, _, w, h) = box
+  let ctx = chart_color_mapped_context(chart_space, ctx)
   // §21.2.2.215 txPr — read chart-level text defaults.
   let style = read_chart_style_defaults(chart_space, ctx)
   // §21.2.2.29 chartSpace → §21.2.2.27 chart → §21.2.2.145 plotArea.
@@ -1838,9 +2899,23 @@ pub fn render_chart_space(
   // for single-series charts in PowerPoint anyway).
   // §21.2.2.46 dispBlanksAs — how to treat missing data points.
   let disp_blanks_as = chart_disp_blanks_as(chart)
-  let title_text = match first_child_named(chart, "title") {
-    Some(t) => read_chart_title_text(t)
-    None => None
+  // §21.2.2.206 showDLblsOverMax — absent defaults false; present
+  // CT_Boolean without @val defaults true.
+  let show_dlbls_over_max = match first_child_named(chart, "showDLblsOverMax") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+  let auto_title_deleted = match first_child_named(chart, "autoTitleDeleted") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+  let title_text = if auto_title_deleted {
+    None
+  } else {
+    match first_child_named(chart, "title") {
+      Some(t) => read_chart_title_text(t)
+      None => None
+    }
   }
   // §21.2.2.123 overlay — when `<c:overlay val="1"/>` is present
   // under `<c:title>`, the title is drawn floating over the plot
@@ -1895,13 +2970,16 @@ pub fn render_chart_space(
   let effective_title = if title_overlay { None } else { title_text }
   let effective_legend_pos = if legend_overlay { None } else { legend_pos }
   let legend_names = series_entries.map(fn(e) { e.0 })
-  let (inner_x, inner_y, inner_w, inner_h) = compute_chart_inner_rect(
+  let (auto_inner_x, auto_inner_y, auto_inner_w, auto_inner_h) = compute_chart_inner_rect(
     w,
     h,
     effective_title,
     effective_legend_pos,
     series_entries.length(),
     legend_names,
+  )
+  let (inner_x, inner_y, inner_w, inner_h) = chart_plot_area_manual_rect(
+    plot_area, auto_inner_x, auto_inner_y, auto_inner_w, auto_inner_h, w, h,
   )
   let kids : Array[@xml.Node] = []
   // First chart-type child wins (the schema permits multiples in a
@@ -1931,91 +3009,48 @@ pub fn render_chart_space(
   }
   kids.push(@markup.elem_ns("rect", @markup.svg_ns, frame_attrs, []))
   // §21.2.2.69 floor / §21.2.2.193 sideWall / §21.2.2.21 backWall —
-  // 3D-chart walls.  In a 2D renderer these are not part of the spec
-  // visual model, but each carries `<c:thickness>` / `<c:spPr>` so the
-  // spec requires the renderer to honour their presence.  Emit a thin
-  // rect at the plot-area's bottom (floor), top (back wall) and left
-  // (side wall) edges so pruning the element is visible in the SVG.
+  // 3D-chart surfaces.  Their visible geometry is driven by
+  // `<c:thickness>` and their paint by `<c:spPr>`, both read from the
+  // surface element itself rather than by chart-local fixed colours.
   let wall_inset = chart_plot_inset(inner_w, inner_h, w, h, axes=None)
   let (wpx, wpy, wpw, wph) = wall_inset
-  let wall_thick = h * 0.004
+  let view3d_element = first_child_named(chart, "view3D")
+  let view3d_config = match view3d_element {
+    Some(view) => Some(read_chart_view3d_config(view))
+    None => None
+  }
   match first_child_named(chart, "floor") {
-    Some(_) =>
-      inner_nodes.push(
-        @markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", format_double(wpx)),
-            @markup.attr("y", format_double(wpy + wph)),
-            @markup.attr("width", format_double(wpw)),
-            @markup.attr("height", format_double(wall_thick)),
-            @markup.attr("fill", "#d9d9d9"),
-            @markup.attr("data-ooxml", "chart-floor"),
-          ],
-          [],
-        ),
-      )
+    Some(surface) =>
+      match render_chart_surface_floor(surface, wpx, wpy, wpw, wph, ctx, defs) {
+        Some(node) => inner_nodes.push(node)
+        None => ()
+      }
     None => ()
   }
   match first_child_named(chart, "backWall") {
-    Some(_) =>
-      inner_nodes.push(
-        @markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", format_double(wpx)),
-            @markup.attr("y", format_double(wpy)),
-            @markup.attr("width", format_double(wpw)),
-            @markup.attr("height", format_double(wall_thick)),
-            @markup.attr("fill", "#e7e7e7"),
-            @markup.attr("data-ooxml", "chart-back-wall"),
-          ],
-          [],
-        ),
-      )
+    Some(surface) =>
+      match
+        render_chart_surface_back_wall(surface, wpx, wpy, wpw, wph, ctx, defs) {
+        Some(node) => inner_nodes.push(node)
+        None => ()
+      }
     None => ()
   }
   match first_child_named(chart, "sideWall") {
-    Some(_) =>
-      inner_nodes.push(
-        @markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", format_double(wpx)),
-            @markup.attr("y", format_double(wpy)),
-            @markup.attr("width", format_double(wall_thick)),
-            @markup.attr("height", format_double(wph)),
-            @markup.attr("fill", "#efefef"),
-            @markup.attr("data-ooxml", "chart-side-wall"),
-          ],
-          [],
-        ),
-      )
+    Some(surface) =>
+      match
+        render_chart_surface_side_wall(surface, wpx, wpy, wpw, wph, ctx, defs) {
+        Some(node) => inner_nodes.push(node)
+        None => ()
+      }
     None => ()
   }
-  // §21.2.2.226 view3D — when present, emit a marker rect indicating
-  // the 3D camera configuration. The 2D renderer cannot reproduce the
-  // 3D projection but the spec requires acknowledging the element.
-  match first_child_named(chart, "view3D") {
-    Some(_) =>
-      inner_nodes.push(
-        @markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", format_double(wpx + wpw - h * 0.02)),
-            @markup.attr("y", format_double(wpy)),
-            @markup.attr("width", format_double(h * 0.015)),
-            @markup.attr("height", format_double(h * 0.015)),
-            @markup.attr("fill", "#c0c0c0"),
-            @markup.attr("data-ooxml", "chart-view3d"),
-          ],
-          [],
-        ),
-      )
+  // §21.2.2.228 view3D — emit a compact projection glyph whose
+  // geometry is driven by rotX, rotY, hPercent, depthPercent,
+  // rAngAx and perspective.
+  match view3d_element {
+    Some(view) =>
+      inner_nodes.push(render_chart_view3d_marker(view, wpx, wpy, wpw, h))
     None => ()
   }
   // §21.2.2.54 dTable — chart-level data table.  Emit a compact
@@ -2046,11 +3081,15 @@ pub fn render_chart_space(
   // of horizontal-bar (barDir="bar") plots, where the value axis is the
   // X axis but the category axis is the Y axis — `<c:catAx>` rarely
   // declares gridlines so the default is false.
-  let axes = collect_axes_info(plot_area)
+  let axes = collect_axes_info(
+    plot_area,
+    date_system=chart_space_date_system(chart_space),
+  )
   for ch in plot_area.children {
     match ch {
       @xml.Node::Element(elem) => {
         let local_name = elem.name.local_name
+        let chart_axes = axes.for_chart(elem)
         let payload = render_chart_payload(
           local_name,
           elem,
@@ -2059,12 +3098,16 @@ pub fn render_chart_space(
           w,
           h,
           ctx,
-          axes,
+          chart_axes,
           style,
           defs,
           disp_blanks_as~,
+          show_dlbls_over_max~,
         )
-        for n in payload {
+        for
+          n in chart_nodes_with_view3d_projection(
+            payload, view3d_config, wpx, wpy, wpw, wph,
+          ) {
           inner_nodes.push(n)
         }
       }
@@ -2078,17 +3121,15 @@ pub fn render_chart_space(
   // the label, producing a visible-skeleton diff.
   match axes.val_disp_units() {
     Some(u) => {
-      let lbl = match u {
-        "hundreds" => "×100"
-        "thousands" => "×1,000"
-        "tenThousands" => "×10,000"
-        "hundredThousands" => "×100,000"
-        "millions" => "×1,000,000"
-        "tenMillions" => "×10,000,000"
-        "hundredMillions" => "×100,000,000"
-        "billions" => "×1,000,000,000"
-        "trillions" => "×1,000,000,000,000"
-        _ => u
+      let du_label = axes.val_disp_units_label()
+      let default_lbl = chart_display_unit_label(u, axes.val_disp_unit_factor())
+      let lbl = match du_label {
+        Some(label_el) =>
+          match read_chart_tx_text(label_el) {
+            Some(text) => if text.length() > 0 { text } else { default_lbl }
+            None => default_lbl
+          }
+        None => default_lbl
       }
       let (du_px, du_py, _, du_ph) = chart_plot_inset(
         inner_w,
@@ -2097,8 +3138,13 @@ pub fn render_chart_space(
         h,
         axes=Some(axes),
       )
-      let lx = du_px - w * 0.045
-      let ly = du_py + du_ph / 2.0 - h * 0.05
+      let default_lx = du_px - w * 0.045
+      let default_ly = du_py + du_ph / 2.0 - h * 0.05
+      let (lx, ly) = match du_label {
+        Some(label_el) =>
+          chart_manual_label_position(label_el, w, h, default_lx, default_ly)
+        None => (default_lx, default_ly)
+      }
       inner_nodes.push(
         chart_text(
           lbl,
@@ -2342,33 +3388,39 @@ pub fn render_chart_space(
           // §21.2.2.62 dropLines — vertical lines from each data
           // point down to the category axis baseline.
           match first_child_named(ct_elem, "dropLines") {
-            Some(_) =>
-              for si, se in local_sers {
-                let _ = si
-                let values = read_val_number_slots(se)
-                if values.length() == 0 {
-                  continue
-                }
-                let series_color = "#bfbfbf"
-                let n_pts = values.length()
-                let step = if n_pts > 1 {
-                  overlay_pw / (n_pts - 1).to_double()
-                } else {
-                  0.0
-                }
-                for point in chart_rendered_points(values, disp_blanks_as) {
-                  let (i, v) = point
-                  let x = overlay_px + i.to_double() * step
-                  let y_top = if overlay_max > 0.0 {
-                    overlay_py + overlay_ph - v / overlay_max * overlay_ph
-                  } else {
-                    overlay_py + overlay_ph
-                  }
-                  inner_nodes.push(
-                    @markup.elem_ns(
-                      "line",
-                      @markup.svg_ns,
-                      [
+            Some(drop_lines) =>
+              match
+                chart_lines_style(
+                  drop_lines,
+                  ctx,
+                  defs,
+                  "chart-drop-lines",
+                  "#bfbfbf",
+                  h * 0.001,
+                  default_dasharray=Some("4,2"),
+                ) {
+                Some(line_style) =>
+                  for si, se in local_sers {
+                    let _ = si
+                    let values = read_val_number_slots(se)
+                    if values.length() == 0 {
+                      continue
+                    }
+                    let n_pts = values.length()
+                    let step = if n_pts > 1 {
+                      overlay_pw / (n_pts - 1).to_double()
+                    } else {
+                      0.0
+                    }
+                    for point in chart_rendered_points(values, disp_blanks_as) {
+                      let (i, v) = point
+                      let x = overlay_px + i.to_double() * step
+                      let y_top = if overlay_max > 0.0 {
+                        overlay_py + overlay_ph - v / overlay_max * overlay_ph
+                      } else {
+                        overlay_py + overlay_ph
+                      }
+                      let attrs : Array[@xml.Attribute] = [
                         @markup.attr("x1", format_double(x)),
                         @markup.attr("y1", format_double(y_top)),
                         @markup.attr("x2", format_double(x)),
@@ -2376,90 +3428,96 @@ pub fn render_chart_space(
                           "y2",
                           format_double(overlay_py + overlay_ph),
                         ),
-                        @markup.attr("stroke", series_color),
-                        @markup.attr("stroke-width", format_double(h * 0.001)),
-                        @markup.attr("stroke-dasharray", "4,2"),
-                      ],
-                      [],
-                    ),
-                  )
-                }
+                      ]
+                      push_chart_line_style_attrs(attrs, line_style)
+                      inner_nodes.push(
+                        @markup.elem_ns("line", @markup.svg_ns, attrs, []),
+                      )
+                    }
+                  }
+                None => ()
               }
             None => ()
           }
           // §21.2.2.79 hiLowLines — vertical lines at each x from the
           // smallest series value to the largest series value.
           match first_child_named(ct_elem, "hiLowLines") {
-            Some(_) =>
-              if local_sers.length() >= 2 {
-                let series_color = "#595959"
-                // Pivot all series' i-th values to find per-index min/max.
-                let series_vals : Array[Array[Double?]] = []
-                let mut max_n = 0
-                for se in local_sers {
-                  let vs = read_val_number_slots(se)
-                  series_vals.push(vs)
-                  if vs.length() > max_n {
-                    max_n = vs.length()
-                  }
-                }
-                let step = if max_n > 1 {
-                  overlay_pw / (max_n - 1).to_double()
-                } else {
-                  0.0
-                }
-                for i in 0..<max_n {
-                  let mut lo : Double = 0.0
-                  let mut hi : Double = 0.0
-                  let mut first = true
-                  for vs in series_vals {
-                    match chart_slot_value_at(vs, i, disp_blanks_as) {
-                      Some(v) =>
-                        if first {
-                          lo = v
-                          hi = v
-                          first = false
-                        } else {
-                          if v < lo {
-                            lo = v
-                          }
-                          if v > hi {
-                            hi = v
-                          }
-                        }
-                      None => ()
+            Some(hi_low_lines) =>
+              match
+                chart_lines_style(
+                  hi_low_lines,
+                  ctx,
+                  defs,
+                  "chart-hi-low-lines",
+                  "#595959",
+                  h * 0.0015,
+                ) {
+                Some(line_style) =>
+                  if local_sers.length() >= 2 {
+                    // Pivot all series' i-th values to find per-index min/max.
+                    let series_vals : Array[Array[Double?]] = []
+                    let mut max_n = 0
+                    for se in local_sers {
+                      let vs = read_val_number_slots(se)
+                      series_vals.push(vs)
+                      if vs.length() > max_n {
+                        max_n = vs.length()
+                      }
                     }
-                  }
-                  if first {
-                    continue
-                  }
-                  let x = overlay_px + i.to_double() * step
-                  let y_hi = if overlay_max > 0.0 {
-                    overlay_py + overlay_ph - hi / overlay_max * overlay_ph
-                  } else {
-                    overlay_py
-                  }
-                  let y_lo = if overlay_max > 0.0 {
-                    overlay_py + overlay_ph - lo / overlay_max * overlay_ph
-                  } else {
-                    overlay_py + overlay_ph
-                  }
-                  inner_nodes.push(
-                    @markup.elem_ns(
-                      "line",
-                      @markup.svg_ns,
-                      [
+                    let step = if max_n > 1 {
+                      overlay_pw / (max_n - 1).to_double()
+                    } else {
+                      0.0
+                    }
+                    for i in 0..<max_n {
+                      let mut lo : Double = 0.0
+                      let mut hi : Double = 0.0
+                      let mut first = true
+                      for vs in series_vals {
+                        match chart_slot_value_at(vs, i, disp_blanks_as) {
+                          Some(v) =>
+                            if first {
+                              lo = v
+                              hi = v
+                              first = false
+                            } else {
+                              if v < lo {
+                                lo = v
+                              }
+                              if v > hi {
+                                hi = v
+                              }
+                            }
+                          None => ()
+                        }
+                      }
+                      if first {
+                        continue
+                      }
+                      let x = overlay_px + i.to_double() * step
+                      let y_hi = if overlay_max > 0.0 {
+                        overlay_py + overlay_ph - hi / overlay_max * overlay_ph
+                      } else {
+                        overlay_py
+                      }
+                      let y_lo = if overlay_max > 0.0 {
+                        overlay_py + overlay_ph - lo / overlay_max * overlay_ph
+                      } else {
+                        overlay_py + overlay_ph
+                      }
+                      let attrs : Array[@xml.Attribute] = [
                         @markup.attr("x1", format_double(x)),
                         @markup.attr("y1", format_double(y_lo)),
                         @markup.attr("x2", format_double(x)),
                         @markup.attr("y2", format_double(y_hi)),
-                        @markup.attr("stroke", series_color),
-                        @markup.attr("stroke-width", format_double(h * 0.0015)),
-                      ],
-                      [],
-                    ),
-                  )
-                }
+                      ]
+                      push_chart_line_style_attrs(attrs, line_style)
+                      inner_nodes.push(
+                        @markup.elem_ns("line", @markup.svg_ns, attrs, []),
+                      )
+                    }
+                  }
+                None => ()
               }
             None => ()
           }
@@ -2537,67 +3595,72 @@ pub fn render_chart_space(
           // §21.2.2.179 serLines — connecting lines between same-index
           // points across stacked series.
           match first_child_named(ct_elem, "serLines") {
-            Some(_) =>
-              if local_sers.length() >= 2 {
-                let series_color = "#bfbfbf"
-                let n_pts = read_val_number_slots(local_sers[0]).length()
-                let step = if n_pts > 1 {
-                  overlay_pw / (n_pts - 1).to_double()
-                } else {
-                  0.0
-                }
-                let mut prev_pts : Array[Double?] = []
-                for se in local_sers {
-                  let vs = read_val_number_slots(se)
-                  let curr_pts : Array[Double?] = []
-                  for i in 0..<vs.length() {
-                    match chart_slot_value_at(vs, i, disp_blanks_as) {
-                      Some(v) => {
-                        let y = if overlay_max > 0.0 {
-                          overlay_py + overlay_ph - v / overlay_max * overlay_ph
-                        } else {
-                          overlay_py + overlay_ph
-                        }
-                        curr_pts.push(Some(y))
-                      }
-                      None => curr_pts.push(None)
-                    }
-                  }
-                  if prev_pts.length() > 0 {
-                    let n = if curr_pts.length() < prev_pts.length() {
-                      curr_pts.length()
+            Some(ser_lines) =>
+              match
+                chart_lines_style(
+                  ser_lines,
+                  ctx,
+                  defs,
+                  "chart-series-lines",
+                  "#bfbfbf",
+                  h * 0.001,
+                ) {
+                Some(line_style) =>
+                  if local_sers.length() >= 2 {
+                    let n_pts = read_val_number_slots(local_sers[0]).length()
+                    let step = if n_pts > 1 {
+                      overlay_pw / (n_pts - 1).to_double()
                     } else {
-                      prev_pts.length()
+                      0.0
                     }
-                    for i in 0..<n {
-                      match (prev_pts[i], curr_pts[i]) {
-                        (Some(prev_y), Some(curr_y)) => {
-                          let x = overlay_px + i.to_double() * step
-                          inner_nodes.push(
-                            @markup.elem_ns(
-                              "line",
-                              @markup.svg_ns,
-                              [
+                    let mut prev_pts : Array[Double?] = []
+                    for se in local_sers {
+                      let vs = read_val_number_slots(se)
+                      let curr_pts : Array[Double?] = []
+                      for i in 0..<vs.length() {
+                        match chart_slot_value_at(vs, i, disp_blanks_as) {
+                          Some(v) => {
+                            let y = if overlay_max > 0.0 {
+                              overlay_py +
+                              overlay_ph -
+                              v / overlay_max * overlay_ph
+                            } else {
+                              overlay_py + overlay_ph
+                            }
+                            curr_pts.push(Some(y))
+                          }
+                          None => curr_pts.push(None)
+                        }
+                      }
+                      if prev_pts.length() > 0 {
+                        let n = if curr_pts.length() < prev_pts.length() {
+                          curr_pts.length()
+                        } else {
+                          prev_pts.length()
+                        }
+                        for i in 0..<n {
+                          match (prev_pts[i], curr_pts[i]) {
+                            (Some(prev_y), Some(curr_y)) => {
+                              let x = overlay_px + i.to_double() * step
+                              let attrs : Array[@xml.Attribute] = [
                                 @markup.attr("x1", format_double(x)),
                                 @markup.attr("y1", format_double(prev_y)),
                                 @markup.attr("x2", format_double(x)),
                                 @markup.attr("y2", format_double(curr_y)),
-                                @markup.attr("stroke", series_color),
-                                @markup.attr(
-                                  "stroke-width",
-                                  format_double(h * 0.001),
-                                ),
-                              ],
-                              [],
-                            ),
-                          )
+                              ]
+                              push_chart_line_style_attrs(attrs, line_style)
+                              inner_nodes.push(
+                                @markup.elem_ns("line", @markup.svg_ns, attrs, []),
+                              )
+                            }
+                            _ => ()
+                          }
                         }
-                        _ => ()
                       }
+                      prev_pts = curr_pts
                     }
                   }
-                  prev_pts = curr_pts
-                }
+                None => ()
               }
             None => ()
           }
@@ -2621,8 +3684,9 @@ pub fn render_chart_space(
                   Some(nm) => nm
                   None => ""
                 }
+                let value_num_fmt = read_val_number_format(se)
                 let total = sum_positive_slots(values, disp_blanks_as)
-                let points : Array[(Double, Double, Double, String)] = []
+                let points : Array[DataLabelPoint] = []
                 for point in chart_rendered_points(values, disp_blanks_as) {
                   let (i, v) = point
                   let x = overlay_px + i.to_double() * step
@@ -2636,9 +3700,16 @@ pub fn render_chart_space(
                   } else {
                     ""
                   }
-                  points.push((x, y, v, cat_name))
+                  points.push({
+                    idx: i,
+                    x,
+                    y,
+                    value: v,
+                    cat_name,
+                    bubble_size: None,
+                  })
                 }
-                let _ = si
+                let series_color = resolve_series_color(se, si, ctx, defs)
                 for
                   nd in render_data_labels(
                     cfg,
@@ -2649,6 +3720,10 @@ pub fn render_chart_space(
                     h,
                     -(h * 0.02),
                     style,
+                    legend_key_color=Some(series_color),
+                    value_num_fmt~,
+                    show_over_max=show_dlbls_over_max,
+                    max_value=axes.val_y_scaling_max(),
                   ) {
                   inner_nodes.push(nd)
                 }
@@ -2774,6 +3849,37 @@ fn render_chart_user_shapes(
   // descendant names so the catalog verifier ticked.  No basis in
   // ECMA-376 — verifier gaming, not §21.3 rendering.  Deleted.)
 
+  fn bool_attr_true(elem : @xml.Element, name : String) -> Bool {
+    match attr_value(elem, name) {
+      Some(v) => v == "1" || v == "true"
+      None => false
+    }
+  }
+  fn object_nonvisual_name(obj_name : String) -> String? {
+    match obj_name {
+      "sp" => Some("nvSpPr")
+      "cxnSp" => Some("nvCxnSpPr")
+      "pic" => Some("nvPicPr")
+      "graphicFrame" => Some("nvGraphicFramePr")
+      "grpSp" => Some("nvGrpSpPr")
+      _ => None
+    }
+  }
+  fn chart_drawing_object_hidden(obj : @xml.Element) -> Bool {
+    let nv_name = match object_nonvisual_name(obj.name.local_name) {
+      Some(n) => n
+      None => return false
+    }
+    let nv = match first_child_named(obj, nv_name) {
+      Some(n) => n
+      None => return false
+    }
+    match first_child_named(nv, "cNvPr") {
+      Some(c_nv_pr) => bool_attr_true(c_nv_pr, "hidden")
+      None => false
+    }
+  }
+
   for ch in user_shapes.children {
     match ch {
       @xml.Node::Element(anchor) => {
@@ -2851,6 +3957,9 @@ fn render_chart_user_shapes(
           match sc {
             @xml.Node::Element(se) => {
               let sn = se.name.local_name
+              if chart_drawing_object_hidden(se) {
+                continue
+              }
               if sn == "sp" {
                 // §21.3.2.30 sp — a shape.  Emit a filled rect with a
                 // stroke so the shape is visually distinct.
@@ -2990,19 +4099,17 @@ fn chart_empty_group(w : Double, h : Double) -> @xml.Node {
 // =============================================================================
 
 ///|
-/// §21.2.2.213 CT_Title — pull the plain-text content from the chart
-/// title's `<c:tx>/<c:rich>` body. The rich body is a DrawingML text
-/// body (`<a:p>/<a:r>/<a:t>`). We walk every descendant `<a:t>`
-/// regardless of paragraph splitting and concatenate the text content
-/// with a single space between runs from distinct paragraphs.
-/// Returns `None` when no `<c:tx>` is present (so callers can suppress
-/// the title strip rather than render an empty label).
+/// Pull plain-text content from a chart element's `<c:tx>` child. The
+/// rich body branch is a DrawingML text body (`<a:p>/<a:r>/<a:t>`). We
+/// walk every descendant `<a:t>` regardless of paragraph splitting and
+/// concatenate the text content with a single space between runs from
+/// distinct paragraphs.
 ///
 /// Also accepts the alternate `<c:tx>/<c:strRef>/<c:strCache>/<c:pt>/<c:v>`
-/// form — some authoring tools (some applications) write a strRef instead of a rich
-/// body when the title comes from a sheet cell.
-fn read_chart_title_text(title : @xml.Element) -> String? {
-  let tx = match first_child_named(title, "tx") {
+/// form — some authoring tools write a strRef instead of a rich body
+/// when text comes from a sheet cell.
+fn read_chart_tx_text(container : @xml.Element) -> String? {
+  let tx = match first_child_named(container, "tx") {
     Some(t) => t
     None => return None
   }
@@ -3031,6 +4138,158 @@ fn read_chart_title_text(title : @xml.Element) -> String? {
     None => ()
   }
   None
+}
+
+///|
+/// §21.2.2.213 CT_Title — pull the plain-text content from a chart
+/// title. Returns `None` when no `<c:tx>` is present so callers can
+/// suppress the title strip rather than render an empty label.
+fn read_chart_title_text(title : @xml.Element) -> String? {
+  read_chart_tx_text(title)
+}
+
+///|
+/// §21.2.2.104 manualLayout — position a chart label using factor
+/// coordinates when `<c:layout>/<c:manualLayout>` supplies x/y.
+/// Absent coordinates preserve the caller's automatic placement.
+fn chart_manual_label_position(
+  label : @xml.Element,
+  w : Double,
+  h : Double,
+  default_x : Double,
+  default_y : Double,
+) -> (Double, Double) {
+  let layout = match first_child_named(label, "layout") {
+    Some(l) => l
+    None => return (default_x, default_y)
+  }
+  let manual = match first_child_named(layout, "manualLayout") {
+    Some(m) => m
+    None => return (default_x, default_y)
+  }
+  let x = match first_child_named(manual, "x") {
+    Some(e) => w * parse_double_lenient(attr_or(e, "val", "0"))
+    None => default_x
+  }
+  let y = match first_child_named(manual, "y") {
+    Some(e) => h * parse_double_lenient(attr_or(e, "val", "0"))
+    None => default_y
+  }
+  (x, y)
+}
+
+///|
+fn chart_manual_layout_child(
+  manual : @xml.Element,
+  name : String,
+) -> @xml.Element? {
+  first_child_named(manual, name)
+}
+
+///|
+fn chart_manual_layout_value(manual : @xml.Element, name : String) -> Double? {
+  match chart_manual_layout_child(manual, name) {
+    Some(e) => Some(parse_double_lenient(attr_or(e, "val", "0")))
+    None => None
+  }
+}
+
+///|
+fn chart_manual_layout_mode(manual : @xml.Element, name : String) -> String {
+  match chart_manual_layout_child(manual, name) {
+    Some(e) => attr_or(e, "val", "factor")
+    None => "factor"
+  }
+}
+
+///|
+fn chart_manual_layout_target(manual : @xml.Element) -> String {
+  match chart_manual_layout_child(manual, "layoutTarget") {
+    Some(e) => attr_or(e, "val", "inner")
+    None => "inner"
+  }
+}
+
+///|
+fn non_negative(v : Double) -> Double {
+  if v < 0.0 {
+    0.0
+  } else {
+    v
+  }
+}
+
+///|
+/// §21.2.2.104 manualLayout under plotArea. The renderer already has
+/// an automatic inner chart rectangle after title/legend reservations;
+/// manualLayout refines that rectangle before every chart-type renderer
+/// consumes it. `layoutTarget="outer"` resolves values against the
+/// full chart frame; the default / `"inner"` resolves them against the
+/// automatic inner rectangle.
+fn chart_plot_area_manual_rect(
+  plot_area : @xml.Element,
+  auto_x : Double,
+  auto_y : Double,
+  auto_w : Double,
+  auto_h : Double,
+  frame_w : Double,
+  frame_h : Double,
+) -> (Double, Double, Double, Double) {
+  let layout = match first_child_named(plot_area, "layout") {
+    Some(l) => l
+    None => return (auto_x, auto_y, auto_w, auto_h)
+  }
+  let manual = match first_child_named(layout, "manualLayout") {
+    Some(m) => m
+    None => return (auto_x, auto_y, auto_w, auto_h)
+  }
+  let target = chart_manual_layout_target(manual)
+  let (base_x, base_y, base_w, base_h) = if target == "outer" {
+    (0.0, 0.0, frame_w, frame_h)
+  } else {
+    (auto_x, auto_y, auto_w, auto_h)
+  }
+  let x_mode = chart_manual_layout_mode(manual, "xMode")
+  let y_mode = chart_manual_layout_mode(manual, "yMode")
+  let w_mode = chart_manual_layout_mode(manual, "wMode")
+  let h_mode = chart_manual_layout_mode(manual, "hMode")
+  let x = match chart_manual_layout_value(manual, "x") {
+    Some(v) =>
+      if x_mode == "edge" {
+        base_x + v * base_w
+      } else {
+        auto_x + v * auto_w
+      }
+    None => auto_x
+  }
+  let y = match chart_manual_layout_value(manual, "y") {
+    Some(v) =>
+      if y_mode == "edge" {
+        base_y + v * base_h
+      } else {
+        auto_y + v * auto_h
+      }
+    None => auto_y
+  }
+  let width = match chart_manual_layout_value(manual, "w") {
+    Some(v) =>
+      if w_mode == "edge" {
+        non_negative(base_x + v * base_w - x)
+      } else {
+        non_negative(v * auto_w)
+      }
+    None => auto_w
+  }
+  let height = match chart_manual_layout_value(manual, "h") {
+    Some(v) =>
+      if h_mode == "edge" {
+        non_negative(base_y + v * base_h - y)
+      } else {
+        non_negative(v * auto_h)
+      }
+    None => auto_h
+  }
+  (x, y, width, height)
 }
 
 ///|
@@ -3094,6 +4353,61 @@ fn chart_bool_default_true(element : @xml.Element) -> Bool {
         None => true
       }
   }
+}
+
+///|
+/// §21.2.2.227 varyColors — absent means the chart keeps the series'
+/// resolved paint; present CT_Boolean follows its schema default
+/// (`true` when `@val` is omitted).
+fn chart_vary_colors(chart_type : @xml.Element) -> Bool {
+  match first_child_named(chart_type, "varyColors") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+}
+
+///|
+/// §21.2.2.223 wireframe — present CT_Boolean defaults to true, but
+/// the absent element keeps the normal filled surface rendering.
+fn chart_surface_wireframe(surface_chart : @xml.Element) -> Bool {
+  match first_child_named(surface_chart, "wireframe") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+}
+
+///|
+/// §21.2.2.15 / §21.2.2.16 bandFmts/bandFmt — surface charts carry
+/// band-specific shape properties. The flattened SVG surface consumes
+/// those paints through the same spPr fill resolver as series and dPt
+/// fills.
+fn chart_surface_band_fills(
+  surface_chart : @xml.Element,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+) -> Array[String] {
+  let fills : Array[String] = []
+  let band_fmts = match first_child_named(surface_chart, "bandFmts") {
+    Some(e) => e
+    None => return fills
+  }
+  for band_fmt in child_elements_named(band_fmts, "bandFmt") {
+    match first_child_named(band_fmt, "spPr") {
+      Some(sp_pr) => {
+        let fill = resolve_sppr_fill(
+          sp_pr,
+          ctx,
+          defs,
+          "surface-band" + fills.length().to_string(),
+        )
+        if fill.length() > 0 {
+          fills.push(fill)
+        }
+      }
+      None => ()
+    }
+  }
+  fills
 }
 
 ///|
@@ -3620,8 +4934,14 @@ priv struct ChartAxisConfig {
   log_base : Double?
   /// §21.2.2.99 majorGridlines — true when the child element exists.
   major_gridlines : Bool
+  /// §21.2.2.99 majorGridlines — retained element for CT_ChartLines
+  /// styling (`spPr/a:ln`).
+  major_gridlines_element : @xml.Element?
   /// §21.2.2.105 minorGridlines — true when the child element exists.
   minor_gridlines : Bool
+  /// §21.2.2.105 minorGridlines — retained element for CT_ChartLines
+  /// styling (`spPr/a:ln`).
+  minor_gridlines_element : @xml.Element?
   /// §21.2.2.101 majorTickMark — "cross" / "in" / "out" / "none".
   major_tick_mark : String
   /// §21.2.2.107 minorTickMark — "cross" / "in" / "out" / "none".
@@ -3632,17 +4952,41 @@ priv struct ChartAxisConfig {
   num_fmt : String?
   /// §21.2.2.47 dispUnits/builtInUnit — "thousands", "millions", etc.
   disp_units : String?
+  /// §21.2.2.47 dispUnits — numeric divisor for axis tick labels.
+  disp_unit_factor : Double?
+  /// §21.2.2.56 dispUnitsLbl — visible display-unit label options.
+  disp_units_lbl : @xml.Element?
+  /// §21.2.2.100 majorUnit — explicit major tick interval.
+  major_unit : Double?
+  /// §21.2.2.106 minorUnit — explicit minor tick interval.
+  minor_unit : Double?
   /// §21.2.2.35 crosses — "autoZero" / "min" / "max".
   crosses : String
+  /// §21.2.2.36 crossesAt — explicit crossing value.
+  crosses_at : Double?
+  /// §21.2.2.6 auto — choose date/text category semantics from data.
+  auto_axis : Bool
+  /// §21.2.2.119 noMultiLvlLbl — collapse multi-level category labels.
+  no_multi_lvl_lbl : Bool
   /// §21.2.2.34 crossBetween — "between" / "midCat".
   cross_between : String
   /// §21.2.2.175 tickLblSkip — show every Nth label (0 = all).
   tick_lbl_skip : Int
+  /// §21.2.2.207 tickMarkSkip — show every Nth category tick mark.
+  tick_mark_skip : Int
   /// §21.2.2.88 lblAlgn — "ctr" / "l" / "r".
   lbl_algn : String
   /// §21.2.2.96 lblOffset — label offset percentage from axis line.
   /// Default 100 per spec.
   lbl_offset : Int
+  /// True for `<c:dateAx>`; false for `<c:catAx>` / value / series axes.
+  is_date_axis : Bool
+  /// §21.2.2.14 baseTimeUnit — base date granularity, default days.
+  base_time_unit : String
+  /// §21.2.2.116 majorTimeUnit — major date tick granularity.
+  major_time_unit : String?
+  /// §21.2.2.123 minorTimeUnit — minor date tick granularity.
+  minor_time_unit : String?
 }
 
 ///|
@@ -3655,6 +4999,8 @@ priv struct ChartAxesInfo {
   val_axes : Array[ChartAxisConfig]
   /// All series axes (`<c:serAx>`).
   ser_axes : Array[ChartAxisConfig]
+  /// §21.2.2.41 chartSpace/date1904 — serial date base for date axes.
+  date_system : @date_serial.DateSystem
 }
 
 ///|
@@ -3667,6 +5013,21 @@ fn ChartAxesInfo::val_major(self : ChartAxesInfo) -> Bool {
     }
   }
   false
+}
+
+///|
+/// Return the first value axis `<c:majorGridlines>` element, preserving
+/// its CT_ChartLines styling for the renderer.
+fn ChartAxesInfo::val_major_gridlines_element(
+  self : ChartAxesInfo,
+) -> @xml.Element? {
+  for ax in self.val_axes {
+    match ax.major_gridlines_element {
+      Some(e) => return Some(e)
+      None => ()
+    }
+  }
+  None
 }
 
 ///|
@@ -3691,6 +5052,98 @@ fn ChartAxesInfo::val_scaling_min(self : ChartAxesInfo) -> Double? {
     }
   }
   None
+}
+
+///|
+/// §21.2.2.170 scaling/max for the horizontal value axis
+/// (`axPos="b"`/`"t"`). If horizontal value axes are present but do
+/// not specify a max, return None rather than leaking a vertical-axis
+/// max into the X scale. Single-axis charts fall back to the legacy
+/// first value-axis accessor.
+fn ChartAxesInfo::val_x_scaling_max(self : ChartAxesInfo) -> Double? {
+  let mut saw_axis = false
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      saw_axis = true
+      match ax.scaling_max {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+  }
+  if saw_axis {
+    None
+  } else {
+    self.val_scaling_max()
+  }
+}
+
+///|
+/// §21.2.2.170 scaling/min for the horizontal value axis
+/// (`axPos="b"`/`"t"`), with the same no-cross-axis-leak rule as
+/// `val_x_scaling_max`.
+fn ChartAxesInfo::val_x_scaling_min(self : ChartAxesInfo) -> Double? {
+  let mut saw_axis = false
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      saw_axis = true
+      match ax.scaling_min {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+  }
+  if saw_axis {
+    None
+  } else {
+    self.val_scaling_min()
+  }
+}
+
+///|
+/// §21.2.2.170 scaling/max for the vertical value axis
+/// (`axPos="l"`/`"r"`). If vertical value axes are present but do not
+/// specify a max, return None rather than leaking a horizontal-axis max
+/// into the Y scale. Single-axis charts fall back to the legacy first
+/// value-axis accessor.
+fn ChartAxesInfo::val_y_scaling_max(self : ChartAxesInfo) -> Double? {
+  let mut saw_axis = false
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      saw_axis = true
+      match ax.scaling_max {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+  }
+  if saw_axis {
+    None
+  } else {
+    self.val_scaling_max()
+  }
+}
+
+///|
+/// §21.2.2.170 scaling/min for the vertical value axis
+/// (`axPos="l"`/`"r"`), with the same no-cross-axis-leak rule as
+/// `val_y_scaling_max`.
+fn ChartAxesInfo::val_y_scaling_min(self : ChartAxesInfo) -> Double? {
+  let mut saw_axis = false
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      saw_axis = true
+      match ax.scaling_min {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+  }
+  if saw_axis {
+    None
+  } else {
+    self.val_scaling_min()
+  }
 }
 
 ///|
@@ -3742,6 +5195,60 @@ fn ChartAxesInfo::val_disp_units(self : ChartAxesInfo) -> String? {
 }
 
 ///|
+/// §21.2.2.47 dispUnits — display-unit divisor from the first value axis.
+fn ChartAxesInfo::val_disp_unit_factor(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    match ax.disp_unit_factor {
+      Some(f) => if f > 0.0 { return Some(f) }
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+/// §21.2.2.56 dispUnitsLbl from the first value axis.
+fn ChartAxesInfo::val_disp_units_label(self : ChartAxesInfo) -> @xml.Element? {
+  for ax in self.val_axes {
+    match ax.disp_units_lbl {
+      Some(lbl) => return Some(lbl)
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+/// §21.2.2.47 dispUnits — display-unit divisor for the horizontal
+/// value axis (`axPos="b"`/`"t"`), falling back to the first value axis.
+fn ChartAxesInfo::val_x_disp_unit_factor(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      match ax.disp_unit_factor {
+        Some(f) => if f > 0.0 { return Some(f) }
+        None => ()
+      }
+    }
+  }
+  self.val_disp_unit_factor()
+}
+
+///|
+/// §21.2.2.47 dispUnits — display-unit divisor for the vertical
+/// value axis (`axPos="l"`/`"r"`), falling back to the first value axis.
+fn ChartAxesInfo::val_y_disp_unit_factor(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      match ax.disp_unit_factor {
+        Some(f) => if f > 0.0 { return Some(f) }
+        None => ()
+      }
+    }
+  }
+  self.val_disp_unit_factor()
+}
+
+///|
 fn ChartAxesInfo::val_num_fmt(self : ChartAxesInfo) -> String? {
   for ax in self.val_axes {
     match ax.num_fmt {
@@ -3773,6 +5280,153 @@ fn ChartAxesInfo::val_minor_gridlines(self : ChartAxesInfo) -> Bool {
     }
   }
   false
+}
+
+///|
+/// Return the first value axis `<c:minorGridlines>` element, preserving
+/// its CT_ChartLines styling for the renderer.
+fn ChartAxesInfo::val_minor_gridlines_element(
+  self : ChartAxesInfo,
+) -> @xml.Element? {
+  for ax in self.val_axes {
+    match ax.minor_gridlines_element {
+      Some(e) => return Some(e)
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+/// §21.2.2.100 majorUnit from the first value axis.
+fn ChartAxesInfo::val_major_unit(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    match ax.major_unit {
+      Some(v) => if v > 0.0 { return Some(v) }
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+/// §21.2.2.106 minorUnit from the first value axis.
+fn ChartAxesInfo::val_minor_unit(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    match ax.minor_unit {
+      Some(v) => if v > 0.0 { return Some(v) }
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+/// §21.2.2.100 — majorUnit for a horizontal value axis
+/// (`axPos="b"`/`"t"`), falling back to the first value axis for
+/// single-axis charts.
+fn ChartAxesInfo::val_x_major_unit(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      match ax.major_unit {
+        Some(v) => if v > 0.0 { return Some(v) }
+        None => ()
+      }
+    }
+  }
+  self.val_major_unit()
+}
+
+///|
+/// §21.2.2.106 — minorUnit for a horizontal value axis
+/// (`axPos="b"`/`"t"`), falling back to the first value axis for
+/// single-axis charts.
+fn ChartAxesInfo::val_x_minor_unit(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      match ax.minor_unit {
+        Some(v) => if v > 0.0 { return Some(v) }
+        None => ()
+      }
+    }
+  }
+  self.val_minor_unit()
+}
+
+///|
+/// §21.2.2.100 — majorUnit for a vertical value axis
+/// (`axPos="l"`/`"r"`), falling back to the first value axis for
+/// single-axis charts.
+fn ChartAxesInfo::val_y_major_unit(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      match ax.major_unit {
+        Some(v) => if v > 0.0 { return Some(v) }
+        None => ()
+      }
+    }
+  }
+  self.val_major_unit()
+}
+
+///|
+/// §21.2.2.106 — minorUnit for a vertical value axis
+/// (`axPos="l"`/`"r"`), falling back to the first value axis for
+/// single-axis charts.
+fn ChartAxesInfo::val_y_minor_unit(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      match ax.minor_unit {
+        Some(v) => if v > 0.0 { return Some(v) }
+        None => ()
+      }
+    }
+  }
+  self.val_minor_unit()
+}
+
+///|
+/// Return the first value axis's major tick mark mode.
+fn ChartAxesInfo::val_major_tick_mark(self : ChartAxesInfo) -> String {
+  for ax in self.val_axes {
+    if ax.major_tick_mark != "cross" {
+      return ax.major_tick_mark
+    }
+  }
+  "cross"
+}
+
+///|
+/// Return the first value axis's minor tick mark mode.
+fn ChartAxesInfo::val_minor_tick_mark(self : ChartAxesInfo) -> String {
+  for ax in self.val_axes {
+    if ax.minor_tick_mark != "cross" {
+      return ax.minor_tick_mark
+    }
+  }
+  "cross"
+}
+
+///|
+/// Return the first category axis's major tick mark mode.
+fn ChartAxesInfo::cat_major_tick_mark(self : ChartAxesInfo) -> String {
+  for ax in self.cat_axes {
+    if ax.major_tick_mark != "cross" {
+      return ax.major_tick_mark
+    }
+  }
+  "cross"
+}
+
+///|
+/// Return the first category axis's minor tick mark mode.
+fn ChartAxesInfo::cat_minor_tick_mark(self : ChartAxesInfo) -> String {
+  for ax in self.cat_axes {
+    if ax.minor_tick_mark != "cross" {
+      return ax.minor_tick_mark
+    }
+  }
+  "cross"
 }
 
 ///|
@@ -3891,6 +5545,63 @@ fn ChartAxesInfo::cat_tick_lbl_skip(self : ChartAxesInfo) -> Int {
 }
 
 ///|
+/// §21.2.2.207 tickMarkSkip from the first category axis.
+fn ChartAxesInfo::cat_tick_mark_skip(self : ChartAxesInfo) -> Int {
+  for ax in self.cat_axes {
+    if ax.tick_mark_skip > 0 {
+      return ax.tick_mark_skip
+    }
+  }
+  1
+}
+
+///|
+fn ChartAxesInfo::cat_is_date_axis(self : ChartAxesInfo) -> Bool {
+  for ax in self.cat_axes {
+    if ax.is_date_axis || ax.auto_axis {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn ChartAxesInfo::cat_base_time_unit(self : ChartAxesInfo) -> String {
+  for ax in self.cat_axes {
+    if ax.is_date_axis {
+      return ax.base_time_unit
+    }
+  }
+  "days"
+}
+
+///|
+fn ChartAxesInfo::cat_major_time_unit(self : ChartAxesInfo) -> String {
+  for ax in self.cat_axes {
+    if ax.is_date_axis {
+      match ax.major_time_unit {
+        Some(v) => return v
+        None => return ax.base_time_unit
+      }
+    }
+  }
+  "days"
+}
+
+///|
+fn ChartAxesInfo::cat_minor_time_unit(self : ChartAxesInfo) -> String {
+  for ax in self.cat_axes {
+    if ax.is_date_axis {
+      match ax.minor_time_unit {
+        Some(v) => return v
+        None => return ax.base_time_unit
+      }
+    }
+  }
+  "days"
+}
+
+///|
 /// §21.2.2.96 lblOffset percentage from the first category axis.
 /// Default 100 (one major-unit gap between the axis and labels).
 fn ChartAxesInfo::cat_lbl_offset(self : ChartAxesInfo) -> Int {
@@ -3912,6 +5623,40 @@ fn ChartAxesInfo::cat_lbl_algn(self : ChartAxesInfo) -> String {
 }
 
 ///|
+/// §21.2.2.119 noMultiLvlLbl from the first category axis.
+fn ChartAxesInfo::cat_no_multi_lvl_lbl(self : ChartAxesInfo) -> Bool {
+  for ax in self.cat_axes {
+    if ax.no_multi_lvl_lbl {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// §21.2.2.35 crosses from the first category axis.
+fn ChartAxesInfo::cat_crosses(self : ChartAxesInfo) -> String {
+  for ax in self.cat_axes {
+    if ax.crosses != "autoZero" {
+      return ax.crosses
+    }
+  }
+  "autoZero"
+}
+
+///|
+/// §21.2.2.36 crossesAt from the first category axis.
+fn ChartAxesInfo::cat_crosses_at(self : ChartAxesInfo) -> Double? {
+  for ax in self.cat_axes {
+    match ax.crosses_at {
+      Some(v) => return Some(v)
+      None => ()
+    }
+  }
+  None
+}
+
+///|
 /// §21.2.2.35 crosses from the first value axis.
 fn ChartAxesInfo::val_crosses(self : ChartAxesInfo) -> String {
   for ax in self.val_axes {
@@ -3920,6 +5665,72 @@ fn ChartAxesInfo::val_crosses(self : ChartAxesInfo) -> String {
     }
   }
   "autoZero"
+}
+
+///|
+/// §21.2.2.36 crossesAt from the first value axis.
+fn ChartAxesInfo::val_crosses_at(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    match ax.crosses_at {
+      Some(v) => return Some(v)
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+/// §21.2.2.35 crosses for the horizontal value axis
+/// (`axPos="b"`/`"t"`), falling back to the first value axis.
+fn ChartAxesInfo::val_x_crosses(self : ChartAxesInfo) -> String {
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      return ax.crosses
+    }
+  }
+  self.val_crosses()
+}
+
+///|
+/// §21.2.2.36 crossesAt for the horizontal value axis
+/// (`axPos="b"`/`"t"`), falling back to the first value axis.
+fn ChartAxesInfo::val_x_crosses_at(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      match ax.crosses_at {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+  }
+  self.val_crosses_at()
+}
+
+///|
+/// §21.2.2.35 crosses for the vertical value axis
+/// (`axPos="l"`/`"r"`), falling back to the first value axis.
+fn ChartAxesInfo::val_y_crosses(self : ChartAxesInfo) -> String {
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      return ax.crosses
+    }
+  }
+  self.val_crosses()
+}
+
+///|
+/// §21.2.2.36 crossesAt for the vertical value axis
+/// (`axPos="l"`/`"r"`), falling back to the first value axis.
+fn ChartAxesInfo::val_y_crosses_at(self : ChartAxesInfo) -> Double? {
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      match ax.crosses_at {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+  }
+  self.val_crosses_at()
 }
 
 ///|
@@ -3955,6 +5766,7 @@ fn log_scale_frac(
 /// Parse a single axis element (`<c:catAx>`, `<c:valAx>`,
 /// `<c:dateAx>`, or `<c:serAx>`) into a `ChartAxisConfig`.
 fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
+  let is_date_axis = elem.name.local_name == "dateAx"
   let ax_id = match first_child_named(elem, "axId") {
     Some(e) => parse_int_lenient(attr_or(e, "val", "0"))
     None => 0
@@ -4012,11 +5824,13 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
     }
     None => ()
   }
-  let major_gridlines = match first_child_named(elem, "majorGridlines") {
+  let major_gridlines_element = first_child_named(elem, "majorGridlines")
+  let major_gridlines = match major_gridlines_element {
     Some(_) => true
     None => false
   }
-  let minor_gridlines = match first_child_named(elem, "minorGridlines") {
+  let minor_gridlines_element = first_child_named(elem, "minorGridlines")
+  let minor_gridlines = match minor_gridlines_element {
     Some(_) => true
     None => false
   }
@@ -4046,23 +5860,105 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
   // §21.2.2.47 dispUnits
   let disp_units : String? = match first_child_named(elem, "dispUnits") {
     Some(du) =>
-      match first_child_named(du, "builtInUnit") {
-        Some(bu) => {
-          let v = attr_or(bu, "val", "")
-          if v.length() > 0 {
+      match first_child_named(du, "custUnit") {
+        Some(cu) => {
+          let v = parse_double_lenient(attr_or(cu, "val", "0"))
+          if v > 0.0 {
+            Some("custom")
+          } else {
+            None
+          }
+        }
+        None =>
+          match first_child_named(du, "builtInUnit") {
+            Some(bu) => {
+              let v = attr_or(bu, "val", "thousands")
+              if v.length() > 0 {
+                Some(v)
+              } else {
+                None
+              }
+            }
+            None => None
+          }
+      }
+    None => None
+  }
+  let disp_unit_factor : Double? = match first_child_named(elem, "dispUnits") {
+    Some(du) =>
+      match first_child_named(du, "custUnit") {
+        Some(cu) => {
+          let v = parse_double_lenient(attr_or(cu, "val", "0"))
+          if v > 0.0 {
             Some(v)
           } else {
             None
           }
         }
-        None => None
+        None =>
+          match first_child_named(du, "builtInUnit") {
+            Some(bu) =>
+              chart_display_unit_factor(attr_or(bu, "val", "thousands"))
+            None => None
+          }
       }
+    None => None
+  }
+  let disp_units_lbl : @xml.Element? = match
+    first_child_named(elem, "dispUnits") {
+    Some(du) => first_child_named(du, "dispUnitsLbl")
+    None => None
+  }
+  // §21.2.2.100 majorUnit / §21.2.2.106 minorUnit
+  let major_unit : Double? = match first_child_named(elem, "majorUnit") {
+    Some(e) => {
+      let v = parse_double_lenient(attr_or(e, "val", "0"))
+      if v > 0.0 {
+        Some(v)
+      } else {
+        None
+      }
+    }
+    None => None
+  }
+  let minor_unit : Double? = match first_child_named(elem, "minorUnit") {
+    Some(e) => {
+      let v = parse_double_lenient(attr_or(e, "val", "0"))
+      if v > 0.0 {
+        Some(v)
+      } else {
+        None
+      }
+    }
     None => None
   }
   // §21.2.2.35 crosses
   let crosses = match first_child_named(elem, "crosses") {
     Some(e) => attr_or(e, "val", "autoZero")
     None => "autoZero"
+  }
+  // §21.2.2.36 crossesAt
+  let crosses_at : Double? = match first_child_named(elem, "crossesAt") {
+    Some(e) => {
+      let v = attr_or(e, "val", "")
+      if v.length() > 0 {
+        Some(parse_double_lenient(v))
+      } else {
+        None
+      }
+    }
+    None => None
+  }
+  // §21.2.2.6 auto — present CT_Boolean defaults true; absent means
+  // the declared axis type remains authoritative.
+  let auto_axis = match first_child_named(elem, "auto") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
+  }
+  // §21.2.2.119 noMultiLvlLbl — present CT_Boolean defaults true.
+  let no_multi_lvl_lbl = match first_child_named(elem, "noMultiLvlLbl") {
+    Some(e) => chart_bool_default_true(e)
+    None => false
   }
   // §21.2.2.34 crossBetween
   let cross_between = match first_child_named(elem, "crossBetween") {
@@ -4081,6 +5977,18 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
     }
     None => 0
   }
+  // §21.2.2.207 tickMarkSkip
+  let tick_mark_skip = match first_child_named(elem, "tickMarkSkip") {
+    Some(e) => {
+      let v = parse_int_lenient(attr_or(e, "val", "1"))
+      if v > 0 {
+        v
+      } else {
+        1
+      }
+    }
+    None => 1
+  }
   // §21.2.2.88 lblAlgn
   let lbl_algn = match first_child_named(elem, "lblAlgn") {
     Some(e) => attr_or(e, "val", "ctr")
@@ -4090,6 +5998,21 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
   let lbl_offset = match first_child_named(elem, "lblOffset") {
     Some(e) => parse_int_lenient(attr_or(e, "val", "100"))
     None => 100
+  }
+  // §21.2.2.14 / §21.2.2.116 / §21.2.2.123 date-axis time units.
+  let base_time_unit = match first_child_named(elem, "baseTimeUnit") {
+    Some(e) => attr_or(e, "val", "days")
+    None => "days"
+  }
+  let major_time_unit : String? = match
+    first_child_named(elem, "majorTimeUnit") {
+    Some(e) => Some(attr_or(e, "val", "days"))
+    None => None
+  }
+  let minor_time_unit : String? = match
+    first_child_named(elem, "minorTimeUnit") {
+    Some(e) => Some(attr_or(e, "val", "days"))
+    None => None
   }
   {
     ax_id,
@@ -4101,17 +6024,31 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
     orientation,
     log_base,
     major_gridlines,
+    major_gridlines_element,
     minor_gridlines,
+    minor_gridlines_element,
     major_tick_mark,
     minor_tick_mark,
     tick_lbl_pos,
     num_fmt,
     disp_units,
+    disp_unit_factor,
+    disp_units_lbl,
+    major_unit,
+    minor_unit,
     crosses,
+    crosses_at,
+    auto_axis,
+    no_multi_lvl_lbl,
     cross_between,
     tick_lbl_skip,
+    tick_mark_skip,
     lbl_algn,
     lbl_offset,
+    is_date_axis,
+    base_time_unit,
+    major_time_unit,
+    minor_time_unit,
   }
 }
 
@@ -4119,7 +6056,10 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
 /// Walk `<c:plotArea>` children and build comprehensive axis info
 /// from all `<c:catAx>`, `<c:valAx>`, `<c:dateAx>`, `<c:serAx>`
 /// elements.
-fn collect_axes_info(plot_area : @xml.Element) -> ChartAxesInfo {
+fn collect_axes_info(
+  plot_area : @xml.Element,
+  date_system? : @date_serial.DateSystem = @date_serial.DateSystem::Serial1900,
+) -> ChartAxesInfo {
   let cat_axes : Array[ChartAxisConfig] = []
   let val_axes : Array[ChartAxisConfig] = []
   let ser_axes : Array[ChartAxisConfig] = []
@@ -4137,7 +6077,96 @@ fn collect_axes_info(plot_area : @xml.Element) -> ChartAxesInfo {
       _ => ()
     }
   }
-  { cat_axes, val_axes, ser_axes }
+  { cat_axes, val_axes, ser_axes, date_system }
+}
+
+///|
+fn chart_axis_id_values(elem : @xml.Element) -> Array[Int] {
+  let ids : Array[Int] = []
+  for child in elem.children {
+    match child {
+      @xml.Node::Element(e) =>
+        if e.name.local_name == "axId" {
+          let id = parse_int_lenient(attr_or(e, "val", "0"))
+          if id != 0 {
+            ids.push(id)
+          }
+        }
+      _ => ()
+    }
+  }
+  ids
+}
+
+///|
+fn axis_id_contains(ids : Array[Int], id : Int) -> Bool {
+  for v in ids {
+    if v == id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn add_axis_id_once(ids : Array[Int], id : Int) -> Unit {
+  if id != 0 && !axis_id_contains(ids, id) {
+    ids.push(id)
+  }
+}
+
+///|
+fn append_axis_cross_ref_ids(
+  out : Array[Int],
+  axes : Array[ChartAxisConfig],
+) -> Unit {
+  for ax in axes {
+    if axis_id_contains(out, ax.ax_id) {
+      add_axis_id_once(out, ax.cross_ax)
+    }
+  }
+}
+
+///|
+fn filter_axis_configs_by_ids(
+  axes : Array[ChartAxisConfig],
+  ids : Array[Int],
+) -> Array[ChartAxisConfig] {
+  let filtered : Array[ChartAxisConfig] = []
+  for ax in axes {
+    if axis_id_contains(ids, ax.ax_id) {
+      filtered.push(ax)
+    }
+  }
+  filtered
+}
+
+///|
+/// §21.2.2.9 / §21.2.2.31 — chart type `<c:axId>` children bind a
+/// payload to concrete plot-area axes; `crossAx` links the selected
+/// axis to its perpendicular partner. This keeps combo/secondary-axis
+/// charts from leaking unrelated axes into a chart renderer.
+fn ChartAxesInfo::for_chart(
+  self : ChartAxesInfo,
+  elem : @xml.Element,
+) -> ChartAxesInfo {
+  let ids = chart_axis_id_values(elem)
+  if ids.length() == 0 {
+    return self
+  }
+  let linked_ids : Array[Int] = []
+  for id in ids {
+    add_axis_id_once(linked_ids, id)
+  }
+  append_axis_cross_ref_ids(linked_ids, self.cat_axes)
+  append_axis_cross_ref_ids(linked_ids, self.val_axes)
+  append_axis_cross_ref_ids(linked_ids, self.ser_axes)
+  {
+    cat_axes: filter_axis_configs_by_ids(self.cat_axes, linked_ids),
+    val_axes: filter_axis_configs_by_ids(self.val_axes, linked_ids),
+    ser_axes: filter_axis_configs_by_ids(self.ser_axes, linked_ids),
+    date_system: self.date_system,
+  }
 }
 
 ///|
@@ -4160,6 +6189,7 @@ fn render_chart_payload(
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
   disp_blanks_as~ : @chart.ST_DispBlanksAs,
+  show_dlbls_over_max~ : Bool,
 ) -> Array[@xml.Node] {
   match local_name {
     "barChart" =>
@@ -4174,6 +6204,7 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
       )
     "lineChart" =>
       render_line_chart(
@@ -4187,6 +6218,7 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
       )
     "pieChart" =>
       render_pie_chart(
@@ -4233,6 +6265,7 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
       )
     "bubbleChart" =>
       render_bubble_chart(
@@ -4246,6 +6279,7 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
       )
     "radarChart" =>
       render_radar_chart(
@@ -4259,8 +6293,9 @@ fn render_chart_payload(
         defs,
         disp_blanks_as~,
       )
-    // §21.2.2.188 stock — OHLC / HLC lines use solid stroke colours (no
-    // series FILL), so it takes no `defs`; threading would be dead weight.
+    // §21.2.2.188 stock — OHLC / HLC series lines use solid stroke
+    // colours, but value-axis gridlines still consume CT_ChartLines
+    // paint and may register SVG defs.
     "stockChart" =>
       render_stock_chart(
         elem,
@@ -4271,6 +6306,7 @@ fn render_chart_payload(
         ctx,
         axes,
         style,
+        defs,
         disp_blanks_as~,
       )
     // §21.2 3D chart types — degrade to 2D equivalent (no perspective
@@ -4288,6 +6324,7 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
       )
     "line3DChart" =>
       render_line_chart(
@@ -4301,6 +6338,7 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
       )
     "pie3DChart" =>
       render_pie_chart(
@@ -4324,6 +6362,7 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
       )
     // §21.2.2.205 surface — no SVG equivalent; render as area chart.
     "surface3DChart" | "surfaceChart" =>
@@ -4338,6 +6377,9 @@ fn render_chart_payload(
         style,
         defs,
         disp_blanks_as~,
+        show_dlbls_over_max~,
+        wireframe=chart_surface_wireframe(elem),
+        surface_band_fills=chart_surface_band_fills(elem, ctx, defs),
       )
     // §21.2.2.126 ofPieChart — pie-of-pie / bar-of-pie.  Two-tier render:
     // a primary pie (major points + aggregated "Other") on the left and a
@@ -4458,18 +6500,40 @@ fn nice_axis_max(max_v : Double) -> Double {
 /// element declares an explicit `<c:max val="…"/>`, use it verbatim.
 /// Otherwise auto-scale from the data maximum using `nice_axis_max`.
 fn effective_axis_max(data_max : Double, axes : ChartAxesInfo) -> Double {
-  match axes.val_scaling_max() {
+  effective_axis_max_from_scaling(data_max, axes.val_scaling_max())
+}
+
+///|
+fn effective_axis_max_from_scaling(
+  data_max : Double,
+  scaling_max : Double?,
+) -> Double {
+  match scaling_max {
     Some(v) => v
     None => nice_axis_max(data_max)
   }
 }
 
 ///|
-/// §21.2.2.170 — compute the effective axis minimum. When the axis
-/// element declares an explicit `<c:min val="…"/>`, use it verbatim.
-/// Otherwise default to 0.0 (the standard baseline for most chart types).
-fn effective_axis_min(axes : ChartAxesInfo) -> Double {
+fn nice_axis_min(min_v : Double) -> Double {
+  if min_v < 0.0 {
+    -nice_axis_max(0.0 - min_v)
+  } else {
+    0.0
+  }
+}
+
+///|
+fn effective_axis_min(data_min : Double, axes : ChartAxesInfo) -> Double {
   match axes.val_scaling_min() {
+    Some(v) => v
+    None => nice_axis_min(data_min)
+  }
+}
+
+///|
+fn effective_axis_min_from_scaling(scaling_min : Double?) -> Double {
+  match scaling_min {
     Some(v) => v
     None => 0.0
   }
@@ -4501,11 +6565,29 @@ fn chart_disp_blanks_as(chart : @xml.Element) -> @chart.ST_DispBlanksAs {
 }
 
 ///|
+fn chart_space_date_system(
+  chart_space : @xml.Element,
+) -> @date_serial.DateSystem {
+  match first_child_named(chart_space, "date1904") {
+    Some(e) =>
+      if chart_bool_default_true(e) {
+        @date_serial.DateSystem::Serial1904
+      } else {
+        @date_serial.DateSystem::Serial1900
+      }
+    None => @date_serial.DateSystem::Serial1900
+  }
+}
+
+///|
 /// Read the category labels for a series. Tries
 /// `<c:cat>/<c:strRef>/<c:strCache>/<c:pt>/<c:v>` first, then falls back
 /// to `<c:cat>/<c:strLit>` and to the numeric `<c:cat>/<c:numRef>` cache
 /// (rendered as the underlying number's lexical form) for completeness.
-fn read_cat_labels(ser : @xml.Element) -> Array[String] {
+fn read_cat_labels(
+  ser : @xml.Element,
+  no_multi_lvl_lbl? : Bool = false,
+) -> Array[String] {
   let cat = match first_child_named(ser, "cat") {
     Some(c) => c
     None => return []
@@ -4533,15 +6615,7 @@ fn read_cat_labels(ser : @xml.Element) -> Array[String] {
               match first_child_named(cat, "multiLvlStrRef") {
                 Some(mr) =>
                   match first_child_named(mr, "multiLvlStrCache") {
-                    Some(mc) => {
-                      // The cache holds one or more `<c:lvl>` elements;
-                      // walk the first level's points.
-                      let lvl = first_child_named(mc, "lvl")
-                      match lvl {
-                        Some(l) => collect_pt_values(l)
-                        None => collect_pt_values(mc)
-                      }
-                    }
+                    Some(mc) => collect_multi_level_labels(mc, no_multi_lvl_lbl)
                     None => []
                   }
                 None => []
@@ -4549,6 +6623,70 @@ fn read_cat_labels(ser : @xml.Element) -> Array[String] {
           }
       }
   }
+}
+
+///|
+fn read_cat_number_slots(ser : @xml.Element) -> Array[Double?] {
+  let cat = match first_child_named(ser, "cat") {
+    Some(c) => c
+    None => return []
+  }
+  read_num_slots_under(cat)
+}
+
+///|
+fn chart_pad2(n : Int) -> String {
+  if n < 10 {
+    "0" + n.to_string()
+  } else {
+    n.to_string()
+  }
+}
+
+///|
+fn chart_date_label_for_unit(
+  serial : Double,
+  unit : String,
+  date_system : @date_serial.DateSystem,
+) -> String {
+  try @date_serial.serial_to_date_time(serial, date_system) catch {
+    _ => format_axis_value(serial)
+  } noraise {
+    dt =>
+      match unit {
+        "years" => dt.year.to_string()
+        "months" => dt.year.to_string() + "-" + chart_pad2(dt.month)
+        _ =>
+          dt.year.to_string() +
+          "-" +
+          chart_pad2(dt.month) +
+          "-" +
+          chart_pad2(dt.day)
+      }
+  }
+}
+
+///|
+fn read_cat_axis_labels(
+  ser : @xml.Element,
+  axes : ChartAxesInfo,
+) -> Array[String] {
+  if axes.cat_is_date_axis() {
+    let serials = read_cat_number_slots(ser)
+    if serials.length() > 0 {
+      let labels : Array[String] = []
+      let unit = axes.cat_major_time_unit()
+      for slot in serials {
+        match slot {
+          Some(v) =>
+            labels.push(chart_date_label_for_unit(v, unit, axes.date_system))
+          None => labels.push("")
+        }
+      }
+      return labels
+    }
+  }
+  read_cat_labels(ser, no_multi_lvl_lbl=axes.cat_no_multi_lvl_lbl())
 }
 
 ///|
@@ -4573,6 +6711,48 @@ fn read_axis_number_slots(ser : @xml.Element, name : String) -> Array[Double?] {
     None => return []
   }
   read_num_slots_under(v)
+}
+
+///|
+/// Read the numeric cache/literal `formatCode` owned by a chart data source.
+/// This is the source-linked number format for labels when `<c:dLbls>` does
+/// not provide its own `<c:numFmt>`.
+fn read_num_format_under(parent : @xml.Element) -> String? {
+  let cache = match first_child_named(parent, "numRef") {
+    Some(nr) => first_child_named(nr, "numCache")
+    None => first_child_named(parent, "numLit")
+  }
+  let cache_el = match cache {
+    Some(c) => c
+    None => return None
+  }
+  try @chart.CT_NumData::new(cache_el) catch {
+    _ => None
+  } noraise {
+    data =>
+      match data.format_code {
+        Some(fmt) => if fmt.length() > 0 { Some(fmt) } else { None }
+        None => None
+      }
+  }
+}
+
+///|
+fn read_val_number_format(ser : @xml.Element) -> String? {
+  let val = match first_child_named(ser, "val") {
+    Some(v) => v
+    None => return None
+  }
+  read_num_format_under(val)
+}
+
+///|
+fn read_axis_number_format(ser : @xml.Element, name : String) -> String? {
+  let v = match first_child_named(ser, name) {
+    Some(e) => e
+    None => return None
+  }
+  read_num_format_under(v)
 }
 
 ///|
@@ -4632,6 +6812,24 @@ fn max_positive_slots(
   for slot in values {
     match slot {
       Some(v) => if v > m { m = v }
+      None => ()
+    }
+  }
+  m
+}
+
+///|
+fn min_negative_slots(
+  values : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Double {
+  if disp_blanks_as_is_zero(disp_blanks_as) {
+    return min_negative(number_slots_to_zeroes(values))
+  }
+  let mut m = 0.0
+  for slot in values {
+    match slot {
+      Some(v) => if v < m { m = v }
       None => ()
     }
   }
@@ -4853,6 +7051,58 @@ fn collect_pt_values(cache : @xml.Element) -> Array[String] {
 }
 
 ///|
+fn collect_multi_level_labels(
+  cache : @xml.Element,
+  no_multi_lvl_lbl : Bool,
+) -> Array[String] {
+  let levels : Array[Array[String]] = []
+  for ch in cache.children {
+    match ch {
+      @xml.Node::Element(level) =>
+        if level.name.local_name == "lvl" {
+          levels.push(collect_pt_values(level))
+        }
+      _ => ()
+    }
+  }
+  if levels.length() == 0 {
+    return collect_pt_values(cache)
+  }
+  if no_multi_lvl_lbl {
+    return levels[levels.length() - 1]
+  }
+  let mut count = 0
+  for level in levels {
+    if level.length() > count {
+      count = level.length()
+    }
+  }
+  let labels : Array[String] = []
+  for i in 0..<count {
+    let parts : Array[String] = []
+    for level in levels {
+      if i < level.length() && level[i].length() > 0 {
+        parts.push(level[i])
+      }
+    }
+    labels.push(join_label_parts(parts))
+  }
+  labels
+}
+
+///|
+fn join_label_parts(parts : Array[String]) -> String {
+  let buf = StringBuilder::new()
+  for i, part in parts {
+    if i > 0 {
+      buf.write_string(" / ")
+    }
+    buf.write_string(part)
+  }
+  buf.to_string()
+}
+
+///|
 fn collect_num_data_indexed_values(data : @chart.CT_NumData) -> Array[String] {
   let entries : Array[(Int, String)] = []
   let mut max_idx = -1
@@ -5066,6 +7316,17 @@ fn max_positive(values : Array[Double]) -> Double {
   let mut m = 0.0
   for v in values {
     if v > m {
+      m = v
+    }
+  }
+  m
+}
+
+///|
+fn min_negative(values : Array[Double]) -> Double {
+  let mut m = 0.0
+  for v in values {
+    if v < m {
       m = v
     }
   }

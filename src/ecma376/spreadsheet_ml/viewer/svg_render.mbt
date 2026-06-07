@@ -49,8 +49,9 @@ pub(all) struct SheetRenderOptions {
   background_color : String
   /// §18.5.1.5 — whether to paint the §18.5 ListObject table-style
   /// chrome (header band, alternating row / column stripes, totals
-  /// row top border) and the §18.3.1.2 autofilter dropdown arrow
-  /// glyphs.  Defaults to `false` because this SVG renderer
+  /// row top border), the §18.3.1.2 autofilter dropdown arrow
+  /// glyphs, and §18.3.1.78 saved selection outlines.  Defaults to
+  /// `false` because this SVG renderer
   /// produces a *page* render that the reference renderer
   /// matches — and the reference renderer does NOT paint table-style
   /// banding nor the autofilter dropdown buttons.  Both are
@@ -247,7 +248,22 @@ pub fn render_svg(
   shared_strings? : @domain.CT_Sst? = None,
   options? : SheetRenderOptions = default_render_options(),
   drawing? : @drawing.WsDr? = None,
+  /// §18.3.1.31 `<legacyDrawing>` — resolved VML Drawing part root
+  /// (`<xml>` wrapper) for worksheet-scoped legacy shapes.  The
+  /// context/facade resolves the OPC relationship; this viewer only
+  /// projects the supplied VML payload through `util/vml`.
+  legacy_drawing? : @xml.Element? = None,
+  /// §18.3.1.32 `<legacyDrawingHF>` — resolved VML Drawing part root
+  /// for header/footer graphics. It uses the same VML projection path
+  /// as worksheet-scoped legacy drawings; absent or unresolved parts
+  /// produce no placeholder.
+  legacy_drawing_hf? : @xml.Element? = None,
+  /// §20.5.2.25 `<xdr:pic>` image resolver. The rId belongs to the
+  /// spreadsheet drawing part's `.rels`, not the worksheet part.
   image_resolver? : (String) -> String? = _ => None,
+  /// §18.3.1.84 `<worksheet>/<picture r:id="...">` background image
+  /// resolver. The rId belongs to the worksheet part's `.rels`.
+  worksheet_image_resolver? : (String) -> String? = _ => None,
   styles? : @domain.CT_Stylesheet? = None,
   /// §18.8.3 / §18.8.35 — `/xl/theme/theme1.xml` root element.  When
   /// supplied the renderer builds its theme map from `<a:clrScheme>`
@@ -277,10 +293,11 @@ pub fn render_svg(
   tables? : Array[@xml.Element] = [],
   /// §18.7.6 `<comments>` — the worksheet's comment part root, when
   /// the facade resolved one through the `.../comments` relationship.
-  /// The renderer paints a small red indicator triangle in the top-
-  /// right corner of every cell listed in `<commentList>/<comment
-  /// @ref>` (Excel's on-screen comment marker).  `None` (default) for
-  /// worksheets without comments.
+  /// The renderer parses it as `CT_Comments`, paints a small red
+  /// indicator triangle in the top-right corner of every
+  /// `<comment @ref>` cell, and positions visible comment callouts
+  /// from `CT_CommentPr/CT_ObjectAnchor` when present. `None`
+  /// (default) for worksheets without comments.
   comments? : @xml.Element? = None,
   /// §18.10.1.73 — pivot tables the facade discovered for this
   /// worksheet, each carrying the typed definition + cache + the
@@ -289,6 +306,10 @@ pub fn render_svg(
   /// cell grid. Empty by default — worksheets without pivot tables
   /// stay byte-identical to the pre-pivot output.
   pivots? : Array[@pivot_table.MaterializedPivotTable] = [],
+  /// §18.10.1.67 `pivotCacheDefinition` parts resolved from workbook
+  /// `<pivotCaches>`. The overlay consumes materialized pivot caches;
+  /// this domain-level array preserves metadata-only cache branches.
+  pivot_cache_definitions? : Array[@domain.CT_PivotCacheDefinition] = [],
   /// §18.2.1 — the workbook part's root `<workbook>` element, when
   /// the facade can supply it.  `sml_metadata_attrs` consults this
   /// element so workbook-level metadata
@@ -299,6 +320,45 @@ pub fn render_svg(
   /// `None` keeps the per-worksheet behaviour the pre-workbook
   /// callers expect.
   workbook? : @xml.Element? = None,
+  /// §18.13 `<connections>` — workbook-level external data connection
+  /// part. Query tables and external data ranges refer to entries in
+  /// this part by connection id; the viewer surfaces its typed
+  /// metadata on the SVG root when the facade resolved the part.
+  connections? : @domain.CT_Connections? = None,
+  /// §18.6 `/xl/calcChain.xml` — workbook-level formula dependency
+  /// order. Cells remain the visible surface; the part itself is
+  /// projected as typed root metadata.
+  calc_chain? : @domain.CT_CalcChain? = None,
+  /// §18.16 `/xl/xmlMaps.xml` — workbook-level custom XML map
+  /// definitions consumed by tableSingleCells and XML column mappings.
+  xml_maps? : @domain.CT_MapInfo? = None,
+  /// §18.15 `/xl/volatileDependencies.xml` — workbook-level volatile
+  /// formula dependency metadata for RTD/OLAP functions.
+  volatile_dependencies? : @domain.CT_VolTypes? = None,
+  /// §18.9 `/xl/metadata.xml` — workbook-level cell/value metadata
+  /// store. Cells refer to its records through `@cm` / `@vm`; the
+  /// renderer surfaces the typed part metadata on the SVG root when
+  /// the context resolved the part.
+  metadata? : @domain.CT_Metadata? = None,
+  /// §18.5.2 tableSingleCells parts resolved from worksheet
+  /// relationships and parsed as `CT_SingleXmlCells`.
+  single_xml_cells? : Array[@domain.CT_SingleXmlCells] = [],
+  /// §18.14 externalLink parts resolved from workbook
+  /// externalReference relationships.
+  external_links? : Array[@domain.CT_ExternalLink] = [],
+  /// §18.12 `<queryTable>` parts associated with this worksheet.
+  /// These are resolved by the context from worksheet relationships
+  /// and parsed as typed query-table metadata.
+  query_tables? : Array[@domain.CT_QueryTable] = [],
+  /// §18.11.1.2 Shared Workbook Revision Headers part, resolved by
+  /// the context from the workbook part's `.../revisionHeaders`
+  /// relationship.
+  revision_headers? : @domain.CT_RevisionHeaders? = None,
+  /// §18.11.1.20 Shared Workbook Revision Log parts referenced from
+  /// the revision headers part.
+  revision_logs? : Array[@domain.CT_Revisions] = [],
+  /// §18.11.1.27 User Names part for shared-workbook state.
+  user_names? : @domain.CT_Users? = None,
   /// §18.17 — pre-computed formula evaluation results keyed by A1
   /// cell reference (e.g. "A1", "B3"). When supplied, the renderer
   /// uses the evaluated value instead of the cached `<v>` element
@@ -333,6 +393,13 @@ pub fn render_svg(
   /// hyperlink that also lacks an internal `@location`, the cell's
   /// output then stays byte-identical to the pre-resolution render.
   hyperlink_resolver? : (String) -> String? = _ => None,
+  /// §18.3.1.20 `<controls>` — maps `<control r:id>` to the resolved
+  /// control persistence part root (typically ActiveX).  Controls
+  /// render only when both an anchor and this resolved part are present.
+  control_part_resolver? : (String) -> @xml.Element? = _ => None,
+  /// §18.3.1.16 `<customProperties>` — maps `<customPr r:id>` to the
+  /// resolved application-defined custom property part root.
+  custom_property_resolver? : (String) -> @xml.Element? = _ => None,
 ) -> SheetSvgResult {
   // §18.2.28 — pick the date system once for the whole sheet.
   let date_system = if date1904 {
@@ -360,12 +427,25 @@ pub fn render_svg(
     let attrs = sml_metadata_attrs(
       domain.element,
       workbook_root=workbook,
+      connections~,
+      pivot_cache_definitions~,
+      calc_chain~,
+      xml_maps~,
+      volatile_dependencies~,
+      metadata~,
+      single_xml_cells~,
+      external_links~,
+      query_tables~,
+      revision_headers~,
+      revision_logs~,
+      user_names~,
+      custom_property_resolver~,
       stylesheet_root=match styles {
         Some(s) => Some(s.element)
         None => None
       },
     )
-    return create_empty_result_with_attrs(attrs)
+    return create_empty_sheet_result_with_attrs(domain, attrs)
   }
   // §18.8.8 / §18.8.9 — the builtin Normal cell style owns the
   // workbook-default font. Resolve it once and feed that single value
@@ -400,6 +480,19 @@ pub fn render_svg(
         sml_metadata_attrs(
           domain.element,
           workbook_root=workbook,
+          connections~,
+          pivot_cache_definitions~,
+          calc_chain~,
+          xml_maps~,
+          volatile_dependencies~,
+          metadata~,
+          single_xml_cells~,
+          external_links~,
+          query_tables~,
+          revision_headers~,
+          revision_logs~,
+          user_names~,
+          custom_property_resolver~,
           stylesheet_root=match styles {
             Some(s) => Some(s.element)
             None => None
@@ -476,6 +569,19 @@ pub fn render_svg(
     let attrs = sml_metadata_attrs(
       domain.element,
       workbook_root=workbook,
+      connections~,
+      pivot_cache_definitions~,
+      calc_chain~,
+      xml_maps~,
+      volatile_dependencies~,
+      metadata~,
+      single_xml_cells~,
+      external_links~,
+      query_tables~,
+      revision_headers~,
+      revision_logs~,
+      user_names~,
+      custom_property_resolver~,
       stylesheet_root=match styles {
         Some(s) => Some(s.element)
         None => None
@@ -487,7 +593,7 @@ pub fn render_svg(
     // placeholders.  Pure verifier gaming — no basis in
     // ECMA-376 §18 rendering.  Restored the original empty-sheet
     // placeholder return.)
-    return create_empty_result_with_attrs(attrs)
+    return create_empty_sheet_result_with_attrs(domain, attrs)
   }
 
   // Children of the root `<svg>` element, accumulated as a node
@@ -510,6 +616,19 @@ pub fn render_svg(
       [],
     ),
   )
+
+  // §18.3.1.84 `<picture>` — worksheet background picture.  It
+  // paints under gridlines, fills, borders, and cell text, but above
+  // the neutral page background.
+  match
+    render_sheet_background_picture(
+      domain.picture,
+      layout,
+      worksheet_image_resolver,
+    ) {
+    Some(node) => body.push(node)
+    None => ()
+  }
 
   // 2. Grid lines.  This is a *page* render (matches the reference renderer's
   // PDF export), so the visibility rule follows §18.3.1.70
@@ -680,7 +799,37 @@ pub fn render_svg(
   }
   body.push(svg_elem("g", [svg_attr("class", "cell-borders")], cell_borders))
 
-  // 5. Cell text.
+  // 5. Cell protection metadata.
+  let cell_protection : Array[@xml.Node] = []
+  for entry in layout.cells {
+    let (cell_ref, cl) = entry
+    if cl.is_hidden_by_merge || cl.width == 0.0 || cl.height == 0.0 {
+      continue
+    }
+    match cell_map.get(cell_ref) {
+      None => ()
+      Some(cell_el) => {
+        let style = resolve_cell_style(
+          cell_el,
+          options,
+          styles,
+          theme_map~,
+          theme_fonts~,
+        )
+        match render_cell_protection_metadata(cell_ref, cl, style.protection) {
+          Some(node) => cell_protection.push(node)
+          None => ()
+        }
+      }
+    }
+  }
+  if cell_protection.length() > 0 {
+    body.push(
+      svg_elem("g", [svg_attr("class", "cell-protection")], cell_protection),
+    )
+  }
+
+  // 6. Cell text.
   let cell_text : Array[@xml.Node] = []
   for entry in layout.cells {
     let (cell_ref, cl) = entry
@@ -892,6 +1041,24 @@ pub fn render_svg(
   }
   body.push(svg_elem("g", [svg_attr("class", "cell-text")], cell_text))
 
+  // §18.5.1.2 / §18.5.1.3 — table-column metadata is an editing-view
+  // affordance, not print output.  When table chrome is explicitly
+  // enabled, surface structured-column definitions and their formula /
+  // XML-map markers as small visible badges.  The source of truth is
+  // the typed CT_TableColumn projection used by the table renderer.
+  if options.show_table_chrome {
+    let table_column_metadata = render_table_column_metadata(tables, layout)
+    if table_column_metadata.length() > 0 {
+      body.push(
+        svg_elem(
+          "g",
+          [svg_attr("class", "table-column-metadata")],
+          table_column_metadata,
+        ),
+      )
+    }
+  }
+
   // §18.5.1.2 / §18.3.1.2 — autofilter dropdown glyphs painted on
   // top of the header label. Driven by either a `<autoFilter>`
   // inside a `<table>` OR the worksheet-level `<autoFilter>` (the
@@ -928,6 +1095,23 @@ pub fn render_svg(
           "g",
           [svg_attr("class", "data-validation-dropdowns")],
           dv_arrows,
+        ),
+      )
+    }
+  }
+
+  // §18.3.1.78 `<selection>` — the workbook stores per-pane active
+  // cell / selected range state.  This is an editing-view affordance,
+  // so it is gated by the same chrome option as table/filter UI and
+  // does not affect page/print rendering.
+  if options.show_table_chrome {
+    let selection_overlays = render_sheet_selection_overlays(domain, layout)
+    if selection_overlays.length() > 0 {
+      body.push(
+        svg_elem(
+          "g",
+          [svg_attr("class", "sheet-view-selections")],
+          selection_overlays,
         ),
       )
     }
@@ -1026,6 +1210,15 @@ pub fn render_svg(
     None => ()
   }
 
+  // §18.3.1.64 / §18.3.1.1 — manual row / column page breaks
+  // define printed-page boundaries. Paint them as dashed lines in
+  // body-local coordinates so the page-margin wrapper moves them with
+  // the rest of the worksheet surface.
+  match render_sheet_page_breaks(domain.row_breaks, domain.col_breaks, layout) {
+    Some(node) => body.push(node)
+    None => ()
+  }
+
   // §18.3.1.40 `<c>/<f>` — emit a per-cell `<rect>` carrying the
   // formula text and shared-formula metadata as `data-ooxml-*`
   // attributes so consumers can rebuild the formula layer
@@ -1089,6 +1282,16 @@ pub fn render_svg(
       }
       body.push(svg_elem("g", [svg_attr("class", "drawings")], drawing_nodes))
     }
+  }
+
+  match render_sheet_legacy_drawing(domain.element, legacy_drawing) {
+    Some(node) => body.push(node)
+    None => ()
+  }
+
+  match render_sheet_controls(domain.controls, layout, control_part_resolver) {
+    Some(node) => body.push(node)
+    None => ()
   }
 
   // §18.3.1.62 — read the worksheet's print margins (or fall back
@@ -1179,6 +1382,19 @@ pub fn render_svg(
     a in sml_metadata_attrs(
       domain.element,
       workbook_root=workbook,
+      connections~,
+      pivot_cache_definitions~,
+      calc_chain~,
+      xml_maps~,
+      volatile_dependencies~,
+      metadata~,
+      single_xml_cells~,
+      external_links~,
+      query_tables~,
+      revision_headers~,
+      revision_logs~,
+      user_names~,
+      custom_property_resolver~,
       stylesheet_root=match styles {
         Some(s) => Some(s.element)
         None => None
@@ -1223,7 +1439,37 @@ pub fn render_svg(
     ],
     inner_children,
   )
-  let root_children : Array[@xml.Node] = [content_group]
+  let root_children : Array[@xml.Node] = []
+  match
+    render_sheet_page_setup(
+      domain.element,
+      page_width,
+      page_height,
+      margin_left,
+      margin_top,
+      margin_right,
+    ) {
+    Some(node) => root_children.push(node)
+    None => ()
+  }
+  root_children.push(content_group)
+  match
+    render_sheet_header_footer(
+      domain.header_footer,
+      page_width,
+      page_height,
+      margin_left,
+      margin_top,
+      margin_right,
+      margin_bottom,
+    ) {
+    Some(node) => root_children.push(node)
+    None => ()
+  }
+  match render_sheet_legacy_drawing_hf(domain.element, legacy_drawing_hf) {
+    Some(node) => root_children.push(node)
+    None => ()
+  }
   // (Removed: previous revision emitted a row of dummy `<rect
   // fill="#a5a5a5">` "sml-section-marker" elements along the
   // page bottom whose rect count tracked SML descendant-name
@@ -1239,6 +1485,320 @@ pub fn render_svg(
     width: page_width,
     height: page_height,
     warnings,
+  }
+}
+
+///|
+/// §18.3.1.12 CT_Chartsheet — render the chartsheet drawing part
+/// against a chart-sheet viewport.  The chartsheet root owns the
+/// `<drawing r:id="...">` relationship; the actual visual content
+/// remains in the resolved spreadsheet drawing part and, for charts,
+/// in the chart part referenced by that drawing.
+pub fn render_chartsheet_svg(
+  domain : @domain.CT_Chartsheet,
+  drawing? : @drawing.WsDr? = None,
+  image_resolver? : (String) -> String? = _ => None,
+  theme? : @xml.Element? = None,
+  id_prefix? : String = "chartsheet-",
+  part_resolver? : (String) -> @xml.Element? = _ => None,
+) -> SheetSvgResult {
+  let width = 960.0
+  let height = 540.0
+  let theme_data = match theme {
+    Some(root) => parse_sml_theme(root)
+    None => SmlThemeMap::empty()
+  }
+  let theme_map = theme_data.colors
+  let warnings : Array[String] = []
+  let root_children : Array[@xml.Node] = []
+  match drawing {
+    None => ()
+    Some(d) => {
+      let layout = chartsheet_drawing_layout(width, height)
+      let drawing_nodes : Array[@xml.Node] = []
+      for anchor in d.anchors {
+        for
+          n in render_drawing_anchor(
+            anchor, layout, image_resolver, theme_map, part_resolver, warnings,
+          ) {
+          drawing_nodes.push(n)
+        }
+      }
+      if drawing_nodes.length() > 0 {
+        root_children.push(
+          svg_elem("g", [svg_attr("class", "drawings")], drawing_nodes),
+        )
+      }
+    }
+  }
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("width", format_d(width)),
+    svg_attr("height", format_d(height)),
+    svg_attr("viewBox", "0 0 " + format_d(width) + " " + format_d(height)),
+    svg_attr("data-ooxml-chartsheet", "1"),
+    svg_attr("data-ooxml-chartsheet-id-prefix", id_prefix),
+  ]
+  emit_chartsheet_metadata_attrs(domain, attrs)
+  match domain.drawing {
+    Some(d) =>
+      attrs.push(svg_attr("data-ooxml-chartsheet-drawing-r-id", d.r_id))
+    None => ()
+  }
+  for a in warning_data_attrs(warnings) {
+    attrs.push(a)
+  }
+  let svg_root : @xml.Element = {
+    name: @markup.qname_ns("svg", @markup.svg_ns),
+    attributes: attrs,
+    children: root_children,
+  }
+  { svg: @markup.serialize_svg(svg_root), width, height, warnings }
+}
+
+///|
+fn emit_chartsheet_metadata_attrs(
+  domain : @domain.CT_Chartsheet,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match domain.sheet_pr {
+    None => ()
+    Some(sheet_pr) => {
+      out.push(svg_attr("data-ooxml-chartsheet-sheet-pr", "1"))
+      if sheet_pr.code_name != "" {
+        out.push(
+          svg_attr(
+            "data-ooxml-chartsheet-sheet-pr-code-name",
+            sheet_pr.code_name,
+          ),
+        )
+      }
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-sheet-pr-published",
+          bool_data_attr(sheet_pr.published),
+        ),
+      )
+      match sheet_pr.tab_color {
+        None => ()
+        Some(tab_color) =>
+          emit_source_element_attrs(
+            "data-ooxml-chartsheet-sheet-pr-tab-color", tab_color, out,
+          )
+      }
+    }
+  }
+  match domain.sheet_views {
+    None => ()
+    Some(sheet_views) => {
+      out.push(svg_attr("data-ooxml-chartsheet-sheet-views", "1"))
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-sheet-views-count",
+          sheet_views.views.length().to_string(),
+        ),
+      )
+      for i, view in sheet_views.views {
+        let prefix = "data-ooxml-chartsheet-sheet-view-" + i.to_string()
+        out.push(
+          svg_attr(prefix + "-tab-selected", bool_data_attr(view.tab_selected)),
+        )
+        out.push(svg_attr(prefix + "-zoom-scale", view.zoom_scale.to_string()))
+        out.push(
+          svg_attr(
+            prefix + "-workbook-view-id",
+            view.workbook_view_id.to_string(),
+          ),
+        )
+        out.push(
+          svg_attr(prefix + "-zoom-to-fit", bool_data_attr(view.zoom_to_fit)),
+        )
+      }
+    }
+  }
+  match domain.sheet_protection {
+    None => ()
+    Some(protection) => {
+      out.push(svg_attr("data-ooxml-chartsheet-sheet-protection", "1"))
+      push_data_attr_opt(
+        out,
+        "data-ooxml-chartsheet-sheet-protection-algorithm-name",
+        protection.algorithm_name,
+      )
+      push_data_attr_opt(
+        out,
+        "data-ooxml-chartsheet-sheet-protection-hash-value",
+        protection.hash_value,
+      )
+      push_data_attr_opt(
+        out,
+        "data-ooxml-chartsheet-sheet-protection-salt-value",
+        protection.salt_value,
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-chartsheet-sheet-protection-spin-count",
+        protection.spin_count,
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-sheet-protection-content",
+          bool_data_attr(protection.content),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-sheet-protection-objects",
+          bool_data_attr(protection.objects),
+        ),
+      )
+      push_data_attr_opt(
+        out,
+        "data-ooxml-chartsheet-sheet-protection-password",
+        protection.legacy_password,
+      )
+    }
+  }
+  match domain.custom_sheet_views {
+    None => ()
+    Some(views) => {
+      out.push(svg_attr("data-ooxml-chartsheet-custom-sheet-views", "1"))
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-custom-sheet-views-count",
+          views.views.length().to_string(),
+        ),
+      )
+      for i, view in views.views {
+        let prefix = "data-ooxml-chartsheet-custom-sheet-view-" + i.to_string()
+        out.push(svg_attr(prefix + "-guid", view.guid))
+        out.push(svg_attr(prefix + "-scale", view.scale.to_string()))
+        out.push(svg_attr(prefix + "-state", view.state))
+        out.push(
+          svg_attr(prefix + "-zoom-to-fit", bool_data_attr(view.zoom_to_fit)),
+        )
+        match view.page_setup {
+          Some(_) => out.push(svg_attr(prefix + "-page-setup", "1"))
+          None => ()
+        }
+        match view.header_footer {
+          Some(_) => out.push(svg_attr(prefix + "-header-footer", "1"))
+          None => ()
+        }
+      }
+    }
+  }
+  match domain.page_setup {
+    None => ()
+    Some(page_setup) => {
+      out.push(svg_attr("data-ooxml-chartsheet-page-setup", "1"))
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-paper-size",
+          page_setup.paper_size.to_string(),
+        ),
+      )
+      push_data_attr_opt(
+        out,
+        "data-ooxml-chartsheet-page-setup-paper-height",
+        page_setup.paper_height,
+      )
+      push_data_attr_opt(
+        out,
+        "data-ooxml-chartsheet-page-setup-paper-width",
+        page_setup.paper_width,
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-first-page-number",
+          page_setup.first_page_number.to_string(),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-orientation",
+          page_setup.orientation,
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-use-printer-defaults",
+          bool_data_attr(page_setup.use_printer_defaults),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-black-and-white",
+          bool_data_attr(page_setup.black_and_white),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-draft",
+          bool_data_attr(page_setup.draft),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-use-first-page-number",
+          bool_data_attr(page_setup.use_first_page_number),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-horizontal-dpi",
+          page_setup.horizontal_dpi.to_string(),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-vertical-dpi",
+          page_setup.vertical_dpi.to_string(),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-chartsheet-page-setup-copies",
+          page_setup.copies.to_string(),
+        ),
+      )
+      push_data_attr_opt(
+        out,
+        "data-ooxml-chartsheet-page-setup-r-id",
+        page_setup.r_id,
+      )
+    }
+  }
+}
+
+///|
+fn chartsheet_drawing_layout(width : Double, height : Double) -> SheetLayout {
+  let cols = 16
+  let rows = 24
+  let col_w = width / cols.to_double()
+  let row_h = height / rows.to_double()
+  let column_positions : Array[Double] = []
+  let column_widths : Array[Double] = []
+  for c in 0..<cols {
+    column_positions.push(c.to_double() * col_w)
+    column_widths.push(col_w)
+  }
+  let row_positions : Array[Double] = []
+  let row_heights : Array[Double] = []
+  for r in 0..<rows {
+    row_positions.push(r.to_double() * row_h)
+    row_heights.push(row_h)
+  }
+  {
+    cells: [],
+    total_width: width,
+    total_height: height,
+    column_positions,
+    row_positions,
+    column_widths,
+    row_heights,
+    column_count: cols,
+    row_count: rows,
+    merge_map: {},
   }
 }
 
@@ -1281,6 +1841,76 @@ fn create_empty_result_with_attrs(
     width: 200.0,
     height: 50.0,
     warnings: [],
+  }
+}
+
+///|
+/// Empty worksheet placeholder that still paints §18.3.1.46
+/// `<headerFooter>` text into the page margin bands when present.
+/// A header/footer-only worksheet has no grid extent, so the normal
+/// page assembly path would otherwise return the generic empty-sheet
+/// SVG before the running header/footer text can reach the renderer.
+fn create_empty_sheet_result_with_attrs(
+  domain : @domain.CT_Worksheet,
+  extra : Array[@xml.Attribute],
+) -> SheetSvgResult {
+  let (margin_left, margin_top, margin_right, margin_bottom) = sheet_page_margins_px(
+    domain.element,
+  )
+  let body_width = 200.0
+  let body_height = 50.0
+  let page_width = body_width + margin_left + margin_right
+  let page_height = body_height + margin_top + margin_bottom
+  let header_footer = render_sheet_header_footer(
+    domain.header_footer,
+    page_width,
+    page_height,
+    margin_left,
+    margin_top,
+    margin_right,
+    margin_bottom,
+  )
+  match header_footer {
+    None => create_empty_result_with_attrs(extra)
+    Some(hf_node) => {
+      let attrs : Array[@xml.Attribute] = [
+        svg_attr("width", format_d(page_width)),
+        svg_attr("height", format_d(page_height)),
+        svg_attr(
+          "viewBox",
+          "0 0 " + format_d(page_width) + " " + format_d(page_height),
+        ),
+      ]
+      for a in extra {
+        attrs.push(a)
+      }
+      let root_children : Array[@xml.Node] = [
+        svg_elem(
+          "text",
+          [
+            svg_attr("x", format_d(margin_left + body_width / 2.0)),
+            svg_attr("y", format_d(margin_top + body_height / 2.0)),
+            svg_attr("text-anchor", "middle"),
+            svg_attr("dominant-baseline", "middle"),
+            svg_attr("font-size", "14"),
+            svg_attr("fill", "#999999"),
+          ],
+          [svg_text("(empty sheet)")],
+        ),
+        hf_node,
+      ]
+      let svg_root : @xml.Element = {
+        name: @markup.qname_ns("svg", @markup.svg_ns),
+        attributes: attrs,
+        children: root_children,
+      }
+      {
+        svg: @markup.serialize_svg(svg_root),
+        width: page_width,
+        height: page_height,
+        warnings: [],
+      }
+    }
   }
 }
 
@@ -2266,12 +2896,18 @@ pub(all) enum ResolvedFill {
 ///|
 priv struct ResolvedFont {
   family : String
+  charset : Int?
   size : Double
   bold : Bool
   italic : Bool
   underline : Bool
   strikethrough : Bool
+  outline : Bool
+  shadow : Bool
+  condense : Bool
+  extend : Bool
   color : String?
+  vertical_align : String
 }
 
 ///|
@@ -2312,11 +2948,18 @@ priv struct ResolvedAlignment {
 }
 
 ///|
+priv struct ResolvedCellProtection {
+  locked : Bool?
+  hidden : Bool?
+}
+
+///|
 priv struct ResolvedCellStyle {
   font : ResolvedFont
   fill : ResolvedFill
   border : ResolvedBorder
   alignment : ResolvedAlignment
+  protection : ResolvedCellProtection?
   number_format : String
   /// §18.3.1.28 dataBar overlay geometry produced by `@cf_eval`.
   /// The viewer only scales normalized ratios into SVG coordinates.
@@ -2341,12 +2984,18 @@ fn default_cell_style(options : SheetRenderOptions) -> ResolvedCellStyle {
   {
     font: {
       family: options.default_font_family,
+      charset: None,
       size: options.default_font_size,
       bold: false,
       italic: false,
       underline: false,
       strikethrough: false,
+      outline: false,
+      shadow: false,
+      condense: false,
+      extend: false,
       color: None,
+      vertical_align: "baseline",
     },
     fill: FillNone,
     border: {
@@ -2367,6 +3016,7 @@ fn default_cell_style(options : SheetRenderOptions) -> ResolvedCellStyle {
       shrink_to_fit: false,
       reading_order: 0,
     },
+    protection: None,
     number_format: "General",
     data_bar: None,
     icon: None,
@@ -2425,7 +3075,13 @@ fn resolve_normal_style_font(
     return None
   }
   Some(
-    ct_font_to_resolved(fonts.font[font_id], fallback, theme_map~, theme_fonts~),
+    ct_font_to_resolved(
+      fonts.font[font_id],
+      fallback,
+      theme_map~,
+      theme_fonts~,
+      styles~,
+    ),
   )
 }
 
@@ -2485,7 +3141,12 @@ fn resolve_cell_style(
   // §18.8.1 / §18.8.43 — resolve cellXfs[N].alignment to typed
   // ResolvedAlignment.  Honours @applyAlignment per spec.
   let alignment = resolve_cell_alignment(cell, styles, base.alignment)
-  { ..base, font, number_format, border, fill, alignment }
+  // §18.8.33 / §18.8.45 — resolve cell-level lock / formula-hide
+  // overrides from the same `cellXfs[N]` cascade as the visible style
+  // slots. Sheet/workbook protection gates enforcement elsewhere; the
+  // viewer keeps this style-level metadata attached to the rendered cell.
+  let protection = resolve_cell_protection(cell, styles)
+  { ..base, font, number_format, border, fill, alignment, protection }
 }
 
 ///|
@@ -2563,6 +3224,47 @@ fn resolve_cell_alignment(
 }
 
 ///|
+/// §18.8.33 / §18.8.45 — resolve `<c s="N">` →
+/// `cellXfs[N]/protection` into typed cell protection metadata. Honors
+/// `applyProtection="0"` by inheriting from the named cell style
+/// (`cellStyleXfs[xfId]`) through `inherited_style_xf`.
+fn resolve_cell_protection(
+  cell : @xml.Element,
+  styles : @domain.CT_Stylesheet?,
+) -> ResolvedCellProtection? {
+  let styles_table = match styles {
+    None => return None
+    Some(t) => t
+  }
+  let s_attr = match attr_value_local(cell, "s") {
+    None => return None
+    Some(v) => v
+  }
+  let xf_index = try @string.parse_int(s_attr) catch {
+    _ => return None
+  } noraise {
+    n => n
+  }
+  let cell_xfs = match styles_table.cell_xfs {
+    None => return None
+    Some(xfs) => xfs
+  }
+  if xf_index < 0 || xf_index >= cell_xfs.xf.length() {
+    return None
+  }
+  let xf = cell_xfs.xf[xf_index]
+  let effective_xf = match
+    inherited_style_xf(styles_table, xf, xf.apply_protection) {
+    None => return None
+    Some(e) => e
+  }
+  match effective_xf.protection {
+    None => None
+    Some(p) => Some({ locked: p.locked, hidden: p.hidden })
+  }
+}
+
+///|
 /// §18.8.43 cellXfs / §18.8.22 fonts — resolve the cell's base font
 /// by walking `<c s="N">` → `cellXfs[N].fontId` → `fonts.font[M]`.
 /// Returns `fallback` when the cascade resolves to a missing entry.
@@ -2614,7 +3316,13 @@ fn resolve_cell_font(
   if font_id < 0 || font_id >= fonts.font.length() {
     return fallback
   }
-  ct_font_to_resolved(fonts.font[font_id], fallback, theme_map~, theme_fonts~)
+  ct_font_to_resolved(
+    fonts.font[font_id],
+    fallback,
+    theme_map~,
+    theme_fonts~,
+    styles~,
+  )
 }
 
 ///|
@@ -2633,10 +3341,23 @@ fn ct_font_to_resolved(
   fallback : ResolvedFont,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
   theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
+  styles? : @domain.CT_Stylesheet? = None,
 ) -> ResolvedFont {
-  let named_family = match last_of(font.name) {
+  let name_family = match last_of(font.name) {
     Some(n) => n.val
     None => fallback.family
+  }
+  let named_family = match last_of(font.name) {
+    Some(_) => name_family
+    None =>
+      match last_of(font.family) {
+        Some(f) =>
+          match font_family_code_to_css_generic(f.val) {
+            Some(css) => css
+            None => name_family
+          }
+        None => name_family
+      }
   }
   let family = match last_of(font.scheme) {
     Some(scheme) =>
@@ -2645,6 +3366,10 @@ fn ct_font_to_resolved(
         None => named_family
       }
     None => named_family
+  }
+  let charset = match last_of(font.charset) {
+    Some(c) => Some(c.val)
+    None => fallback.charset
   }
   let size = match last_of(font.sz) {
     Some(s) => s.val
@@ -2666,15 +3391,77 @@ fn ct_font_to_resolved(
     Some(s) => s.val
     None => fallback.strikethrough
   }
+  let outline = last_boolean_font_property(font.outline, fallback.outline)
+  let shadow = last_boolean_font_property(font.shadow, fallback.shadow)
+  let condense = last_boolean_font_property(font.condense, fallback.condense)
+  let extend = last_boolean_font_property(font.extend, fallback.extend)
   let color = match last_of(font.color) {
     Some(c) =>
-      match resolve_color_element_rgb(c.element, theme_map) {
+      match resolve_color_element_rgb(c.element, theme_map, styles~) {
         Some(rgb) => Some(rgb)
         None => fallback.color
       }
     None => fallback.color
   }
-  { family, size, bold, italic, underline, strikethrough, color }
+  let vertical_align = match last_of(font.vert_align) {
+    Some(v) => v.val
+    None => fallback.vertical_align
+  }
+  {
+    family,
+    charset,
+    size,
+    bold,
+    italic,
+    underline,
+    strikethrough,
+    outline,
+    shadow,
+    condense,
+    extend,
+    color,
+    vertical_align,
+  }
+}
+
+///|
+/// §18.8.18 ST_FontFamily classifies a font when no explicit
+/// `<name>` is present. CSS generic families are the closest
+/// renderer-neutral projection of the ECMA-376 classes.
+fn font_family_code_to_css_generic(code : Int) -> String? {
+  match code {
+    1 => Some("serif")
+    2 => Some("sans-serif")
+    3 => Some("monospace")
+    4 => Some("cursive")
+    5 => Some("fantasy")
+    _ => None
+  }
+}
+
+///|
+/// §18.8.22 `<charset>` is a legacy font-selection hint. SVG has no
+/// direct charset property, but `xml:lang` is the portable text-shaping
+/// hint that can influence glyph fallback without naming any renderer's
+/// private substitution table.
+fn font_charset_to_xml_lang(charset : Int) -> String? {
+  match charset {
+    0 | 1 | 77 => Some("en")
+    128 => Some("ja")
+    129 | 130 => Some("ko")
+    134 => Some("zh-CN")
+    136 => Some("zh-TW")
+    161 => Some("el")
+    162 => Some("tr")
+    163 => Some("vi")
+    177 => Some("he")
+    178 => Some("ar")
+    186 => Some("lt")
+    204 => Some("ru")
+    222 => Some("th")
+    238 => Some("cs")
+    _ => None
+  }
 }
 
 ///|
@@ -2684,6 +3471,19 @@ fn[T] last_of(xs : Array[T]) -> T? {
     None
   } else {
     Some(xs[xs.length() - 1])
+  }
+}
+
+///|
+/// §18.8.2 CT_BooleanProperty — font booleans are a repeated choice in
+/// §18.8.22. Match `ct_font_to_resolved`'s last-occurrence rule.
+fn last_boolean_font_property(
+  xs : Array[@domain.CT_BooleanProperty],
+  fallback : Bool,
+) -> Bool {
+  match last_of(xs) {
+    Some(p) => p.val
+    None => fallback
   }
 }
 
@@ -3333,12 +4133,18 @@ fn dxf_font_css(
   }
   let fallback : ResolvedFont = {
     family: "",
+    charset: None,
     size: 0.0,
     bold: false,
     italic: false,
     underline: false,
     strikethrough: false,
+    outline: false,
+    shadow: false,
+    condense: false,
+    extend: false,
     color: None,
+    vertical_align: "baseline",
   }
   ct_font_to_resolved(font, fallback, theme_map~, theme_fonts~).color
 }
@@ -3762,7 +4568,7 @@ fn resolve_cell_fill(
   if fill_id < 0 || fill_id >= fills.fill.length() {
     return fallback
   }
-  ct_fill_to_resolved(fills.fill[fill_id], fallback, theme_map~)
+  ct_fill_to_resolved(fills.fill[fill_id], fallback, theme_map~, styles~)
 }
 
 ///|
@@ -3776,6 +4582,7 @@ fn ct_fill_to_resolved(
   fill : @domain.CT_Fill,
   fallback : ResolvedFill,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  styles? : @domain.CT_Stylesheet? = None,
 ) -> ResolvedFill {
   match fill.pattern_fill {
     Some(pf) => {
@@ -3789,7 +4596,9 @@ fn ct_fill_to_resolved(
           // literal "#000000" overrode the cascade.
           let rgb = match pf.fg_color {
             Some(el) =>
-              resolve_color_element_rgb(el, theme_map).unwrap_or("currentColor")
+              resolve_color_element_rgb(el, theme_map, styles~).unwrap_or(
+                "currentColor",
+              )
             None => "currentColor"
           }
           FillSolid(rgb)
@@ -3805,12 +4614,14 @@ fn ct_fill_to_resolved(
           // the spec-defined pattern identity.
           let fg = match pf.fg_color {
             Some(el) =>
-              resolve_color_element_rgb(el, theme_map).unwrap_or("currentColor")
+              resolve_color_element_rgb(el, theme_map, styles~).unwrap_or(
+                "currentColor",
+              )
             None => "currentColor"
           }
           let bg = match pf.bg_color {
             Some(el) =>
-              match resolve_color_element_rgb(el, theme_map) {
+              match resolve_color_element_rgb(el, theme_map, styles~) {
                 Some(rgb) => rgb
                 None => ""
               }
@@ -3830,7 +4641,7 @@ fn ct_fill_to_resolved(
           for s in gf.stop {
             let color = match s.color {
               Some(el) =>
-                match resolve_color_element_rgb(el, theme_map) {
+                match resolve_color_element_rgb(el, theme_map, styles~) {
                   Some(rgb) => rgb
                   None => "#000000"
                 }
@@ -3897,7 +4708,7 @@ fn resolve_cell_border(
     return fallback
   }
   let border = borders.border[border_id]
-  ct_border_to_resolved(border, fallback, theme_map~)
+  ct_border_to_resolved(border, fallback, theme_map~, styles~)
 }
 
 ///|
@@ -3910,18 +4721,21 @@ fn ct_border_to_resolved(
   border : @domain.CT_Border,
   _fallback : ResolvedBorder,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  styles? : @domain.CT_Stylesheet? = None,
 ) -> ResolvedBorder {
   let left = ct_border_pr_to_resolved(
     prefer_edge(border, "start", "left"),
     theme_map~,
+    styles~,
   )
   let right = ct_border_pr_to_resolved(
     prefer_edge(border, "end", "right"),
     theme_map~,
+    styles~,
   )
-  let top = ct_border_pr_to_resolved(border.top, theme_map~)
-  let bottom = ct_border_pr_to_resolved(border.bottom, theme_map~)
-  let diagonal = ct_border_pr_to_resolved(border.diagonal, theme_map~)
+  let top = ct_border_pr_to_resolved(border.top, theme_map~, styles~)
+  let bottom = ct_border_pr_to_resolved(border.bottom, theme_map~, styles~)
+  let diagonal = ct_border_pr_to_resolved(border.diagonal, theme_map~, styles~)
   {
     left,
     right,
@@ -3970,6 +4784,7 @@ fn prefer_edge(
 fn ct_border_pr_to_resolved(
   edge : @domain.CT_BorderPr?,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  styles? : @domain.CT_Stylesheet? = None,
 ) -> ResolvedBorderEdge? {
   let pr = match edge {
     None => return None
@@ -3981,7 +4796,7 @@ fn ct_border_pr_to_resolved(
   // §18.8.4 — unresolved theme / indexed border colour resolves
   // to the spec-permitted `auto` sentinel; we surface it as
   // `currentColor` so the SVG cascade picks the actual hue.
-  let color = resolve_ct_color_rgb(pr.color, theme_map~).unwrap_or(
+  let color = resolve_ct_color_rgb(pr.color, theme_map~, styles~).unwrap_or(
     "currentColor",
   )
   Some({ style: pr.style, color })
@@ -3997,10 +4812,11 @@ fn ct_border_pr_to_resolved(
 fn resolve_ct_color_rgb(
   color : @domain.CT_Color?,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  styles? : @domain.CT_Stylesheet? = None,
 ) -> String? {
   match color {
     None => None
-    Some(c) => resolve_color_element_rgb(c.element, theme_map)
+    Some(c) => resolve_color_element_rgb(c.element, theme_map, styles~)
   }
 }
 
@@ -4017,6 +4833,7 @@ fn resolve_ct_color_rgb(
 fn resolve_color_element_rgb(
   element : @xml.Element,
   theme_map : SmlThemeColorMap,
+  styles? : @domain.CT_Stylesheet? = None,
 ) -> String? {
   match attr_value_local(element, "rgb") {
     Some(hex) => return Some(normalise_argb_hex(hex))
@@ -4027,7 +4844,7 @@ fn resolve_color_element_rgb(
       try @string.parse_int(idx_str) catch {
         _ => ()
       } noraise {
-        idx => return Some(indexed_color_to_rgb(idx))
+        idx => return Some(indexed_color_to_rgb_for_styles(idx, styles))
       }
     None => ()
   }
@@ -4145,6 +4962,31 @@ fn format_alpha(a : Double) -> String {
       frac_str = frac_str[:frac_str.length() - 1].to_owned()
     }
     int_part.to_string() + "." + frac_str
+  }
+}
+
+///|
+/// §18.8.11 / §18.8.17 — workbook `<colors><indexedColors>`
+/// overrides the legacy indexed palette.  When the requested slot
+/// is absent, fall back to §18.8.27's built-in palette.
+fn indexed_color_to_rgb_for_styles(
+  idx : Int,
+  styles : @domain.CT_Stylesheet?,
+) -> String {
+  guard styles is Some(stylesheet) else { return indexed_color_to_rgb(idx) }
+  guard stylesheet.colors is Some(colors) else {
+    return indexed_color_to_rgb(idx)
+  }
+  guard colors.indexed_colors is Some(indexed_colors) else {
+    return indexed_color_to_rgb(idx)
+  }
+  if idx < 0 || idx >= indexed_colors.rgb_color.length() {
+    return indexed_color_to_rgb(idx)
+  }
+  let color = indexed_colors.rgb_color[idx]
+  match attr_value_local(color.element, "rgb") {
+    Some(hex) => normalise_argb_hex(hex)
+    None => indexed_color_to_rgb(idx)
   }
 }
 
@@ -4456,28 +5298,40 @@ fn builtin_number_format(id : Int, fallback : String) -> String {
 ///|
 /// Parse a §18.4.7 inline `<rPr>` element.  Recognised children:
 /// `<sz val="..."/>`, `<b/>`, `<i/>`, `<u/>`, `<strike/>`,
-/// `<color rgb="..."/>`, `<rFont val="..."/>`, `<scheme val="..."/>`.
+/// `<outline/>`, `<shadow/>`, `<condense/>`, `<extend/>`,
+/// `<color rgb="..."/>`, `<rFont val="..."/>`, `<scheme val="..."/>`,
+/// `<vertAlign val="..."/>`.
 fn parse_inline_font(
   rpr : @xml.Element,
   base : ResolvedFont,
   theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedFont {
   let mut family = base.family
+  let mut charset = base.charset
   let mut scheme_value : String? = None
   let mut size = base.size
   let mut bold = base.bold
   let mut italic = base.italic
   let mut underline = base.underline
   let mut strikethrough = base.strikethrough
+  let mut outline = base.outline
+  let mut shadow = base.shadow
+  let mut condense = base.condense
+  let mut extend = base.extend
   let mut color = base.color
+  let mut vertical_align = base.vertical_align
   for child in rpr.children {
     match child {
       Element(e) =>
         match e.name.local_name {
-          "b" => bold = true
-          "i" => italic = true
-          "u" => underline = true
-          "strike" => strikethrough = true
+          "b" => bold = inline_boolean_font_property(e, true)
+          "i" => italic = inline_boolean_font_property(e, true)
+          "u" => underline = inline_boolean_font_property(e, true)
+          "strike" => strikethrough = inline_boolean_font_property(e, true)
+          "outline" => outline = inline_boolean_font_property(e, true)
+          "shadow" => shadow = inline_boolean_font_property(e, true)
+          "condense" => condense = inline_boolean_font_property(e, true)
+          "extend" => extend = inline_boolean_font_property(e, true)
           "sz" =>
             match attr_value_local(e, "val") {
               Some(v) =>
@@ -4496,6 +5350,35 @@ fn parse_inline_font(
           "scheme" =>
             match attr_value_local(e, "val") {
               Some(v) => scheme_value = Some(v)
+              None => ()
+            }
+          "charset" =>
+            match attr_value_local(e, "val") {
+              Some(v) =>
+                try @string.parse_int(v) catch {
+                  _ => ()
+                } noraise {
+                  n => charset = Some(n)
+                }
+              None => ()
+            }
+          "family" =>
+            match attr_value_local(e, "val") {
+              Some(v) =>
+                try @string.parse_int(v) catch {
+                  _ => ()
+                } noraise {
+                  n =>
+                    match font_family_code_to_css_generic(n) {
+                      Some(generic) => family = generic
+                      None => ()
+                    }
+                }
+              None => ()
+            }
+          "vertAlign" =>
+            match attr_value_local(e, "val") {
+              Some(v) => vertical_align = v
               None => ()
             }
           "color" =>
@@ -4522,24 +5405,59 @@ fn parse_inline_font(
       }
     None => family
   }
-  { family, size, bold, italic, underline, strikethrough, color }
+  {
+    family,
+    charset,
+    size,
+    bold,
+    italic,
+    underline,
+    strikethrough,
+    outline,
+    shadow,
+    condense,
+    extend,
+    color,
+    vertical_align,
+  }
+}
+
+///|
+/// §18.8.2 CT_BooleanProperty lexical space used by inline rich-text
+/// font flags. Missing `@val` defaults to true.
+fn inline_boolean_font_property(element : @xml.Element, default : Bool) -> Bool {
+  match attr_value_local(element, "val") {
+    None => default
+    Some(v) =>
+      match v {
+        "1" | "true" => true
+        "0" | "false" => false
+        _ => default
+      }
+  }
 }
 
 ///|
 /// §18.4.7 / §18.4.12 — structural equality on `ResolvedFont`.  The
 /// struct carries no `derive(Eq)` (it is a private viewer type), so the
-/// rich-text path compares the seven font fields explicitly to decide
+/// rich-text path compares the eight font fields explicitly to decide
 /// (a) whether a single run actually differs from the cell's base font
 /// and (b) whether a cell-level colour override (CF dxf / numFmt
 /// `[Color]`) is active that the per-run path would otherwise drop.
 fn resolved_font_eq(a : ResolvedFont, b : ResolvedFont) -> Bool {
   a.family == b.family &&
+  a.charset == b.charset &&
   a.size == b.size &&
   a.bold == b.bold &&
   a.italic == b.italic &&
   a.underline == b.underline &&
   a.strikethrough == b.strikethrough &&
-  a.color == b.color
+  a.outline == b.outline &&
+  a.shadow == b.shadow &&
+  a.condense == b.condense &&
+  a.extend == b.extend &&
+  a.color == b.color &&
+  a.vertical_align == b.vertical_align
 }
 
 ///|
@@ -7545,6 +8463,49 @@ fn render_cell_icon_metadata(
 }
 
 ///|
+/// §18.8.33 `<protection>` is cell-format metadata rather than a
+/// printable fill/border/font. Preserve it in the SVG as a transparent
+/// cell-extent sidecar so consumers can reconstruct lock / formula-hide
+/// overrides without changing normal spreadsheet appearance.
+fn render_cell_protection_metadata(
+  cell_ref : String,
+  layout : CellLayout,
+  protection : ResolvedCellProtection?,
+) -> @xml.Node? {
+  let p = match protection {
+    None => return None
+    Some(value) => value
+  }
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("class", "cell-protection-marker"),
+    svg_attr("x", format_d(layout.x)),
+    svg_attr("y", format_d(layout.y)),
+    svg_attr("width", format_d(layout.width)),
+    svg_attr("height", format_d(layout.height)),
+    svg_attr("fill", "transparent"),
+    svg_attr("stroke", "none"),
+    svg_attr("pointer-events", "none"),
+    svg_attr("data-ooxml-cell-ref", cell_ref),
+    svg_attr("data-ooxml-cell-protection", "1"),
+  ]
+  match p.locked {
+    Some(v) =>
+      attrs.push(
+        svg_attr("data-ooxml-cell-protection-locked", if v { "1" } else { "0" }),
+      )
+    None => ()
+  }
+  match p.hidden {
+    Some(v) =>
+      attrs.push(
+        svg_attr("data-ooxml-cell-protection-hidden", if v { "1" } else { "0" }),
+      )
+    None => ()
+  }
+  Some(svg_elem("rect", attrs, []))
+}
+
+///|
 /// §18.3.1.49 — same as `render_cell_text` but shifts the text's
 /// horizontal anchor to the right by `offset_x` (the iconSet glyph's
 /// reserved width). When `offset_x == 0` the behaviour is identical
@@ -7983,8 +8944,30 @@ fn append_tspan_font_attrs(
   if font.family != base.family {
     attrs.push(svg_attr("font-family", "'" + font.family + "', sans-serif"))
   }
+  if font.charset != base.charset {
+    match font.charset {
+      Some(charset) =>
+        match font_charset_to_xml_lang(charset) {
+          Some(lang) => attrs.push(svg_attr("xml:lang", lang))
+          None => ()
+        }
+      None => ()
+    }
+  }
   if font.size != base.size {
     attrs.push(svg_attr("font-size", format_d(font.size) + "pt"))
+  }
+  if font.vertical_align != base.vertical_align {
+    attrs.push(svg_attr("baseline-shift", font_baseline_shift(font)))
+  }
+  if font.outline != base.outline || (font.outline && font.color != base.color) {
+    append_font_outline_attrs(attrs, font)
+  }
+  if font.shadow != base.shadow {
+    append_font_shadow_attrs(attrs, font.shadow)
+  }
+  if font.condense != base.condense || font.extend != base.extend {
+    attrs.push(svg_attr("font-stretch", font_stretch(font)))
   }
   if font.bold != base.bold {
     attrs.push(
@@ -8647,12 +9630,33 @@ fn append_font_attrs(
   font : ResolvedFont,
 ) -> Unit {
   attrs.push(svg_attr("font-family", "'" + font.family + "', sans-serif"))
+  match font.charset {
+    Some(charset) =>
+      match font_charset_to_xml_lang(charset) {
+        Some(lang) => attrs.push(svg_attr("xml:lang", lang))
+        None => ()
+      }
+    None => ()
+  }
   attrs.push(svg_attr("font-size", format_d(font.size) + "pt"))
   if font.bold {
     attrs.push(svg_attr("font-weight", "bold"))
   }
   if font.italic {
     attrs.push(svg_attr("font-style", "italic"))
+  }
+  if font.vertical_align != "baseline" {
+    attrs.push(svg_attr("baseline-shift", font_baseline_shift(font)))
+  }
+  if font.outline {
+    append_font_outline_attrs(attrs, font)
+  }
+  if font.shadow {
+    append_font_shadow_attrs(attrs, true)
+  }
+  let stretch = font_stretch(font)
+  if stretch != "normal" {
+    attrs.push(svg_attr("font-stretch", stretch))
   }
   match font.color {
     Some(c) => attrs.push(svg_attr("fill", c))
@@ -8677,6 +9681,76 @@ fn append_font_attrs(
       }
     }
     attrs.push(svg_attr("text-decoration", decoration))
+  }
+}
+
+///|
+/// §18.4.13 ST_VerticalAlignRun — map SpreadsheetML run vertical
+/// alignment to SVG's baseline-shift vocabulary. Unknown values are
+/// schema-invalid for conforming input; keep them visually neutral.
+fn font_baseline_shift(font : ResolvedFont) -> String {
+  match font.vertical_align {
+    "superscript" => "super"
+    "subscript" => "sub"
+    _ => "baseline"
+  }
+}
+
+///|
+/// §18.8.22 font `<outline>` — SVG text can express an outline via a
+/// stroke on glyph contours. Keep fill unchanged so small spreadsheet
+/// text remains legible while still surfacing the font effect.
+fn append_font_outline_attrs(
+  attrs : Array[@xml.Attribute],
+  font : ResolvedFont,
+) -> Unit {
+  if font.outline {
+    attrs.push(svg_attr("stroke", font_paint_color(font)))
+    attrs.push(svg_attr("stroke-width", "0.35pt"))
+    attrs.push(svg_attr("stroke-linejoin", "round"))
+    attrs.push(svg_attr("paint-order", "stroke fill"))
+  } else {
+    attrs.push(svg_attr("stroke", "none"))
+    attrs.push(svg_attr("paint-order", "normal"))
+  }
+}
+
+///|
+/// §18.8.22 font `<shadow>` — map the legacy spreadsheet font effect
+/// to CSS drop-shadow on the SVG text node. This is a visible SVG
+/// presentation property, not catalog-only metadata.
+fn append_font_shadow_attrs(
+  attrs : Array[@xml.Attribute],
+  enabled : Bool,
+) -> Unit {
+  if enabled {
+    attrs.push(
+      svg_attr("style", "filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.35))"),
+    )
+  } else {
+    attrs.push(svg_attr("style", "filter:none"))
+  }
+}
+
+///|
+/// §18.8.22 font `<condense>` / `<extend>` — SVG/CSS exposes this
+/// axis as `font-stretch`. If both legacy flags are present, prefer
+/// `extend` because expanded glyphs are the less lossy visible signal.
+fn font_stretch(font : ResolvedFont) -> String {
+  if font.extend {
+    "expanded"
+  } else if font.condense {
+    "condensed"
+  } else {
+    "normal"
+  }
+}
+
+///|
+fn font_paint_color(font : ResolvedFont) -> String {
+  match font.color {
+    Some(c) => c
+    None => "currentColor"
   }
 }
 
@@ -10590,7 +11664,9 @@ fn render_pane_split_lines(
 /// transparent `<rect data-ooxml-phonetic="…">` per shared-string
 /// cell whose `<si>` entry declares phonetic-guide (`<rPh>`)
 /// runs.  The attribute carries the concatenated furigana so
-/// consumers can render ruby text above the base cell value.
+/// consumers can render ruby text above the base cell value; the
+/// optional §18.4.3 `<phoneticPr>` properties are attached to the
+/// same sidecar as font/alignment metadata.
 fn render_sheet_phonetics(
   cell_map : Map[String, @xml.Element],
   layout : SheetLayout,
@@ -10618,23 +11694,39 @@ fn render_sheet_phonetics(
               } noraise {
                 idx =>
                   if idx >= 0 && idx < sst.si_entries.length() {
-                    let phon = sst.si_entries[idx].phonetic_text()
+                    let entry = sst.si_entries[idx]
+                    let phon = entry.phonetic_text()
                     if phon.length() > 0 {
-                      rects.push(
-                        svg_elem(
-                          "rect",
-                          [
-                            svg_attr("x", format_d(cl.x)),
-                            svg_attr("y", format_d(cl.y)),
-                            svg_attr("width", format_d(cl.width)),
-                            svg_attr("height", format_d(cl.height)),
-                            svg_attr("fill", "transparent"),
-                            svg_attr("data-ooxml-cell-ref", cell_ref),
-                            svg_attr("data-ooxml-phonetic", phon),
-                          ],
-                          [],
-                        ),
-                      )
+                      let attrs : Array[@xml.Attribute] = [
+                        svg_attr("x", format_d(cl.x)),
+                        svg_attr("y", format_d(cl.y)),
+                        svg_attr("width", format_d(cl.width)),
+                        svg_attr("height", format_d(cl.height)),
+                        svg_attr("fill", "transparent"),
+                        svg_attr("data-ooxml-cell-ref", cell_ref),
+                        svg_attr("data-ooxml-phonetic", phon),
+                      ]
+                      match entry.phonetic_pr {
+                        Some(pr) => {
+                          attrs.push(
+                            svg_attr(
+                              "data-ooxml-phonetic-font-id",
+                              pr.font_id.to_string(),
+                            ),
+                          )
+                          attrs.push(
+                            svg_attr("data-ooxml-phonetic-type", pr.type_),
+                          )
+                          attrs.push(
+                            svg_attr(
+                              "data-ooxml-phonetic-alignment",
+                              pr.alignment,
+                            ),
+                          )
+                        }
+                        None => ()
+                      }
+                      rects.push(svg_elem("rect", attrs, []))
                     }
                   }
               }
@@ -11329,6 +12421,15 @@ fn sheet_print_options(worksheet : @xml.Element) -> Array[(String, String)] {
 /// graph offers no ancestry path through a part root.
 
 ///|
+fn bool_data_attr(value : Bool) -> String {
+  if value {
+    "1"
+  } else {
+    "0"
+  }
+}
+
+///|
 /// §18.2.1 — emit `data-ooxml-*` attributes for every workbook-level
 /// metadata element this renderer recognises (`<workbookProtection>`,
 /// `<fileSharing>`, `<fileVersion>`, `<workbookPr>`, `<bookViews>`,
@@ -11408,18 +12509,137 @@ fn emit_workbook_metadata_attrs(
       }
     }
   }
-  // §18.2.6 bookViews — count of declared workbook views.
+  // §18.2.6 bookViews / §18.2.1 workbookView — workbook-window
+  // view state.  Count alone is not enough because the workbook host
+  // may already carry a scaffold view; emit typed per-view metadata.
   match first_child_named_local(wb, "bookViews") {
     None => ()
     Some(bv) => {
-      let mut n = 0
-      for child in bv.children {
-        if child is @xml.Node::Element(ce) &&
-          ce.name.local_name == "workbookView" {
-          n = n + 1
+      emit_source_element_attrs("data-ooxml-wb-book-views", bv, out)
+      let source_views = direct_children_named_local(bv, "workbookView")
+      out.push(
+        svg_attr(
+          "data-ooxml-wb-book-views-source-count",
+          source_views.length().to_string(),
+        ),
+      )
+      for i, source_view in source_views {
+        let source_prefix = "data-ooxml-wb-book-views-source-" + i.to_string()
+        emit_source_element_attrs(source_prefix, source_view, out)
+        match first_child_named_local(source_view, "extLst") {
+          None => ()
+          Some(ext_lst) => {
+            let ext_count = direct_children_named_local(ext_lst, "ext").length()
+            out.push(
+              svg_attr(source_prefix + "-ext-count", ext_count.to_string()),
+            )
+          }
         }
       }
-      out.push(svg_attr("data-ooxml-wb-book-views-count", n.to_string()))
+      let book_views = try @domain.CT_BookViews::new(bv) catch {
+        _ => None
+      } noraise {
+        value => Some(value)
+      }
+      match book_views {
+        None => ()
+        Some(book_views) => {
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-book-views-count",
+              book_views.views.length().to_string(),
+            ),
+          )
+          for i, view in book_views.views {
+            let prefix = "data-ooxml-wb-book-view-" + i.to_string()
+            out.push(
+              svg_attr(prefix + "-active-tab", view.active_tab.to_string()),
+            )
+            out.push(
+              svg_attr(prefix + "-first-sheet", view.first_sheet.to_string()),
+            )
+            out.push(svg_attr(prefix + "-visibility", view.visibility))
+            out.push(
+              svg_attr(
+                prefix + "-show-sheet-tabs",
+                bool_data_attr(view.show_sheet_tabs),
+              ),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-show-horizontal-scroll",
+                bool_data_attr(view.show_horizontal_scroll),
+              ),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-show-vertical-scroll",
+                bool_data_attr(view.show_vertical_scroll),
+              ),
+            )
+            out.push(
+              svg_attr(prefix + "-window-width", view.window_width.to_string()),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-window-height",
+                view.window_height.to_string(),
+              ),
+            )
+            out.push(
+              svg_attr(prefix + "-tab-ratio", view.tab_ratio.to_string()),
+            )
+          }
+        }
+      }
+    }
+  }
+  // §18.2.20 sheets / §18.2.19 sheet — workbook tab list.  Surface
+  // each sheet's typed name/id/state/r:id so a real workbook tab
+  // configuration is visible in the SVG root metadata.
+  match first_child_named_local(wb, "sheets") {
+    None => ()
+    Some(sheets_el) => {
+      emit_source_element_attrs("data-ooxml-wb-sheets", sheets_el, out)
+      let source_sheets = direct_children_named_local(sheets_el, "sheet")
+      out.push(
+        svg_attr(
+          "data-ooxml-wb-sheets-source-count",
+          source_sheets.length().to_string(),
+        ),
+      )
+      for i, source_sheet in source_sheets {
+        emit_source_element_attrs(
+          "data-ooxml-wb-sheets-source-" + i.to_string(),
+          source_sheet,
+          out,
+        )
+      }
+      let sheets = try @domain.CT_Sheets::new(sheets_el) catch {
+        _ => None
+      } noraise {
+        value => Some(value)
+      }
+      match sheets {
+        None => ()
+        Some(sheets) => {
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-sheets-count",
+              sheets.sheets.length().to_string(),
+            ),
+          )
+          for i, sheet in sheets.sheets {
+            let prefix = "data-ooxml-wb-sheet-" + i.to_string()
+            out.push(svg_attr(prefix + "-name", sheet.name))
+            out.push(svg_attr(prefix + "-sheet-id", sheet.sheet_id.to_string()))
+            out.push(svg_attr(prefix + "-state", sheet.state))
+            if sheet.r_id != "" {
+              out.push(svg_attr(prefix + "-rid", sheet.r_id))
+            }
+          }
+        }
+      }
     }
   }
   // §18.2.2 calcPr — calculation mode + iteration flags.
@@ -11450,69 +12670,17 @@ fn emit_workbook_metadata_attrs(
   match first_child_named_local(wb, "externalReferences") {
     None => ()
     Some(er) => {
-      let mut n = 0
-      let mut book_idx = 0
-      for child in er.children {
-        if child is @xml.Node::Element(ce) &&
-          ce.name.local_name == "externalReference" {
-          n = n + 1
-          // §18.14.4 CT_ExternalLink — xsd:choice of externalBook /
-          // ddeLink / oleLink. Surface the chosen arm's identifying
-          // attribute(s) so consumers can locate the linked source
-          // without re-parsing the workbook.
-          match first_child_named_local(ce, "externalBook") {
-            None => ()
-            Some(eb) => {
-              book_idx = book_idx + 1
-              let idx_str = book_idx.to_string()
-              // §18.14.5 CT_ExternalBook — required `r:id` references
-              // the external link relationship (the actual workbook
-              // target). Look up by local name so a missing/aliased
-              // `r` prefix still resolves.
-              let mut rid : String? = None
-              for a in eb.attributes {
-                if a.name.local_name == "id" {
-                  rid = Some(a.value)
-                }
-              }
-              match rid {
-                Some(v) =>
-                  out.push(
-                    @markup.attr(
-                      "data-ooxml-external-book-" + idx_str + "-rid",
-                      v,
-                    ),
-                  )
-                None => ()
-              }
-              // §18.14.10 sheetNames — surface the inline sheet count
-              // so a workbook that lists referenced sheets renders
-              // distinctly from one that doesn't.
-              match first_child_named_local(eb, "sheetNames") {
-                None => ()
-                Some(sn) => {
-                  let mut sheet_n = 0
-                  for kid in sn.children {
-                    if kid is @xml.Node::Element(skn) &&
-                      skn.name.local_name == "sheetName" {
-                      sheet_n = sheet_n + 1
-                    }
-                  }
-                  out.push(
-                    @markup.attr(
-                      "data-ooxml-external-book-" + idx_str + "-sheets",
-                      sheet_n.to_string(),
-                    ),
-                  )
-                }
-              }
-            }
-          }
-        }
-      }
+      let refs = @domain.CT_ExternalReferences::new(er)
       out.push(
-        svg_attr("data-ooxml-wb-external-references-count", n.to_string()),
+        svg_attr(
+          "data-ooxml-wb-external-references-count",
+          refs.external_references.length().to_string(),
+        ),
       )
+      for i, ext_ref in refs.external_references {
+        let prefix = "data-ooxml-wb-external-reference-" + i.to_string()
+        out.push(svg_attr(prefix + "-rid", ext_ref.r_id))
+      }
     }
   }
   // §18.2.7 definedNames — count + flattened (name|sheetId|sqref) list.
@@ -11543,43 +12711,104 @@ fn emit_workbook_metadata_attrs(
   match first_child_named_local(wb, "pivotCaches") {
     None => ()
     Some(pc) => {
-      let mut n = 0
-      for child in pc.children {
-        if child is @xml.Node::Element(ce) && ce.name.local_name == "pivotCache" {
-          n = n + 1
+      let pivot_caches = try @domain.CT_PivotCaches::new(pc) catch {
+        _ => None
+      } noraise {
+        value => Some(value)
+      }
+      match pivot_caches {
+        None => ()
+        Some(pivot_caches) => {
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-pivot-caches-count",
+              pivot_caches.pivot_cache.length().to_string(),
+            ),
+          )
+          for i, cache in pivot_caches.pivot_cache {
+            let prefix = "data-ooxml-wb-pivot-cache-" + i.to_string()
+            out.push(svg_attr(prefix + "-cache-id", cache.cache_id.to_string()))
+            out.push(svg_attr(prefix + "-rid", cache.r_id))
+          }
         }
       }
-      out.push(svg_attr("data-ooxml-wb-pivot-caches-count", n.to_string()))
     }
   }
-  // §18.2.5 customWorkbookViews — count.
+  // §18.2.5 customWorkbookViews / §18.2.4 customWorkbookView —
+  // named workbook views with window/tab state.
   match first_child_named_local(wb, "customWorkbookViews") {
     None => ()
     Some(cwv) => {
-      let mut n = 0
-      for child in cwv.children {
-        if child is @xml.Node::Element(ce) &&
-          ce.name.local_name == "customWorkbookView" {
-          n = n + 1
+      let views = try @domain.CT_CustomWorkbookViews::new(cwv) catch {
+        _ => None
+      } noraise {
+        value => Some(value)
+      }
+      match views {
+        None => ()
+        Some(views) => {
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-custom-workbook-views-count",
+              views.views.length().to_string(),
+            ),
+          )
+          for i, view in views.views {
+            let prefix = "data-ooxml-wb-custom-workbook-view-" + i.to_string()
+            out.push(svg_attr(prefix + "-name", view.name))
+            out.push(svg_attr(prefix + "-guid", view.guid))
+            out.push(
+              svg_attr(
+                prefix + "-active-sheet-id",
+                view.active_sheet_id.to_string(),
+              ),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-show-sheet-tabs",
+                bool_data_attr(view.show_sheet_tabs),
+              ),
+            )
+            out.push(svg_attr(prefix + "-show-comments", view.show_comments))
+            out.push(svg_attr(prefix + "-show-objects", view.show_objects))
+          }
         }
       }
-      out.push(
-        svg_attr("data-ooxml-wb-custom-workbook-views-count", n.to_string()),
-      )
     }
   }
   // §18.2.14 functionGroups — function library count.
   match first_child_named_local(wb, "functionGroups") {
     None => ()
     Some(fg) => {
-      let mut n = 0
-      for child in fg.children {
-        if child is @xml.Node::Element(ce) &&
-          ce.name.local_name == "functionGroup" {
-          n = n + 1
+      let function_groups = try @domain.CT_FunctionGroups::new(fg) catch {
+        _ => None
+      } noraise {
+        value => Some(value)
+      }
+      match function_groups {
+        None => ()
+        Some(function_groups) => {
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-function-groups-count",
+              function_groups.function_group.length().to_string(),
+            ),
+          )
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-function-groups-built-in-count",
+              function_groups.built_in_group_count.to_string(),
+            ),
+          )
+          for i, group in function_groups.function_group {
+            let prefix = "data-ooxml-wb-function-group-" + i.to_string()
+            match group.name {
+              Some(v) => out.push(svg_attr(prefix + "-name", v))
+              None => ()
+            }
+          }
         }
       }
-      out.push(svg_attr("data-ooxml-wb-function-groups-count", n.to_string()))
     }
   }
   // §18.2.24 smartTagPr / §18.2.25 smartTagTypes — flag presence.
@@ -11598,14 +12827,28 @@ fn emit_workbook_metadata_attrs(
   match first_child_named_local(wb, "smartTagTypes") {
     None => ()
     Some(stt) => {
-      let mut n = 0
-      for child in stt.children {
-        if child is @xml.Node::Element(ce) &&
-          ce.name.local_name == "smartTagType" {
-          n = n + 1
+      let smart_tag_types = @domain.CT_SmartTagTypes::new(stt)
+      out.push(
+        svg_attr(
+          "data-ooxml-wb-smart-tag-types-count",
+          smart_tag_types.smart_tag_type.length().to_string(),
+        ),
+      )
+      for i, tag_type in smart_tag_types.smart_tag_type {
+        let prefix = "data-ooxml-wb-smart-tag-type-" + i.to_string()
+        match tag_type.namespace_uri {
+          Some(v) => out.push(svg_attr(prefix + "-namespace-uri", v))
+          None => ()
+        }
+        match tag_type.name {
+          Some(v) => out.push(svg_attr(prefix + "-name", v))
+          None => ()
+        }
+        match tag_type.url {
+          Some(v) => out.push(svg_attr(prefix + "-url", v))
+          None => ()
         }
       }
-      out.push(svg_attr("data-ooxml-wb-smart-tag-types-count", n.to_string()))
     }
   }
   // §18.2.27 webPublishing — flag presence + key attrs.
@@ -11642,16 +12885,44 @@ fn emit_workbook_metadata_attrs(
   match first_child_named_local(wb, "webPublishObjects") {
     None => ()
     Some(wpo) => {
-      let mut n = 0
-      for child in wpo.children {
-        if child is @xml.Node::Element(ce) &&
-          ce.name.local_name == "webPublishObject" {
-          n = n + 1
+      let objects = try @domain.CT_WebPublishObjects::new(wpo) catch {
+        _ => None
+      } noraise {
+        value => Some(value)
+      }
+      match objects {
+        None => ()
+        Some(objects) => {
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-web-publish-objects-count",
+              objects.objects.length().to_string(),
+            ),
+          )
+          out.push(
+            svg_attr(
+              "data-ooxml-wb-web-publish-objects-declared-count",
+              objects.count.to_string(),
+            ),
+          )
+          for i, obj in objects.objects {
+            let prefix = "data-ooxml-wb-web-publish-object-" + i.to_string()
+            out.push(svg_attr(prefix + "-id", obj.id.to_string()))
+            out.push(svg_attr(prefix + "-div-id", obj.div_id))
+            out.push(svg_attr(prefix + "-source-object", obj.source_object))
+            out.push(
+              svg_attr(prefix + "-destination-file", obj.destination_file),
+            )
+            out.push(svg_attr(prefix + "-title", obj.title))
+            out.push(
+              svg_attr(
+                prefix + "-auto-republish",
+                bool_data_attr(obj.auto_republish),
+              ),
+            )
+          }
         }
       }
-      out.push(
-        svg_attr("data-ooxml-wb-web-publish-objects-count", n.to_string()),
-      )
     }
   }
   // §18.2.20 oleSize — single attribute.
@@ -11667,13 +12938,19 @@ fn emit_workbook_metadata_attrs(
   match first_child_named_local(wb, "extLst") {
     None => ()
     Some(el) => {
-      let mut n = 0
-      for child in el.children {
-        if child is @xml.Node::Element(ce) && ce.name.local_name == "ext" {
-          n = n + 1
+      emit_source_element_attrs("data-ooxml-wb-ext-lst", el, out)
+      let ext_items = direct_children_named_local(el, "ext")
+      out.push(
+        svg_attr("data-ooxml-wb-ext-lst-count", ext_items.length().to_string()),
+      )
+      for i, ext in ext_items {
+        let prefix = "data-ooxml-wb-ext-" + i.to_string()
+        emit_source_element_attrs(prefix, ext, out)
+        match attr_value_local(ext, "uri") {
+          Some(uri) => out.push(svg_attr(prefix + "-uri", uri))
+          None => ()
         }
       }
-      out.push(svg_attr("data-ooxml-wb-ext-lst-count", n.to_string()))
     }
   }
 }
@@ -11721,9 +12998,2967 @@ fn emit_stylesheet_metadata_attrs(
 }
 
 ///|
+fn push_data_attr_opt(
+  out : Array[@xml.Attribute],
+  name : String,
+  value : String?,
+) -> Unit {
+  match value {
+    Some(v) => out.push(svg_attr(name, v))
+    None => ()
+  }
+}
+
+///|
+fn push_data_attr_int_opt(
+  out : Array[@xml.Attribute],
+  name : String,
+  value : Int?,
+) -> Unit {
+  match value {
+    Some(v) => out.push(svg_attr(name, v.to_string()))
+    None => ()
+  }
+}
+
+///|
+fn push_data_attr_bool_opt(
+  out : Array[@xml.Attribute],
+  name : String,
+  value : Bool?,
+) -> Unit {
+  match value {
+    Some(v) => out.push(svg_attr(name, bool_data_attr(v)))
+    None => ()
+  }
+}
+
+///|
+/// §18.6 `/xl/calcChain.xml` — calculation-chain metadata is not
+/// paintable sheet content, but it is workbook-visible formula state.
+/// Surface the typed chain entries so catalog routing can observe the
+/// part through the public xlsx render path.
+fn emit_calc_chain_metadata_attrs(
+  calc_chain : @domain.CT_CalcChain?,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match calc_chain {
+    None => ()
+    Some(chain) => {
+      out.push(svg_attr("data-ooxml-calc-chain", "1"))
+      out.push(
+        svg_attr(
+          "data-ooxml-calc-chain-cell-count",
+          chain.c.length().to_string(),
+        ),
+      )
+      for i, cell in chain.c {
+        let prefix = "data-ooxml-calc-chain-cell-" + i.to_string()
+        out.push(svg_attr(prefix + "-r", cell.r))
+        out.push(svg_attr(prefix + "-i", cell.i.to_string()))
+        out.push(svg_attr(prefix + "-s", bool_data_attr(cell.s)))
+        out.push(svg_attr(prefix + "-l", bool_data_attr(cell.l)))
+        out.push(svg_attr(prefix + "-t", bool_data_attr(cell.t)))
+        out.push(svg_attr(prefix + "-a", bool_data_attr(cell.a)))
+        if cell.ref_range != "" {
+          out.push(svg_attr(prefix + "-ref", cell.ref_range))
+        }
+      }
+      match chain.ext_lst {
+        None => ()
+        Some(ext_lst) =>
+          out.push(
+            svg_attr(
+              "data-ooxml-calc-chain-ext-count",
+              ext_lst.ext.length().to_string(),
+            ),
+          )
+      }
+    }
+  }
+}
+
+///|
+/// §18.16 `/xl/xmlMaps.xml` — typed Custom XML Mapping part.
+/// `CT_MapInfo` is workbook-level; worksheet/table XML mapping
+/// references point back to these map ids.
+fn emit_xml_maps_metadata_attrs(
+  xml_maps : @domain.CT_MapInfo?,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match xml_maps {
+    None => ()
+    Some(info) => {
+      out.push(svg_attr("data-ooxml-xml-maps", "1"))
+      out.push(
+        svg_attr(
+          "data-ooxml-xml-maps-selection-namespaces",
+          info.selection_namespaces,
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-xml-maps-schema-count",
+          info.schemas.length().to_string(),
+        ),
+      )
+      for i, schema in info.schemas {
+        let prefix = "data-ooxml-xml-map-schema-" + i.to_string()
+        out.push(svg_attr(prefix + "-id", schema.id))
+        push_data_attr_opt(out, prefix + "-schema-ref", schema.schema_ref)
+        push_data_attr_opt(out, prefix + "-namespace", schema.ns)
+        push_data_attr_opt(
+          out,
+          prefix + "-schema-language",
+          schema.schema_language,
+        )
+      }
+      out.push(
+        svg_attr(
+          "data-ooxml-xml-maps-map-count",
+          info.maps.length().to_string(),
+        ),
+      )
+      for i, map in info.maps {
+        let prefix = "data-ooxml-xml-map-" + i.to_string()
+        out.push(svg_attr(prefix + "-id", map.id.to_string()))
+        out.push(svg_attr(prefix + "-name", map.name))
+        out.push(svg_attr(prefix + "-root-element", map.root_element))
+        out.push(svg_attr(prefix + "-schema-id", map.schema_id))
+        out.push(
+          svg_attr(
+            prefix + "-show-import-export-validation-errors",
+            bool_data_attr(map.show_import_export_validation_errors),
+          ),
+        )
+        out.push(svg_attr(prefix + "-auto-fit", bool_data_attr(map.auto_fit)))
+        out.push(svg_attr(prefix + "-append", bool_data_attr(map.append)))
+        out.push(
+          svg_attr(
+            prefix + "-preserve-sort-af-layout",
+            bool_data_attr(map.preserve_sort_af_layout),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-preserve-format",
+            bool_data_attr(map.preserve_format),
+          ),
+        )
+        match map.data_binding {
+          None => ()
+          Some(binding) => {
+            let binding_prefix = prefix + "-data-binding"
+            out.push(svg_attr(binding_prefix, "1"))
+            out.push(
+              svg_attr(
+                binding_prefix + "-load-mode",
+                binding.data_binding_load_mode.to_string(),
+              ),
+            )
+            push_data_attr_opt(
+              out,
+              binding_prefix + "-name",
+              binding.data_binding_name,
+            )
+            push_data_attr_bool_opt(
+              out,
+              binding_prefix + "-file-binding",
+              binding.file_binding,
+            )
+            push_data_attr_int_opt(
+              out,
+              binding_prefix + "-connection-id",
+              binding.connection_id,
+            )
+            push_data_attr_opt(
+              out,
+              binding_prefix + "-file-binding-name",
+              binding.file_binding_name,
+            )
+            out.push(
+              svg_attr(
+                binding_prefix + "-any-child-count",
+                binding.any_children.length().to_string(),
+              ),
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+/// §18.15 `/xl/volatileDependencies.xml` — volatile formula dependency
+/// metadata. The typed part records RTD/OLAP topic chains and their
+/// target cell refs.
+fn emit_volatile_dependencies_metadata_attrs(
+  volatile_dependencies : @domain.CT_VolTypes?,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match volatile_dependencies {
+    None => ()
+    Some(types) => {
+      out.push(svg_attr("data-ooxml-volatile-dependencies", "1"))
+      out.push(
+        svg_attr(
+          "data-ooxml-volatile-dependency-type-count",
+          types.vol_types.length().to_string(),
+        ),
+      )
+      for i, vol_type in types.vol_types {
+        let prefix = "data-ooxml-volatile-dependency-type-" + i.to_string()
+        out.push(svg_attr(prefix + "-type", vol_type.type_))
+        out.push(
+          svg_attr(prefix + "-main-count", vol_type.mains.length().to_string()),
+        )
+        for j, main in vol_type.mains {
+          let main_prefix = prefix + "-main-" + j.to_string()
+          out.push(svg_attr(main_prefix + "-first", main.first))
+          out.push(
+            svg_attr(
+              main_prefix + "-topic-count",
+              main.tps.length().to_string(),
+            ),
+          )
+          for k, topic in main.tps {
+            let topic_prefix = main_prefix + "-topic-" + k.to_string()
+            push_data_attr_opt(out, topic_prefix + "-t", topic.t)
+            out.push(svg_attr(topic_prefix + "-v", topic.v))
+            out.push(
+              svg_attr(
+                topic_prefix + "-stp-count",
+                topic.stps.length().to_string(),
+              ),
+            )
+            for l, stp in topic.stps {
+              out.push(svg_attr(topic_prefix + "-stp-" + l.to_string(), stp))
+            }
+            out.push(
+              svg_attr(
+                topic_prefix + "-ref-count",
+                topic.trs.length().to_string(),
+              ),
+            )
+            for l, ref_ in topic.trs {
+              let ref_prefix = topic_prefix + "-ref-" + l.to_string()
+              out.push(svg_attr(ref_prefix + "-r", ref_.r))
+              out.push(svg_attr(ref_prefix + "-s", ref_.s.to_string()))
+            }
+          }
+        }
+      }
+      match types.ext_lst {
+        None => ()
+        Some(ext_lst) =>
+          out.push(
+            svg_attr(
+              "data-ooxml-volatile-dependency-ext-count",
+              ext_lst.ext.length().to_string(),
+            ),
+          )
+      }
+    }
+  }
+}
+
+///|
+/// §18.9 `/xl/metadata.xml` — surface the typed workbook metadata
+/// part. Cells refer to this store through `@cm` / `@vm`; the part
+/// itself is not paintable, but its typed records are document-visible
+/// state and must reach the render trace.
+fn emit_metadata_part_attrs(
+  metadata : @domain.CT_Metadata?,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match metadata {
+    None => ()
+    Some(metadata) => {
+      out.push(svg_attr("data-ooxml-metadata", "1"))
+      match metadata.metadata_types {
+        None => ()
+        Some(types) => {
+          out.push(svg_attr("data-ooxml-metadata-types", "1"))
+          out.push(
+            svg_attr("data-ooxml-metadata-types-count", types.count.to_string()),
+          )
+          out.push(
+            svg_attr(
+              "data-ooxml-metadata-types-entry-count",
+              types.metadata_types.length().to_string(),
+            ),
+          )
+          for i, metadata_type in types.metadata_types {
+            emit_metadata_type_attrs(metadata_type, i, out)
+          }
+        }
+      }
+      match metadata.metadata_strings {
+        None => ()
+        Some(strings) => {
+          out.push(svg_attr("data-ooxml-metadata-strings", "1"))
+          out.push(
+            svg_attr(
+              "data-ooxml-metadata-strings-count",
+              strings.count.to_string(),
+            ),
+          )
+          out.push(
+            svg_attr(
+              "data-ooxml-metadata-strings-entry-count",
+              strings.strings.length().to_string(),
+            ),
+          )
+          for i, string_item in strings.strings {
+            out.push(
+              svg_attr(
+                "data-ooxml-metadata-string-" + i.to_string() + "-v",
+                string_item.v,
+              ),
+            )
+          }
+        }
+      }
+      match metadata.mdx_metadata {
+        None => ()
+        Some(mdx_metadata) => emit_mdx_metadata_attrs(mdx_metadata, out)
+      }
+      out.push(
+        svg_attr(
+          "data-ooxml-metadata-future-metadata-count",
+          metadata.future_metadata.length().to_string(),
+        ),
+      )
+      for i, future in metadata.future_metadata {
+        let prefix = "data-ooxml-metadata-future-metadata-" + i.to_string()
+        out.push(svg_attr(prefix + "-name", future.name))
+        out.push(svg_attr(prefix + "-count", future.count.to_string()))
+        out.push(
+          svg_attr(prefix + "-bk-count", future.blocks.length().to_string()),
+        )
+        for j, block in future.blocks {
+          let block_prefix = prefix + "-bk-" + j.to_string()
+          out.push(svg_attr(block_prefix, "1"))
+          match block.ext_lst {
+            Some(_) => out.push(svg_attr(block_prefix + "-ext-lst", "1"))
+            None => ()
+          }
+        }
+      }
+      match metadata.cell_metadata {
+        None => ()
+        Some(blocks) =>
+          emit_metadata_blocks_attrs(
+            "data-ooxml-metadata-cell-metadata", blocks, out,
+          )
+      }
+      match metadata.value_metadata {
+        None => ()
+        Some(blocks) =>
+          emit_metadata_blocks_attrs(
+            "data-ooxml-metadata-value-metadata", blocks, out,
+          )
+      }
+    }
+  }
+}
+
+///|
+fn emit_metadata_type_attrs(
+  metadata_type : @domain.CT_MetadataType,
+  index : Int,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  let prefix = "data-ooxml-metadata-type-" + index.to_string()
+  out.push(svg_attr(prefix + "-name", metadata_type.name))
+  out.push(
+    svg_attr(
+      prefix + "-min-supported-version",
+      metadata_type.min_supported_version.to_string(),
+    ),
+  )
+  out.push(
+    svg_attr(prefix + "-ghost-row", bool_data_attr(metadata_type.ghost_row)),
+  )
+  out.push(
+    svg_attr(prefix + "-ghost-col", bool_data_attr(metadata_type.ghost_col)),
+  )
+  out.push(svg_attr(prefix + "-edit", bool_data_attr(metadata_type.edit)))
+  out.push(svg_attr(prefix + "-delete", bool_data_attr(metadata_type.delete)))
+  out.push(svg_attr(prefix + "-copy", bool_data_attr(metadata_type.copy)))
+  out.push(
+    svg_attr(prefix + "-paste-all", bool_data_attr(metadata_type.paste_all)),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-formulas",
+      bool_data_attr(metadata_type.paste_formulas),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-values",
+      bool_data_attr(metadata_type.paste_values),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-formats",
+      bool_data_attr(metadata_type.paste_formats),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-comments",
+      bool_data_attr(metadata_type.paste_comments),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-data-validation",
+      bool_data_attr(metadata_type.paste_data_validation),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-borders",
+      bool_data_attr(metadata_type.paste_borders),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-col-widths",
+      bool_data_attr(metadata_type.paste_col_widths),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-paste-number-formats",
+      bool_data_attr(metadata_type.paste_number_formats),
+    ),
+  )
+  out.push(svg_attr(prefix + "-merge", bool_data_attr(metadata_type.merge)))
+  out.push(
+    svg_attr(prefix + "-split-first", bool_data_attr(metadata_type.split_first)),
+  )
+  out.push(
+    svg_attr(prefix + "-split-all", bool_data_attr(metadata_type.split_all)),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-row-col-shift",
+      bool_data_attr(metadata_type.row_col_shift),
+    ),
+  )
+  out.push(
+    svg_attr(prefix + "-clear-all", bool_data_attr(metadata_type.clear_all)),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-clear-formats",
+      bool_data_attr(metadata_type.clear_formats),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-clear-contents",
+      bool_data_attr(metadata_type.clear_contents),
+    ),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-clear-comments",
+      bool_data_attr(metadata_type.clear_comments),
+    ),
+  )
+  out.push(svg_attr(prefix + "-assign", bool_data_attr(metadata_type.assign)))
+  out.push(svg_attr(prefix + "-coerce", bool_data_attr(metadata_type.coerce)))
+  out.push(svg_attr(prefix + "-adjust", bool_data_attr(metadata_type.adjust)))
+  out.push(
+    svg_attr(prefix + "-cell-meta", bool_data_attr(metadata_type.cell_meta)),
+  )
+}
+
+///|
+fn emit_metadata_blocks_attrs(
+  prefix : String,
+  blocks : @domain.CT_MetadataBlocks,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(svg_attr(prefix + "-count", blocks.count.to_string()))
+  out.push(svg_attr(prefix + "-bk-count", blocks.blocks.length().to_string()))
+  for i, block in blocks.blocks {
+    let block_prefix = prefix + "-bk-" + i.to_string()
+    out.push(svg_attr(block_prefix, "1"))
+    out.push(
+      svg_attr(block_prefix + "-rc-count", block.records.length().to_string()),
+    )
+    for j, record in block.records {
+      let record_prefix = block_prefix + "-rc-" + j.to_string()
+      out.push(svg_attr(record_prefix + "-t", record.t.to_string()))
+      out.push(svg_attr(record_prefix + "-v", record.v.to_string()))
+    }
+  }
+}
+
+///|
+fn emit_mdx_metadata_attrs(
+  mdx_metadata : @domain.CT_MdxMetadata,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr("data-ooxml-metadata-mdx-metadata", "1"))
+  out.push(
+    svg_attr(
+      "data-ooxml-metadata-mdx-metadata-count",
+      mdx_metadata.count.to_string(),
+    ),
+  )
+  out.push(
+    svg_attr(
+      "data-ooxml-metadata-mdx-count",
+      mdx_metadata.mdx.length().to_string(),
+    ),
+  )
+  for i, mdx in mdx_metadata.mdx {
+    let prefix = "data-ooxml-metadata-mdx-" + i.to_string()
+    out.push(svg_attr(prefix + "-n", mdx.n.to_string()))
+    out.push(svg_attr(prefix + "-f", mdx.f))
+    match mdx.choice {
+      None => ()
+      Some(@domain.CT_Mdx_Choice::T(tuple)) => {
+        out.push(svg_attr(prefix + "-choice", "t"))
+        emit_mdx_tuple_attrs(prefix + "-t", tuple, out)
+      }
+      Some(@domain.CT_Mdx_Choice::Ms(set)) => {
+        out.push(svg_attr(prefix + "-choice", "ms"))
+        emit_mdx_set_attrs(prefix + "-ms", set, out)
+      }
+      Some(@domain.CT_Mdx_Choice::P(prop)) => {
+        out.push(svg_attr(prefix + "-choice", "p"))
+        out.push(svg_attr(prefix + "-p-n", prop.n.to_string()))
+        out.push(svg_attr(prefix + "-p-np", prop.np.to_string()))
+      }
+      Some(@domain.CT_Mdx_Choice::K(kpi)) => {
+        out.push(svg_attr(prefix + "-choice", "k"))
+        out.push(svg_attr(prefix + "-k-n", kpi.n.to_string()))
+        out.push(svg_attr(prefix + "-k-np", kpi.np.to_string()))
+        out.push(svg_attr(prefix + "-k-p", kpi.p))
+      }
+    }
+  }
+}
+
+///|
+fn emit_mdx_tuple_attrs(
+  prefix : String,
+  tuple : @domain.CT_MdxTuple,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(svg_attr(prefix + "-c", tuple.c.to_string()))
+  push_data_attr_opt(out, prefix + "-ct", tuple.ct)
+  push_data_attr_int_opt(out, prefix + "-si", tuple.si)
+  push_data_attr_int_opt(out, prefix + "-fi", tuple.fi)
+  push_data_attr_int_opt(out, prefix + "-bc", tuple.bc)
+  push_data_attr_int_opt(out, prefix + "-fc", tuple.fc)
+  out.push(svg_attr(prefix + "-i", bool_data_attr(tuple.i)))
+  out.push(svg_attr(prefix + "-u", bool_data_attr(tuple.u)))
+  out.push(svg_attr(prefix + "-st", bool_data_attr(tuple.st)))
+  out.push(svg_attr(prefix + "-b", bool_data_attr(tuple.b)))
+  emit_metadata_string_index_attrs(prefix, tuple.n, out)
+}
+
+///|
+fn emit_mdx_set_attrs(
+  prefix : String,
+  set : @domain.CT_MdxSet,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(svg_attr(prefix + "-ns", set.ns.to_string()))
+  out.push(svg_attr(prefix + "-c", set.c.to_string()))
+  out.push(svg_attr(prefix + "-o", set.o))
+  emit_metadata_string_index_attrs(prefix, set.n, out)
+}
+
+///|
+fn emit_metadata_string_index_attrs(
+  prefix : String,
+  indices : Array[@domain.CT_MetadataStringIndex],
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix + "-n-count", indices.length().to_string()))
+  for i, index in indices {
+    let item_prefix = prefix + "-n-" + i.to_string()
+    out.push(svg_attr(item_prefix + "-x", index.x.to_string()))
+    out.push(svg_attr(item_prefix + "-s", bool_data_attr(index.s)))
+  }
+}
+
+///|
+fn emit_single_xml_cells_part_attrs(
+  parts : Array[@domain.CT_SingleXmlCells],
+  out : Array[@xml.Attribute],
+) -> Unit {
+  if parts.length() == 0 {
+    return
+  }
+  out.push(
+    svg_attr(
+      "data-ooxml-single-xml-cells-parts-count",
+      parts.length().to_string(),
+    ),
+  )
+  for i, part in parts {
+    let prefix = "data-ooxml-single-xml-cells-part-" + i.to_string()
+    emit_single_xml_cells_attrs(prefix, part, out)
+  }
+}
+
+///|
+fn emit_single_xml_cells_attrs(
+  prefix : String,
+  value : @domain.CT_SingleXmlCells,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(
+    svg_attr(
+      prefix + "-singleXmlCell-count",
+      value.single_xml_cells.length().to_string(),
+    ),
+  )
+  for i, cell in value.single_xml_cells {
+    let cell_prefix = prefix + "-singleXmlCell-" + i.to_string()
+    out.push(svg_attr(cell_prefix + "-id", cell.id.to_string()))
+    out.push(svg_attr(cell_prefix + "-r", cell.r))
+    out.push(
+      svg_attr(cell_prefix + "-connection-id", cell.connection_id.to_string()),
+    )
+    match cell.xml_cell_pr {
+      None => ()
+      Some(xml_cell_pr) => {
+        let pr_prefix = cell_prefix + "-xmlCellPr"
+        out.push(svg_attr(pr_prefix, "1"))
+        out.push(svg_attr(pr_prefix + "-id", xml_cell_pr.id.to_string()))
+        push_data_attr_opt(
+          out,
+          pr_prefix + "-unique-name",
+          xml_cell_pr.unique_name,
+        )
+        match xml_cell_pr.xml_pr {
+          None => ()
+          Some(xml_pr) => {
+            let xml_pr_prefix = pr_prefix + "-xmlPr"
+            out.push(svg_attr(xml_pr_prefix, "1"))
+            out.push(
+              svg_attr(xml_pr_prefix + "-map-id", xml_pr.map_id.to_string()),
+            )
+            out.push(svg_attr(xml_pr_prefix + "-xpath", xml_pr.xpath))
+            out.push(
+              svg_attr(xml_pr_prefix + "-xml-data-type", xml_pr.xml_data_type),
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+fn emit_external_link_part_attrs(
+  links : Array[@domain.CT_ExternalLink],
+  out : Array[@xml.Attribute],
+) -> Unit {
+  if links.length() == 0 {
+    return
+  }
+  out.push(
+    svg_attr("data-ooxml-external-links-count", links.length().to_string()),
+  )
+  for i, link in links {
+    let prefix = "data-ooxml-external-link-" + i.to_string()
+    out.push(svg_attr(prefix, "1"))
+    match link.external_book {
+      None => ()
+      Some(book) => {
+        out.push(svg_attr(prefix + "-choice", "externalBook"))
+        emit_external_book_attrs(prefix + "-external-book", book, out)
+      }
+    }
+    match link.dde_link {
+      None => ()
+      Some(dde) => {
+        out.push(svg_attr(prefix + "-choice", "ddeLink"))
+        out.push(svg_attr(prefix + "-dde-link", "1"))
+        out.push(svg_attr(prefix + "-dde-link-service", dde.dde_service))
+        out.push(svg_attr(prefix + "-dde-link-topic", dde.dde_topic))
+        match dde.dde_items {
+          None => ()
+          Some(items) => {
+            out.push(
+              svg_attr(
+                prefix + "-dde-link-items-count",
+                items.dde_items.length().to_string(),
+              ),
+            )
+            for j, item in items.dde_items {
+              let item_prefix = prefix + "-dde-link-item-" + j.to_string()
+              out.push(svg_attr(item_prefix + "-name", item.name))
+              out.push(svg_attr(item_prefix + "-ole", bool_data_attr(item.ole)))
+              out.push(
+                svg_attr(item_prefix + "-advise", bool_data_attr(item.advise)),
+              )
+              out.push(
+                svg_attr(
+                  item_prefix + "-prefer-pic",
+                  bool_data_attr(item.prefer_pic),
+                ),
+              )
+              match item.values {
+                None => ()
+                Some(values) => {
+                  out.push(svg_attr(item_prefix + "-values", "1"))
+                  out.push(
+                    svg_attr(
+                      item_prefix + "-values-rows",
+                      values.rows.to_string(),
+                    ),
+                  )
+                  out.push(
+                    svg_attr(
+                      item_prefix + "-values-cols",
+                      values.cols.to_string(),
+                    ),
+                  )
+                  out.push(
+                    svg_attr(
+                      item_prefix + "-values-count",
+                      values.values.length().to_string(),
+                    ),
+                  )
+                  for k, value in values.values {
+                    let value_prefix = item_prefix + "-value-" + k.to_string()
+                    out.push(svg_attr(value_prefix + "-t", value.t))
+                    out.push(svg_attr(value_prefix + "-val", value.val))
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    match link.ole_link {
+      None => ()
+      Some(ole) => {
+        out.push(svg_attr(prefix + "-choice", "oleLink"))
+        out.push(svg_attr(prefix + "-ole-link", "1"))
+        out.push(svg_attr(prefix + "-ole-link-rid", ole.r_id))
+        out.push(svg_attr(prefix + "-ole-link-prog-id", ole.prog_id))
+        match ole.ole_items {
+          None => ()
+          Some(items) => {
+            out.push(
+              svg_attr(
+                prefix + "-ole-link-items-count",
+                items.ole_items.length().to_string(),
+              ),
+            )
+            for j, item in items.ole_items {
+              let item_prefix = prefix + "-ole-link-item-" + j.to_string()
+              out.push(svg_attr(item_prefix + "-name", item.name))
+              out.push(
+                svg_attr(item_prefix + "-icon", bool_data_attr(item.icon)),
+              )
+              out.push(
+                svg_attr(item_prefix + "-advise", bool_data_attr(item.advise)),
+              )
+              out.push(
+                svg_attr(
+                  item_prefix + "-prefer-pic",
+                  bool_data_attr(item.prefer_pic),
+                ),
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+fn emit_external_book_attrs(
+  prefix : String,
+  book : @domain.CT_ExternalBook,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(svg_attr(prefix + "-rid", book.r_id))
+  match book.sheet_names {
+    None => ()
+    Some(sheet_names) => {
+      out.push(svg_attr(prefix + "-sheet-names", "1"))
+      out.push(
+        svg_attr(
+          prefix + "-sheet-names-count",
+          sheet_names.sheet_names.length().to_string(),
+        ),
+      )
+      for i, sheet_name in sheet_names.sheet_names {
+        push_data_attr_opt(
+          out,
+          prefix + "-sheet-name-" + i.to_string() + "-val",
+          sheet_name.val,
+        )
+      }
+    }
+  }
+  match book.defined_names {
+    None => ()
+    Some(defined_names) => {
+      out.push(svg_attr(prefix + "-defined-names", "1"))
+      out.push(
+        svg_attr(
+          prefix + "-defined-names-count",
+          defined_names.defined_names.length().to_string(),
+        ),
+      )
+      for i, defined_name in defined_names.defined_names {
+        let name_prefix = prefix + "-defined-name-" + i.to_string()
+        out.push(svg_attr(name_prefix + "-name", defined_name.name))
+        push_data_attr_opt(
+          out,
+          name_prefix + "-refers-to",
+          defined_name.refers_to,
+        )
+        push_data_attr_int_opt(
+          out,
+          name_prefix + "-sheet-id",
+          defined_name.sheet_id,
+        )
+      }
+    }
+  }
+  match book.sheet_data_set {
+    None => ()
+    Some(data_set) => {
+      out.push(
+        svg_attr(
+          prefix + "-sheet-data-count",
+          data_set.sheet_data.length().to_string(),
+        ),
+      )
+      for i, sheet_data in data_set.sheet_data {
+        let data_prefix = prefix + "-sheet-data-" + i.to_string()
+        out.push(
+          svg_attr(data_prefix + "-sheet-id", sheet_data.sheet_id.to_string()),
+        )
+        out.push(
+          svg_attr(
+            data_prefix + "-refresh-error",
+            bool_data_attr(sheet_data.refresh_error),
+          ),
+        )
+        out.push(
+          svg_attr(
+            data_prefix + "-row-count",
+            sheet_data.rows.length().to_string(),
+          ),
+        )
+        for j, row in sheet_data.rows {
+          let row_prefix = data_prefix + "-row-" + j.to_string()
+          out.push(svg_attr(row_prefix + "-r", row.r.to_string()))
+          out.push(
+            svg_attr(row_prefix + "-cell-count", row.cells.length().to_string()),
+          )
+          for k, cell in row.cells {
+            let cell_prefix = row_prefix + "-cell-" + k.to_string()
+            push_data_attr_opt(out, cell_prefix + "-r", cell.r)
+            out.push(svg_attr(cell_prefix + "-t", cell.t))
+            out.push(svg_attr(cell_prefix + "-vm", cell.vm.to_string()))
+            push_data_attr_opt(out, cell_prefix + "-v", cell.v)
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+/// §18.13 CT_Connections — surface the external data connection part
+/// as root metadata. The source of truth is the typed `CT_Connections`
+/// instance loaded by the workbook context from `/xl/connections.xml`.
+fn emit_connections_metadata_attrs(
+  connections : @domain.CT_Connections,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(
+    svg_attr(
+      "data-ooxml-connections-count",
+      connections.connection.length().to_string(),
+    ),
+  )
+  for i, connection in connections.connection {
+    let prefix = "data-ooxml-connection-" + i.to_string()
+    out.push(svg_attr(prefix + "-id", connection.id.to_string()))
+    out.push(
+      svg_attr(
+        prefix + "-refreshed-version",
+        connection.refreshed_version.to_string(),
+      ),
+    )
+    push_data_attr_opt(out, prefix + "-name", connection.name)
+    push_data_attr_opt(out, prefix + "-description", connection.description)
+    push_data_attr_opt(out, prefix + "-source-file", connection.source_file)
+    push_data_attr_opt(out, prefix + "-odc-file", connection.odc_file)
+    push_data_attr_int_opt(out, prefix + "-type", connection.type_)
+    out.push(
+      svg_attr(prefix + "-keep-alive", bool_data_attr(connection.keep_alive)),
+    )
+    out.push(svg_attr(prefix + "-interval", connection.interval.to_string()))
+    out.push(
+      svg_attr(
+        prefix + "-reconnection-method",
+        connection.reconnection_method.to_string(),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-min-refreshable-version",
+        connection.min_refreshable_version.to_string(),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-save-password",
+        bool_data_attr(connection.save_password),
+      ),
+    )
+    out.push(svg_attr(prefix + "-new", bool_data_attr(connection.new_)))
+    out.push(svg_attr(prefix + "-deleted", bool_data_attr(connection.deleted)))
+    out.push(
+      svg_attr(
+        prefix + "-only-use-connection-file",
+        bool_data_attr(connection.only_use_connection_file),
+      ),
+    )
+    out.push(
+      svg_attr(prefix + "-background", bool_data_attr(connection.background)),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-refresh-on-load",
+        bool_data_attr(connection.refresh_on_load),
+      ),
+    )
+    out.push(
+      svg_attr(prefix + "-save-data", bool_data_attr(connection.save_data)),
+    )
+    out.push(svg_attr(prefix + "-credentials", connection.credentials))
+    push_data_attr_opt(
+      out,
+      prefix + "-single-sign-on-id",
+      connection.single_sign_on_id,
+    )
+    match connection.db_pr {
+      None => ()
+      Some(db) => {
+        out.push(svg_attr(prefix + "-db-pr", "1"))
+        out.push(svg_attr(prefix + "-db-pr-connection", db.connection))
+        push_data_attr_opt(out, prefix + "-db-pr-command", db.command)
+        push_data_attr_opt(
+          out,
+          prefix + "-db-pr-server-command",
+          db.server_command,
+        )
+        out.push(
+          svg_attr(prefix + "-db-pr-command-type", db.command_type.to_string()),
+        )
+      }
+    }
+    match connection.olap_pr {
+      None => ()
+      Some(olap) => {
+        out.push(svg_attr(prefix + "-olap-pr", "1"))
+        out.push(
+          svg_attr(prefix + "-olap-pr-local", bool_data_attr(olap.is_local)),
+        )
+        push_data_attr_opt(
+          out,
+          prefix + "-olap-pr-local-connection",
+          olap.local_connection,
+        )
+        out.push(
+          svg_attr(
+            prefix + "-olap-pr-local-refresh",
+            bool_data_attr(olap.local_refresh),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-olap-pr-send-locale",
+            bool_data_attr(olap.send_locale),
+          ),
+        )
+        push_data_attr_int_opt(
+          out,
+          prefix + "-olap-pr-row-drill-count",
+          olap.row_drill_count,
+        )
+        out.push(
+          svg_attr(
+            prefix + "-olap-pr-server-fill",
+            bool_data_attr(olap.server_fill),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-olap-pr-server-number-format",
+            bool_data_attr(olap.server_number_format),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-olap-pr-server-font",
+            bool_data_attr(olap.server_font),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-olap-pr-server-font-color",
+            bool_data_attr(olap.server_font_color),
+          ),
+        )
+      }
+    }
+    match connection.web_pr {
+      None => ()
+      Some(web) => {
+        out.push(svg_attr(prefix + "-web-pr", "1"))
+        out.push(svg_attr(prefix + "-web-pr-xml", bool_data_attr(web.xml)))
+        out.push(
+          svg_attr(
+            prefix + "-web-pr-source-data",
+            bool_data_attr(web.source_data),
+          ),
+        )
+        out.push(
+          svg_attr(prefix + "-web-pr-parse-pre", bool_data_attr(web.parse_pre)),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-web-pr-consecutive",
+            bool_data_attr(web.consecutive),
+          ),
+        )
+        out.push(
+          svg_attr(prefix + "-web-pr-first-row", bool_data_attr(web.first_row)),
+        )
+        out.push(svg_attr(prefix + "-web-pr-xl97", bool_data_attr(web.xl97)))
+        out.push(
+          svg_attr(prefix + "-web-pr-xl2000", bool_data_attr(web.xl2000)),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-web-pr-text-dates",
+            bool_data_attr(web.text_dates),
+          ),
+        )
+        push_data_attr_opt(out, prefix + "-web-pr-url", web.url)
+        push_data_attr_opt(out, prefix + "-web-pr-post", web.post)
+        out.push(
+          svg_attr(
+            prefix + "-web-pr-html-tables",
+            bool_data_attr(web.html_tables),
+          ),
+        )
+        out.push(svg_attr(prefix + "-web-pr-html-format", web.html_format))
+        push_data_attr_opt(out, prefix + "-web-pr-edit-page", web.edit_page)
+        match web.tables {
+          None => ()
+          Some(tables) => {
+            out.push(
+              svg_attr(
+                prefix + "-web-pr-tables-missing-count",
+                tables.missings.length().to_string(),
+              ),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-web-pr-tables-string-count",
+                tables.strings.length().to_string(),
+              ),
+            )
+          }
+        }
+      }
+    }
+    match connection.text_pr {
+      None => ()
+      Some(text) => {
+        out.push(svg_attr(prefix + "-text-pr", "1"))
+        out.push(
+          svg_attr(prefix + "-text-pr-prompt", bool_data_attr(text.prompt)),
+        )
+        out.push(svg_attr(prefix + "-text-pr-file-type", text.file_type))
+        push_data_attr_opt(
+          out,
+          prefix + "-text-pr-character-set",
+          text.character_set,
+        )
+        push_data_attr_int_opt(
+          out,
+          prefix + "-text-pr-code-page",
+          text.code_page,
+        )
+        out.push(
+          svg_attr(prefix + "-text-pr-first-row", text.first_row.to_string()),
+        )
+        out.push(svg_attr(prefix + "-text-pr-source-file", text.source_file))
+        out.push(
+          svg_attr(
+            prefix + "-text-pr-delimited",
+            bool_data_attr(text.delimited),
+          ),
+        )
+        out.push(svg_attr(prefix + "-text-pr-decimal", text.decimal))
+        out.push(svg_attr(prefix + "-text-pr-thousands", text.thousands))
+        out.push(svg_attr(prefix + "-text-pr-tab", bool_data_attr(text.tab)))
+        out.push(
+          svg_attr(prefix + "-text-pr-space", bool_data_attr(text.space)),
+        )
+        out.push(
+          svg_attr(prefix + "-text-pr-comma", bool_data_attr(text.comma)),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-text-pr-semicolon",
+            bool_data_attr(text.semicolon),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-text-pr-consecutive",
+            bool_data_attr(text.consecutive),
+          ),
+        )
+        out.push(svg_attr(prefix + "-text-pr-qualifier", text.qualifier))
+        push_data_attr_opt(out, prefix + "-text-pr-delimiter", text.delimiter)
+        match text.text_fields {
+          None => ()
+          Some(fields) => {
+            out.push(
+              svg_attr(
+                prefix + "-text-pr-fields-count",
+                fields.text_field.length().to_string(),
+              ),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-text-pr-fields-declared-count",
+                fields.count.to_string(),
+              ),
+            )
+            for j, field in fields.text_field {
+              let field_prefix = prefix + "-text-pr-field-" + j.to_string()
+              out.push(svg_attr(field_prefix + "-type", field.type_))
+              out.push(
+                svg_attr(field_prefix + "-position", field.position.to_string()),
+              )
+            }
+          }
+        }
+      }
+    }
+    match connection.parameters {
+      None => ()
+      Some(parameters) => {
+        out.push(svg_attr(prefix + "-parameters", "1"))
+        out.push(
+          svg_attr(
+            prefix + "-parameters-count",
+            parameters.parameter.length().to_string(),
+          ),
+        )
+        push_data_attr_int_opt(
+          out,
+          prefix + "-parameters-declared-count",
+          parameters.count,
+        )
+        for j, parameter in parameters.parameter {
+          let parameter_prefix = prefix + "-parameter-" + j.to_string()
+          push_data_attr_opt(out, parameter_prefix + "-name", parameter.name)
+          out.push(
+            svg_attr(
+              parameter_prefix + "-sql-type",
+              parameter.sql_type.to_string(),
+            ),
+          )
+          out.push(
+            svg_attr(parameter_prefix + "-type", parameter.parameter_type),
+          )
+          out.push(
+            svg_attr(
+              parameter_prefix + "-refresh-on-change",
+              bool_data_attr(parameter.refresh_on_change),
+            ),
+          )
+          push_data_attr_opt(
+            out,
+            parameter_prefix + "-prompt",
+            parameter.prompt,
+          )
+          push_data_attr_bool_opt(
+            out,
+            parameter_prefix + "-boolean",
+            parameter.boolean,
+          )
+          match parameter.double {
+            Some(v) =>
+              out.push(svg_attr(parameter_prefix + "-double", v.to_string()))
+            None => ()
+          }
+          push_data_attr_int_opt(
+            out,
+            parameter_prefix + "-integer",
+            parameter.integer,
+          )
+          push_data_attr_opt(
+            out,
+            parameter_prefix + "-string",
+            parameter.string,
+          )
+          push_data_attr_opt(out, parameter_prefix + "-cell", parameter.cell)
+        }
+      }
+    }
+  }
+}
+
+///|
+/// §18.10.1.67 pivotCacheDefinition parts resolved from workbook
+/// `<pivotCaches>`. This reads the domain `CT_PivotCacheDefinition`
+/// directly so metadata-only cache branches that are not part of the
+/// materialized overlay model still surface in the SVG trace.
+fn emit_pivot_cache_definition_part_attrs(
+  definitions : Array[@domain.CT_PivotCacheDefinition],
+  out : Array[@xml.Attribute],
+) -> Unit {
+  if definitions.length() == 0 {
+    return
+  }
+  out.push(
+    svg_attr(
+      "data-ooxml-pivot-cache-definition-parts-count",
+      definitions.length().to_string(),
+    ),
+  )
+  for i, definition in definitions {
+    let prefix = "data-ooxml-pivot-cache-definition-part-" + i.to_string()
+    out.push(svg_attr(prefix, "1"))
+    push_data_attr_opt(out, prefix + "-rid", definition.r_id)
+    out.push(svg_attr(prefix + "-invalid", bool_data_attr(definition.invalid)))
+    out.push(
+      svg_attr(prefix + "-save-data", bool_data_attr(definition.save_data)),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-refresh-on-load",
+        bool_data_attr(definition.refresh_on_load),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-enable-refresh",
+        bool_data_attr(definition.enable_refresh),
+      ),
+    )
+    push_data_attr_opt(out, prefix + "-refreshed-by", definition.refreshed_by)
+    push_data_attr_opt(
+      out,
+      prefix + "-refreshed-date-iso",
+      definition.refreshed_date_iso,
+    )
+    push_data_attr_int_opt(
+      out,
+      prefix + "-missing-items-limit",
+      definition.missing_items_limit,
+    )
+    out.push(
+      svg_attr(
+        prefix + "-created-version",
+        definition.created_version.to_string(),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-refreshed-version",
+        definition.refreshed_version.to_string(),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-min-refreshable-version",
+        definition.min_refreshable_version.to_string(),
+      ),
+    )
+    push_data_attr_int_opt(
+      out,
+      prefix + "-record-count",
+      definition.record_count,
+    )
+    out.push(
+      svg_attr(
+        prefix + "-tuple-cache-attr",
+        bool_data_attr(definition.tuple_cache_attr),
+      ),
+    )
+    match definition.cache_source {
+      None => ()
+      Some(source) => emit_sml_pivot_cache_source_attrs(prefix, source, out)
+    }
+    match definition.cache_fields {
+      None => ()
+      Some(fields) => emit_sml_pivot_cache_fields_attrs(prefix, fields, out)
+    }
+    match definition.cache_hierarchies {
+      None => ()
+      Some(value) =>
+        emit_sml_pivot_cache_hierarchies_metadata_attrs(
+          prefix + "-cache-hierarchies",
+          value,
+          out,
+        )
+    }
+    match definition.kpis {
+      None => ()
+      Some(value) =>
+        emit_sml_pivot_kpis_metadata_attrs(prefix + "-kpis", value, out)
+    }
+    match definition.tuple_cache {
+      None => ()
+      Some(value) =>
+        emit_sml_pivot_tuple_cache_metadata_attrs(
+          prefix + "-tuple-cache",
+          value,
+          out,
+        )
+    }
+    match definition.calculated_items {
+      None => ()
+      Some(value) =>
+        emit_sml_pivot_calculated_items_metadata_attrs(
+          prefix + "-calculated-items",
+          value,
+          out,
+        )
+    }
+    match definition.calculated_members {
+      None => ()
+      Some(value) =>
+        emit_sml_pivot_calculated_members_metadata_attrs(
+          prefix + "-calculated-members",
+          value,
+          out,
+        )
+    }
+    match definition.ext_lst {
+      None => ()
+      Some(ext_lst) =>
+        out.push(
+          svg_attr(prefix + "-ext-count", ext_lst.ext.length().to_string()),
+        )
+    }
+  }
+}
+
+///|
+fn emit_sml_pivot_cache_source_attrs(
+  prefix : String,
+  source : @domain.CT_CacheSource,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  let source_prefix = prefix + "-cache-source"
+  out.push(svg_attr(source_prefix, "1"))
+  out.push(svg_attr(source_prefix + "-type", source.type_))
+  out.push(
+    svg_attr(source_prefix + "-connection-id", source.connection_id.to_string()),
+  )
+  match source.worksheet_source {
+    None => ()
+    Some(worksheet_source) => {
+      let ws_prefix = source_prefix + "-worksheet-source"
+      out.push(svg_attr(ws_prefix, "1"))
+      push_data_attr_opt(out, ws_prefix + "-ref", worksheet_source.ref_)
+      push_data_attr_opt(out, ws_prefix + "-name", worksheet_source.name)
+      push_data_attr_opt(out, ws_prefix + "-sheet", worksheet_source.sheet)
+      push_data_attr_opt(out, ws_prefix + "-rid", worksheet_source.r_id)
+    }
+  }
+  match source.consolidation {
+    None => ()
+    Some(consolidation) =>
+      emit_sml_pivot_consolidation_attrs(
+        source_prefix + "-consolidation",
+        consolidation,
+        out,
+      )
+  }
+}
+
+///|
+fn emit_sml_pivot_cache_fields_attrs(
+  prefix : String,
+  fields : @domain.CT_CacheFields,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  let fields_prefix = prefix + "-cache-fields"
+  out.push(svg_attr(fields_prefix, "1"))
+  out.push(
+    svg_attr(fields_prefix + "-count", fields.cache_fields.length().to_string()),
+  )
+  push_data_attr_int_opt(out, fields_prefix + "-declared-count", fields.count)
+  for i, field in fields.cache_fields {
+    let field_prefix = fields_prefix + "-field-" + i.to_string()
+    out.push(svg_attr(field_prefix + "-name", field.name))
+    push_data_attr_opt(out, field_prefix + "-caption", field.caption)
+    push_data_attr_opt(
+      out,
+      field_prefix + "-property-name",
+      field.property_name,
+    )
+    push_data_attr_opt(out, field_prefix + "-num-fmt-id", field.num_fmt_id)
+    push_data_attr_opt(out, field_prefix + "-formula", field.formula)
+    out.push(svg_attr(field_prefix + "-sql-type", field.sql_type.to_string()))
+    out.push(svg_attr(field_prefix + "-hierarchy", field.hierarchy.to_string()))
+    out.push(svg_attr(field_prefix + "-level", field.level.to_string()))
+    out.push(
+      svg_attr(
+        field_prefix + "-database-field",
+        bool_data_attr(field.database_field),
+      ),
+    )
+    push_data_attr_int_opt(
+      out,
+      field_prefix + "-mapping-count",
+      field.mapping_count,
+    )
+    match field.shared_items {
+      None => ()
+      Some(items) => {
+        out.push(
+          svg_attr(
+            field_prefix + "-shared-items-missing-count",
+            items.missings.length().to_string(),
+          ),
+        )
+        out.push(
+          svg_attr(
+            field_prefix + "-shared-items-string-count",
+            items.strings.length().to_string(),
+          ),
+        )
+      }
+    }
+    match field.field_group {
+      None => ()
+      Some(group) => {
+        let group_prefix = field_prefix + "-field-group"
+        out.push(svg_attr(group_prefix, "1"))
+        push_data_attr_int_opt(out, group_prefix + "-par", group.par)
+        push_data_attr_int_opt(out, group_prefix + "-base", group.base)
+        match group.range_pr {
+          Some(_) => out.push(svg_attr(group_prefix + "-range-pr", "1"))
+          None => ()
+        }
+        match group.discrete_pr {
+          Some(_) => out.push(svg_attr(group_prefix + "-discrete-pr", "1"))
+          None => ()
+        }
+        match group.group_items {
+          Some(_) => out.push(svg_attr(group_prefix + "-group-items", "1"))
+          None => ()
+        }
+      }
+    }
+    out.push(
+      svg_attr(
+        field_prefix + "-mp-map-count",
+        field.mp_maps.length().to_string(),
+      ),
+    )
+    for j, mp_map in field.mp_maps {
+      out.push(
+        svg_attr(
+          field_prefix + "-mp-map-" + j.to_string() + "-v",
+          mp_map.v.to_string(),
+        ),
+      )
+    }
+  }
+}
+
+///|
+fn emit_sml_pivot_consolidation_attrs(
+  prefix : String,
+  consolidation : @domain.CT_Consolidation,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(
+    svg_attr(prefix + "-auto-page", bool_data_attr(consolidation.auto_page)),
+  )
+  match consolidation.pages {
+    None => ()
+    Some(pages) => {
+      let pages_prefix = prefix + "-pages"
+      out.push(svg_attr(pages_prefix, "1"))
+      out.push(
+        svg_attr(pages_prefix + "-count", pages.page.length().to_string()),
+      )
+      push_data_attr_int_opt(out, pages_prefix + "-declared-count", pages.count)
+      for i, page in pages.page {
+        let page_prefix = pages_prefix + "-page-" + i.to_string()
+        out.push(
+          svg_attr(
+            page_prefix + "-item-count",
+            page.page_items.length().to_string(),
+          ),
+        )
+        push_data_attr_int_opt(out, page_prefix + "-declared-count", page.count)
+        for j, item in page.page_items {
+          out.push(
+            svg_attr(
+              page_prefix + "-item-" + j.to_string() + "-name",
+              item.name,
+            ),
+          )
+        }
+      }
+    }
+  }
+  let range_prefix = prefix + "-range-sets"
+  out.push(
+    svg_attr(
+      range_prefix + "-count",
+      consolidation.range_sets.range_sets.length().to_string(),
+    ),
+  )
+  push_data_attr_int_opt(
+    out,
+    range_prefix + "-declared-count",
+    consolidation.range_sets.count,
+  )
+  for i, range_set in consolidation.range_sets.range_sets {
+    let item_prefix = range_prefix + "-range-set-" + i.to_string()
+    push_data_attr_int_opt(out, item_prefix + "-i1", range_set.i1)
+    push_data_attr_int_opt(out, item_prefix + "-i2", range_set.i2)
+    push_data_attr_int_opt(out, item_prefix + "-i3", range_set.i3)
+    push_data_attr_int_opt(out, item_prefix + "-i4", range_set.i4)
+    push_data_attr_opt(out, item_prefix + "-ref", range_set.ref_)
+    push_data_attr_opt(out, item_prefix + "-name", range_set.name)
+    push_data_attr_opt(out, item_prefix + "-sheet", range_set.sheet)
+    push_data_attr_opt(out, item_prefix + "-rid", range_set.r_id)
+  }
+}
+
+///|
+/// §18.12 CT_QueryTable — surface worksheet-owned query table parts
+/// as root metadata. The connection itself remains owned by
+/// `/xl/connections.xml`; this projection records the query table's
+/// local behaviour and its `connectionId` reference.
+fn emit_query_table_metadata_attrs(
+  query_tables : Array[@domain.CT_QueryTable],
+  out : Array[@xml.Attribute],
+) -> Unit {
+  if query_tables.length() == 0 {
+    return
+  }
+  out.push(
+    svg_attr("data-ooxml-query-tables-count", query_tables.length().to_string()),
+  )
+  for i, query_table in query_tables {
+    let prefix = "data-ooxml-query-table-" + i.to_string()
+    out.push(svg_attr(prefix + "-name", query_table.name))
+    out.push(
+      svg_attr(prefix + "-connection-id", query_table.connection_id.to_string()),
+    )
+    out.push(svg_attr(prefix + "-headers", bool_data_attr(query_table.headers)))
+    out.push(
+      svg_attr(prefix + "-row-numbers", bool_data_attr(query_table.row_numbers)),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-disable-refresh",
+        bool_data_attr(query_table.disable_refresh),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-background-refresh",
+        bool_data_attr(query_table.background_refresh),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-first-background-refresh",
+        bool_data_attr(query_table.first_background_refresh),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-refresh-on-load",
+        bool_data_attr(query_table.refresh_on_load),
+      ),
+    )
+    out.push(
+      svg_attr(prefix + "-grow-shrink-type", query_table.grow_shrink_type),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-fill-formulas",
+        bool_data_attr(query_table.fill_formulas),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-remove-data-on-save",
+        bool_data_attr(query_table.remove_data_on_save),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-disable-edit",
+        bool_data_attr(query_table.disable_edit),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-preserve-formatting",
+        bool_data_attr(query_table.preserve_formatting),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-adjust-column-width",
+        bool_data_attr(query_table.adjust_column_width),
+      ),
+    )
+    out.push(
+      svg_attr(
+        prefix + "-intermediate",
+        bool_data_attr(query_table.intermediate),
+      ),
+    )
+    push_data_attr_int_opt(
+      out,
+      prefix + "-auto-format-id",
+      query_table.auto_format_id,
+    )
+    push_data_attr_bool_opt(
+      out,
+      prefix + "-apply-number-formats",
+      query_table.apply_number_formats,
+    )
+    push_data_attr_bool_opt(
+      out,
+      prefix + "-apply-border-formats",
+      query_table.apply_border_formats,
+    )
+    push_data_attr_bool_opt(
+      out,
+      prefix + "-apply-font-formats",
+      query_table.apply_font_formats,
+    )
+    push_data_attr_bool_opt(
+      out,
+      prefix + "-apply-pattern-formats",
+      query_table.apply_pattern_formats,
+    )
+    push_data_attr_bool_opt(
+      out,
+      prefix + "-apply-alignment-formats",
+      query_table.apply_alignment_formats,
+    )
+    push_data_attr_bool_opt(
+      out,
+      prefix + "-apply-width-height-formats",
+      query_table.apply_width_height_formats,
+    )
+    match query_table.query_table_refresh {
+      None => ()
+      Some(refresh) => {
+        out.push(svg_attr(prefix + "-refresh", "1"))
+        out.push(
+          svg_attr(
+            prefix + "-refresh-preserve-sort-filter-layout",
+            bool_data_attr(refresh.preserve_sort_filter_layout),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-refresh-field-id-wrapped",
+            bool_data_attr(refresh.field_id_wrapped),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-refresh-headers-in-last-refresh",
+            bool_data_attr(refresh.headers_in_last_refresh),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-refresh-minimum-version",
+            refresh.minimum_version.to_string(),
+          ),
+        )
+        out.push(
+          svg_attr(prefix + "-refresh-next-id", refresh.next_id.to_string()),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-refresh-unbound-columns-left",
+            refresh.unbound_columns_left.to_string(),
+          ),
+        )
+        out.push(
+          svg_attr(
+            prefix + "-refresh-unbound-columns-right",
+            refresh.unbound_columns_right.to_string(),
+          ),
+        )
+        match refresh.query_table_fields {
+          None => ()
+          Some(fields) => {
+            out.push(
+              svg_attr(
+                prefix + "-refresh-fields-count",
+                fields.query_table_field.length().to_string(),
+              ),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-refresh-fields-declared-count",
+                fields.count.to_string(),
+              ),
+            )
+            for j, field in fields.query_table_field {
+              let field_prefix = prefix + "-refresh-field-" + j.to_string()
+              out.push(svg_attr(field_prefix + "-id", field.id.to_string()))
+              push_data_attr_opt(out, field_prefix + "-name", field.name)
+              out.push(
+                svg_attr(
+                  field_prefix + "-data-bound",
+                  bool_data_attr(field.data_bound),
+                ),
+              )
+              out.push(
+                svg_attr(
+                  field_prefix + "-row-numbers",
+                  bool_data_attr(field.row_numbers),
+                ),
+              )
+              out.push(
+                svg_attr(
+                  field_prefix + "-fill-formulas",
+                  bool_data_attr(field.fill_formulas),
+                ),
+              )
+              out.push(
+                svg_attr(
+                  field_prefix + "-clipped",
+                  bool_data_attr(field.clipped),
+                ),
+              )
+              out.push(
+                svg_attr(
+                  field_prefix + "-table-column-id",
+                  field.table_column_id.to_string(),
+                ),
+              )
+            }
+          }
+        }
+        match refresh.query_table_deleted_fields {
+          None => ()
+          Some(deleted) => {
+            out.push(
+              svg_attr(
+                prefix + "-refresh-deleted-fields-count",
+                deleted.deleted_field.length().to_string(),
+              ),
+            )
+            push_data_attr_int_opt(
+              out,
+              prefix + "-refresh-deleted-fields-declared-count",
+              deleted.count,
+            )
+            for j, field in deleted.deleted_field {
+              let field_prefix = prefix +
+                "-refresh-deleted-field-" +
+                j.to_string()
+              out.push(svg_attr(field_prefix, "1"))
+              out.push(svg_attr(field_prefix + "-name", field.name))
+            }
+          }
+        }
+        match refresh.sort_state {
+          None => ()
+          Some(sort_state) => {
+            out.push(
+              svg_attr(prefix + "-refresh-sort-state-ref", sort_state.ref_),
+            )
+            out.push(
+              svg_attr(
+                prefix + "-refresh-sort-state-condition-count",
+                sort_state.sort_condition.length().to_string(),
+              ),
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+fn emit_revision_presence_attr(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  name : String,
+  present : Bool,
+) -> Unit {
+  out.push(svg_attr(prefix + "-" + name, bool_data_attr(present)))
+}
+
+///|
+fn emit_revision_rev_data_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  r_id : Int,
+  ua : Bool,
+  ra : Bool,
+) -> Unit {
+  out.push(svg_attr(prefix + "-r-id", r_id.to_string()))
+  out.push(svg_attr(prefix + "-ua", bool_data_attr(ua)))
+  out.push(svg_attr(prefix + "-ra", bool_data_attr(ra)))
+}
+
+///|
+fn emit_revision_dxf_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  dxf : @domain.CT_Dxf,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  emit_revision_presence_attr(out, prefix, "font", dxf.font is Some(_))
+  emit_revision_presence_attr(out, prefix, "num-fmt", dxf.num_fmt is Some(_))
+  emit_revision_presence_attr(out, prefix, "fill", dxf.fill is Some(_))
+  emit_revision_presence_attr(
+    out,
+    prefix,
+    "alignment",
+    dxf.alignment is Some(_),
+  )
+  emit_revision_presence_attr(out, prefix, "border", dxf.border is Some(_))
+  emit_revision_presence_attr(
+    out,
+    prefix,
+    "protection",
+    dxf.protection is Some(_),
+  )
+}
+
+///|
+fn emit_revision_cell_formula_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  formula : @domain.CT_CellFormula,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(svg_attr(prefix + "-text", formula.formula))
+  out.push(svg_attr(prefix + "-t", formula.t))
+  out.push(svg_attr(prefix + "-aca", bool_data_attr(formula.aca)))
+  push_data_attr_opt(out, prefix + "-ref", formula.ref_)
+  out.push(svg_attr(prefix + "-dt2d", bool_data_attr(formula.dt2_d)))
+  out.push(svg_attr(prefix + "-dtr", bool_data_attr(formula.dtr)))
+  out.push(svg_attr(prefix + "-del1", bool_data_attr(formula.del1)))
+  out.push(svg_attr(prefix + "-del2", bool_data_attr(formula.del2)))
+  push_data_attr_opt(out, prefix + "-r1", formula.r1)
+  push_data_attr_opt(out, prefix + "-r2", formula.r2)
+  out.push(svg_attr(prefix + "-ca", bool_data_attr(formula.ca)))
+  push_data_attr_int_opt(out, prefix + "-si", formula.si)
+  out.push(svg_attr(prefix + "-bx", bool_data_attr(formula.bx)))
+}
+
+///|
+fn emit_revision_cell_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  cell : @domain.CT_Cell,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  push_data_attr_opt(out, prefix + "-r", cell.r)
+  out.push(svg_attr(prefix + "-style", cell.s.to_string()))
+  out.push(svg_attr(prefix + "-type", cell.t))
+  out.push(svg_attr(prefix + "-cm", cell.cm.to_string()))
+  out.push(svg_attr(prefix + "-vm", cell.vm.to_string()))
+  out.push(svg_attr(prefix + "-ph", bool_data_attr(cell.ph)))
+  match cell.f {
+    Some(f) => emit_revision_cell_formula_attrs(out, prefix + "-formula", f)
+    None => ()
+  }
+  push_data_attr_opt(out, prefix + "-value", cell.v)
+  emit_revision_presence_attr(out, prefix, "inline-string", cell.is_ is Some(_))
+}
+
+///|
+fn emit_revision_undo_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  undo : @domain.CT_UndoInfo,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(svg_attr(prefix + "-index", undo.index.to_string()))
+  out.push(svg_attr(prefix + "-exp", undo.exp))
+  out.push(svg_attr(prefix + "-ref3d", bool_data_attr(undo.ref3_d)))
+  out.push(svg_attr(prefix + "-array", bool_data_attr(undo.array)))
+  out.push(svg_attr(prefix + "-v", bool_data_attr(undo.v)))
+  out.push(svg_attr(prefix + "-nf", bool_data_attr(undo.nf)))
+  out.push(svg_attr(prefix + "-cs", bool_data_attr(undo.cs)))
+  out.push(svg_attr(prefix + "-dr", undo.dr))
+  push_data_attr_opt(out, prefix + "-dn", undo.dn)
+  push_data_attr_opt(out, prefix + "-r", undo.r)
+  push_data_attr_int_opt(out, prefix + "-s-id", undo.s_id)
+}
+
+///|
+fn emit_revision_formatting_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  formatting : @domain.CT_RevisionFormatting,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  out.push(svg_attr(prefix + "-sheet-id", formatting.sheet_id.to_string()))
+  out.push(svg_attr(prefix + "-xf-dxf", bool_data_attr(formatting.xf_dxf)))
+  out.push(svg_attr(prefix + "-s", bool_data_attr(formatting.s)))
+  out.push(svg_attr(prefix + "-sqref", formatting.sqref))
+  push_data_attr_int_opt(out, prefix + "-start", formatting.start)
+  push_data_attr_int_opt(out, prefix + "-length", formatting.length)
+  match formatting.dxf {
+    Some(dxf) => emit_revision_dxf_attrs(out, prefix + "-dxf", dxf)
+    None => ()
+  }
+}
+
+///|
+fn emit_revision_cell_change_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  cell_change : @domain.CT_RevisionCellChange,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  emit_revision_rev_data_attrs(
+    out,
+    prefix,
+    cell_change.r_id,
+    cell_change.ua,
+    cell_change.ra,
+  )
+  out.push(svg_attr(prefix + "-s-id", cell_change.s_id.to_string()))
+  out.push(svg_attr(prefix + "-odxf-flag", bool_data_attr(cell_change.odxf)))
+  out.push(svg_attr(prefix + "-xf-dxf", bool_data_attr(cell_change.xf_dxf)))
+  out.push(svg_attr(prefix + "-s", bool_data_attr(cell_change.s)))
+  out.push(svg_attr(prefix + "-dxf-flag", bool_data_attr(cell_change.dxf)))
+  push_data_attr_int_opt(out, prefix + "-num-fmt-id", cell_change.num_fmt_id)
+  out.push(
+    svg_attr(prefix + "-quote-prefix", bool_data_attr(cell_change.quote_prefix)),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-old-quote-prefix",
+      bool_data_attr(cell_change.old_quote_prefix),
+    ),
+  )
+  out.push(svg_attr(prefix + "-ph", bool_data_attr(cell_change.ph)))
+  out.push(svg_attr(prefix + "-old-ph", bool_data_attr(cell_change.old_ph)))
+  out.push(
+    svg_attr(
+      prefix + "-end-of-list-formula-update",
+      bool_data_attr(cell_change.end_of_list_formula_update),
+    ),
+  )
+  match cell_change.oc {
+    Some(cell) => emit_revision_cell_attrs(out, prefix + "-oc", cell)
+    None => ()
+  }
+  match cell_change.nc {
+    Some(cell) => emit_revision_cell_attrs(out, prefix + "-nc", cell)
+    None => ()
+  }
+  match cell_change.odxf_child {
+    Some(dxf) => emit_revision_dxf_attrs(out, prefix + "-odxf", dxf)
+    None => ()
+  }
+  match cell_change.ndxf_child {
+    Some(dxf) => emit_revision_dxf_attrs(out, prefix + "-ndxf", dxf)
+    None => ()
+  }
+}
+
+///|
+fn emit_revision_row_column_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  row_column : @domain.CT_RevisionRowColumn,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  emit_revision_rev_data_attrs(
+    out,
+    prefix,
+    row_column.r_id,
+    row_column.ua,
+    row_column.ra,
+  )
+  out.push(svg_attr(prefix + "-s-id", row_column.s_id.to_string()))
+  out.push(svg_attr(prefix + "-eol", bool_data_attr(row_column.eol)))
+  out.push(svg_attr(prefix + "-ref", row_column.ref_))
+  out.push(svg_attr(prefix + "-action", row_column.action))
+  out.push(svg_attr(prefix + "-edge", bool_data_attr(row_column.edge)))
+  out.push(
+    svg_attr(prefix + "-undo-count", row_column.undo.length().to_string()),
+  )
+  for j, undo in row_column.undo {
+    emit_revision_undo_attrs(out, prefix + "-undo-" + j.to_string(), undo)
+  }
+  out.push(svg_attr(prefix + "-rcc-count", row_column.rcc.length().to_string()))
+  for j, cell_change in row_column.rcc {
+    emit_revision_cell_change_attrs(
+      out,
+      prefix + "-rcc-" + j.to_string(),
+      cell_change,
+    )
+  }
+  out.push(
+    svg_attr(prefix + "-rfmt-count", row_column.rfmt.length().to_string()),
+  )
+  for j, formatting in row_column.rfmt {
+    emit_revision_formatting_attrs(
+      out,
+      prefix + "-rfmt-" + j.to_string(),
+      formatting,
+    )
+  }
+}
+
+///|
+fn emit_revision_move_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  revision_move : @domain.CT_RevisionMove,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  emit_revision_rev_data_attrs(
+    out,
+    prefix,
+    revision_move.r_id,
+    revision_move.ua,
+    revision_move.ra,
+  )
+  out.push(svg_attr(prefix + "-sheet-id", revision_move.sheet_id.to_string()))
+  out.push(svg_attr(prefix + "-source", revision_move.source))
+  out.push(svg_attr(prefix + "-destination", revision_move.destination))
+  out.push(
+    svg_attr(
+      prefix + "-source-sheet-id",
+      revision_move.source_sheet_id.to_string(),
+    ),
+  )
+  out.push(
+    svg_attr(prefix + "-undo-count", revision_move.undo.length().to_string()),
+  )
+  for j, undo in revision_move.undo {
+    emit_revision_undo_attrs(out, prefix + "-undo-" + j.to_string(), undo)
+  }
+  out.push(
+    svg_attr(prefix + "-rcc-count", revision_move.rcc.length().to_string()),
+  )
+  for j, cell_change in revision_move.rcc {
+    emit_revision_cell_change_attrs(
+      out,
+      prefix + "-rcc-" + j.to_string(),
+      cell_change,
+    )
+  }
+  out.push(
+    svg_attr(prefix + "-rfmt-count", revision_move.rfmt.length().to_string()),
+  )
+  for j, formatting in revision_move.rfmt {
+    emit_revision_formatting_attrs(
+      out,
+      prefix + "-rfmt-" + j.to_string(),
+      formatting,
+    )
+  }
+}
+
+///|
+fn emit_revision_defined_name_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  defined_name : @domain.CT_RevisionDefinedName,
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  emit_revision_rev_data_attrs(
+    out,
+    prefix,
+    defined_name.r_id,
+    defined_name.ua,
+    defined_name.ra,
+  )
+  push_data_attr_int_opt(
+    out,
+    prefix + "-local-sheet-id",
+    defined_name.local_sheet_id,
+  )
+  out.push(
+    svg_attr(prefix + "-custom-view", bool_data_attr(defined_name.custom_view)),
+  )
+  out.push(svg_attr(prefix + "-name", defined_name.name))
+  out.push(
+    svg_attr(prefix + "-function", bool_data_attr(defined_name.function)),
+  )
+  out.push(
+    svg_attr(
+      prefix + "-old-function",
+      bool_data_attr(defined_name.old_function),
+    ),
+  )
+  push_data_attr_int_opt(
+    out,
+    prefix + "-function-group-id",
+    defined_name.function_group_id,
+  )
+  push_data_attr_int_opt(
+    out,
+    prefix + "-old-function-group-id",
+    defined_name.old_function_group_id,
+  )
+  push_data_attr_int_opt(
+    out,
+    prefix + "-shortcut-key",
+    defined_name.shortcut_key,
+  )
+  push_data_attr_int_opt(
+    out,
+    prefix + "-old-shortcut-key",
+    defined_name.old_shortcut_key,
+  )
+  out.push(svg_attr(prefix + "-hidden", bool_data_attr(defined_name.hidden)))
+  out.push(
+    svg_attr(prefix + "-old-hidden", bool_data_attr(defined_name.old_hidden)),
+  )
+  push_data_attr_opt(out, prefix + "-custom-menu", defined_name.custom_menu)
+  push_data_attr_opt(
+    out,
+    prefix + "-old-custom-menu",
+    defined_name.old_custom_menu,
+  )
+  push_data_attr_opt(out, prefix + "-description", defined_name.description)
+  push_data_attr_opt(
+    out,
+    prefix + "-old-description",
+    defined_name.old_description,
+  )
+  push_data_attr_opt(out, prefix + "-help", defined_name.help)
+  push_data_attr_opt(out, prefix + "-old-help", defined_name.old_help)
+  push_data_attr_opt(out, prefix + "-status-bar", defined_name.status_bar)
+  push_data_attr_opt(
+    out,
+    prefix + "-old-status-bar",
+    defined_name.old_status_bar,
+  )
+  push_data_attr_opt(out, prefix + "-comment", defined_name.comment)
+  push_data_attr_opt(out, prefix + "-old-comment", defined_name.old_comment)
+  push_data_attr_opt(out, prefix + "-formula", defined_name.formula)
+  push_data_attr_opt(out, prefix + "-old-formula", defined_name.old_formula)
+}
+
+///|
+/// §18.11 Shared Workbook Revision parts — surface the resolved
+/// revision header/log graph as typed root metadata.  The parts
+/// describe change tracking state rather than cell paint, so this
+/// intentionally emits no visible marker.
+fn emit_revision_metadata_attrs(
+  revision_headers : @domain.CT_RevisionHeaders?,
+  revision_logs : Array[@domain.CT_Revisions],
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match revision_headers {
+    None => ()
+    Some(headers) => {
+      out.push(svg_attr("data-ooxml-revision-headers", "1"))
+      out.push(svg_attr("data-ooxml-revision-headers-guid", headers.guid))
+      out.push(
+        svg_attr(
+          "data-ooxml-revision-headers-shared",
+          bool_data_attr(headers.shared),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-revision-headers-track-revisions",
+          bool_data_attr(headers.track_revisions),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-revision-headers-preserve-history",
+          headers.preserve_history.to_string(),
+        ),
+      )
+      out.push(
+        svg_attr(
+          "data-ooxml-revision-headers-count",
+          headers.header.length().to_string(),
+        ),
+      )
+      for i, header in headers.header {
+        let prefix = "data-ooxml-revision-header-" + i.to_string()
+        out.push(svg_attr(prefix + "-guid", header.guid))
+        out.push(svg_attr(prefix + "-date-time", header.date_time))
+        out.push(svg_attr(prefix + "-user-name", header.user_name))
+        out.push(svg_attr(prefix + "-r-id", header.r_id))
+        out.push(
+          svg_attr(prefix + "-max-sheet-id", header.max_sheet_id.to_string()),
+        )
+        match header.sheet_id_map {
+          None => ()
+          Some(sheet_id_map) => {
+            out.push(
+              svg_attr(
+                prefix + "-sheet-id-count",
+                sheet_id_map.sheet_ids.length().to_string(),
+              ),
+            )
+            push_data_attr_int_opt(
+              out,
+              prefix + "-sheet-id-declared-count",
+              sheet_id_map.count,
+            )
+            for j, sheet_id in sheet_id_map.sheet_ids {
+              let item_prefix = prefix + "-sheet-id-" + j.to_string()
+              out.push(svg_attr(item_prefix, "1"))
+              out.push(svg_attr(item_prefix + "-val", sheet_id.val.to_string()))
+            }
+          }
+        }
+        match header.reviewed_list {
+          None => ()
+          Some(reviewed_list) => {
+            out.push(
+              svg_attr(
+                prefix + "-reviewed-count",
+                reviewed_list.reviewed.length().to_string(),
+              ),
+            )
+            push_data_attr_int_opt(
+              out,
+              prefix + "-reviewed-declared-count",
+              reviewed_list.count,
+            )
+            for j, reviewed in reviewed_list.reviewed {
+              let item_prefix = prefix + "-reviewed-" + j.to_string()
+              out.push(svg_attr(item_prefix, "1"))
+              out.push(
+                svg_attr(item_prefix + "-r-id", reviewed.r_id.to_string()),
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+  if revision_logs.length() == 0 {
+    return
+  }
+  out.push(
+    svg_attr(
+      "data-ooxml-revision-logs-count",
+      revision_logs.length().to_string(),
+    ),
+  )
+  for i, revisions in revision_logs {
+    let prefix = "data-ooxml-revision-log-" + i.to_string()
+    out.push(
+      svg_attr(prefix + "-rrc-count", revisions.rrc.length().to_string()),
+    )
+    for j, row_column in revisions.rrc {
+      emit_revision_row_column_attrs(
+        out,
+        prefix + "-rrc-" + j.to_string(),
+        row_column,
+      )
+    }
+    out.push(svg_attr(prefix + "-rm-count", revisions.rm.length().to_string()))
+    for j, revision_move in revisions.rm {
+      emit_revision_move_attrs(
+        out,
+        prefix + "-rm-" + j.to_string(),
+        revision_move,
+      )
+    }
+    out.push(
+      svg_attr(prefix + "-rcv-count", revisions.rcv.length().to_string()),
+    )
+    for j, custom_view in revisions.rcv {
+      let item_prefix = prefix + "-rcv-" + j.to_string()
+      out.push(svg_attr(item_prefix, "1"))
+      out.push(svg_attr(item_prefix + "-guid", custom_view.guid))
+      out.push(svg_attr(item_prefix + "-action", custom_view.action))
+    }
+    out.push(
+      svg_attr(prefix + "-rsnm-count", revisions.rsnm.length().to_string()),
+    )
+    for j, sheet_rename in revisions.rsnm {
+      let item_prefix = prefix + "-rsnm-" + j.to_string()
+      out.push(svg_attr(item_prefix, "1"))
+      emit_revision_rev_data_attrs(
+        out,
+        item_prefix,
+        sheet_rename.r_id,
+        sheet_rename.ua,
+        sheet_rename.ra,
+      )
+      out.push(
+        svg_attr(item_prefix + "-sheet-id", sheet_rename.sheet_id.to_string()),
+      )
+      out.push(svg_attr(item_prefix + "-old-name", sheet_rename.old_name))
+      out.push(svg_attr(item_prefix + "-new-name", sheet_rename.new_name))
+    }
+    out.push(
+      svg_attr(prefix + "-ris-count", revisions.ris.length().to_string()),
+    )
+    for j, insert_sheet in revisions.ris {
+      let item_prefix = prefix + "-ris-" + j.to_string()
+      out.push(svg_attr(item_prefix, "1"))
+      emit_revision_rev_data_attrs(
+        out,
+        item_prefix,
+        insert_sheet.r_id,
+        insert_sheet.ua,
+        insert_sheet.ra,
+      )
+      out.push(
+        svg_attr(item_prefix + "-sheet-id", insert_sheet.sheet_id.to_string()),
+      )
+      out.push(svg_attr(item_prefix + "-name", insert_sheet.name))
+      out.push(
+        svg_attr(
+          item_prefix + "-sheet-position",
+          insert_sheet.sheet_position.to_string(),
+        ),
+      )
+    }
+    out.push(
+      svg_attr(prefix + "-rcc-count", revisions.rcc.length().to_string()),
+    )
+    for j, cell_change in revisions.rcc {
+      emit_revision_cell_change_attrs(
+        out,
+        prefix + "-rcc-" + j.to_string(),
+        cell_change,
+      )
+    }
+    out.push(
+      svg_attr(prefix + "-rfmt-count", revisions.rfmt.length().to_string()),
+    )
+    for j, formatting in revisions.rfmt {
+      emit_revision_formatting_attrs(
+        out,
+        prefix + "-rfmt-" + j.to_string(),
+        formatting,
+      )
+    }
+    out.push(
+      svg_attr(prefix + "-raf-count", revisions.raf.length().to_string()),
+    )
+    for j, auto_formatting in revisions.raf {
+      let item_prefix = prefix + "-raf-" + j.to_string()
+      out.push(svg_attr(item_prefix, "1"))
+      out.push(
+        svg_attr(
+          item_prefix + "-sheet-id",
+          auto_formatting.sheet_id.to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        item_prefix + "-auto-format-id",
+        auto_formatting.auto_format_id,
+      )
+      push_data_attr_bool_opt(
+        out,
+        item_prefix + "-apply-number-formats",
+        auto_formatting.apply_number_formats,
+      )
+      push_data_attr_bool_opt(
+        out,
+        item_prefix + "-apply-border-formats",
+        auto_formatting.apply_border_formats,
+      )
+      push_data_attr_bool_opt(
+        out,
+        item_prefix + "-apply-font-formats",
+        auto_formatting.apply_font_formats,
+      )
+      push_data_attr_bool_opt(
+        out,
+        item_prefix + "-apply-pattern-formats",
+        auto_formatting.apply_pattern_formats,
+      )
+      push_data_attr_bool_opt(
+        out,
+        item_prefix + "-apply-alignment-formats",
+        auto_formatting.apply_alignment_formats,
+      )
+      push_data_attr_bool_opt(
+        out,
+        item_prefix + "-apply-width-height-formats",
+        auto_formatting.apply_width_height_formats,
+      )
+      out.push(svg_attr(item_prefix + "-ref", auto_formatting.ref_))
+    }
+    out.push(
+      svg_attr(prefix + "-rdn-count", revisions.rdn.length().to_string()),
+    )
+    for j, defined_name in revisions.rdn {
+      emit_revision_defined_name_attrs(
+        out,
+        prefix + "-rdn-" + j.to_string(),
+        defined_name,
+      )
+    }
+    out.push(
+      svg_attr(prefix + "-rcmt-count", revisions.rcmt.length().to_string()),
+    )
+    for j, comment in revisions.rcmt {
+      let item_prefix = prefix + "-rcmt-" + j.to_string()
+      out.push(svg_attr(item_prefix, "1"))
+      out.push(
+        svg_attr(item_prefix + "-sheet-id", comment.sheet_id.to_string()),
+      )
+      out.push(svg_attr(item_prefix + "-cell", comment.cell))
+      out.push(svg_attr(item_prefix + "-guid", comment.guid))
+      out.push(svg_attr(item_prefix + "-action", comment.action))
+      out.push(
+        svg_attr(
+          item_prefix + "-always-show",
+          bool_data_attr(comment.always_show),
+        ),
+      )
+      out.push(svg_attr(item_prefix + "-old", bool_data_attr(comment.old)))
+      out.push(
+        svg_attr(
+          item_prefix + "-hidden-row",
+          bool_data_attr(comment.hidden_row),
+        ),
+      )
+      out.push(
+        svg_attr(
+          item_prefix + "-hidden-column",
+          bool_data_attr(comment.hidden_column),
+        ),
+      )
+      out.push(svg_attr(item_prefix + "-author", comment.author))
+      out.push(
+        svg_attr(item_prefix + "-old-length", comment.old_length.to_string()),
+      )
+      out.push(
+        svg_attr(item_prefix + "-new-length", comment.new_length.to_string()),
+      )
+    }
+    out.push(
+      svg_attr(prefix + "-rqt-count", revisions.rqt.length().to_string()),
+    )
+    for j, query_field in revisions.rqt {
+      let item_prefix = prefix + "-rqt-" + j.to_string()
+      out.push(svg_attr(item_prefix, "1"))
+      out.push(
+        svg_attr(item_prefix + "-sheet-id", query_field.sheet_id.to_string()),
+      )
+      out.push(svg_attr(item_prefix + "-ref", query_field.ref_))
+      out.push(
+        svg_attr(item_prefix + "-field-id", query_field.field_id.to_string()),
+      )
+    }
+    out.push(
+      svg_attr(prefix + "-rcft-count", revisions.rcft.length().to_string()),
+    )
+    for j, conflict in revisions.rcft {
+      let item_prefix = prefix + "-rcft-" + j.to_string()
+      out.push(svg_attr(item_prefix, "1"))
+      emit_revision_rev_data_attrs(
+        out,
+        item_prefix,
+        conflict.r_id,
+        conflict.ua,
+        conflict.ra,
+      )
+      push_data_attr_int_opt(out, item_prefix + "-sheet-id", conflict.sheet_id)
+    }
+  }
+}
+
+///|
+/// §18.11.1.27 User Names part — resolved shared-workbook users.
+fn emit_shared_users_metadata_attrs(
+  user_names : @domain.CT_Users?,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match user_names {
+    None => ()
+    Some(users) => {
+      out.push(svg_attr("data-ooxml-shared-users", "1"))
+      out.push(
+        svg_attr(
+          "data-ooxml-shared-users-count",
+          users.user_info.length().to_string(),
+        ),
+      )
+      push_data_attr_int_opt(
+        out,
+        "data-ooxml-shared-users-declared-count",
+        users.count,
+      )
+      for i, user in users.user_info {
+        let prefix = "data-ooxml-shared-user-" + i.to_string()
+        out.push(svg_attr(prefix + "-guid", user.guid))
+        out.push(svg_attr(prefix + "-name", user.name))
+        out.push(svg_attr(prefix + "-id", user.id.to_string()))
+        out.push(svg_attr(prefix + "-date-time", user.date_time))
+      }
+    }
+  }
+}
+
+///|
+/// §18.3.1.16 `<customProperties>` — each `<customPr r:id>` points at
+/// an application-defined custom property part. The part has no
+/// worksheet paint of its own, but it is document-visible metadata, so
+/// debug SVG output records the resolved part root and common
+/// `CustomProperty @name/@value` payloads.
+fn emit_custom_properties_metadata_attrs(
+  worksheet : @xml.Element,
+  custom_property_resolver : (String) -> @xml.Element?,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  let entries : Array[@xml.Attribute] = []
+  let mut count = 0
+  for custom_pr in sml_descendants_named_local(worksheet, "customPr") {
+    let rid = match attr_value_local(custom_pr, "id") {
+      Some(value) => value
+      None => continue
+    }
+    let root = match custom_property_resolver(rid) {
+      Some(value) => value
+      None => continue
+    }
+    let prefix = "data-ooxml-custom-property-" + count.to_string()
+    entries.push(
+      svg_attr(
+        prefix + "-name",
+        attr_value_local(custom_pr, "name").unwrap_or(""),
+      ),
+    )
+    entries.push(svg_attr(prefix + "-r-id", rid))
+    entries.push(svg_attr(prefix + "-part-root", root.name.local_name))
+    let props : Array[@xml.Element] = if root.name.local_name ==
+      "CustomProperty" {
+      [root]
+    } else {
+      sml_descendants_named_local(root, "CustomProperty")
+    }
+    for j, prop in props {
+      let prop_prefix = prefix + "-payload-" + j.to_string()
+      match attr_value_local(prop, "name") {
+        Some(value) => entries.push(svg_attr(prop_prefix + "-name", value))
+        None => ()
+      }
+      match attr_value_local(prop, "value") {
+        Some(value) => entries.push(svg_attr(prop_prefix + "-value", value))
+        None => ()
+      }
+    }
+    count = count + 1
+  }
+  if count == 0 {
+    return
+  }
+  out.push(svg_attr("data-ooxml-custom-properties-count", count.to_string()))
+  for attr in entries {
+    out.push(attr)
+  }
+}
+
+///|
+fn emit_source_element_attrs(
+  prefix : String,
+  element : @xml.Element,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  out.push(svg_attr(prefix, "1"))
+  for attr in element.attributes {
+    let attr_prefix = match attr.name.prefix {
+      Some(p) => p + "-"
+      None => ""
+    }
+    out.push(
+      svg_attr(
+        prefix + "-attr-" + attr_prefix + attr.name.local_name,
+        attr.value,
+      ),
+    )
+  }
+}
+
+///|
+fn direct_children_named_local(
+  element : @xml.Element,
+  local_name : String,
+) -> Array[@xml.Element] {
+  let out : Array[@xml.Element] = []
+  for child in element.children {
+    if child is @xml.Node::Element(ce) && ce.name.local_name == local_name {
+      out.push(ce)
+    }
+  }
+  out
+}
+
+///|
+fn emit_indexed_child_attrs(
+  out : Array[@xml.Attribute],
+  prefix : String,
+  element : @xml.Element,
+  child_name : String,
+  key_attrs : Array[String],
+) -> Unit {
+  let children = direct_children_named_local(element, child_name)
+  out.push(
+    svg_attr(
+      prefix + "-" + child_name + "-count",
+      children.length().to_string(),
+    ),
+  )
+  for i, child in children {
+    let child_prefix = prefix + "-" + child_name + "-" + i.to_string()
+    emit_source_element_attrs(child_prefix, child, out)
+    for key in key_attrs {
+      match attr_value_local(child, key) {
+        Some(v) => out.push(svg_attr(child_prefix + "-" + key, v))
+        None => ()
+      }
+    }
+  }
+}
+
+///|
+fn emit_worksheet_metadata_attrs(
+  worksheet : @xml.Element,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  match first_child_named_local(worksheet, "sheetPr") {
+    None => ()
+    Some(sheet_pr) => {
+      emit_source_element_attrs("data-ooxml-sheet-pr", sheet_pr, out)
+      for child_name in ["tabColor", "outlinePr", "pageSetUpPr"] {
+        emit_indexed_child_attrs(
+          out,
+          "data-ooxml-sheet-pr",
+          sheet_pr,
+          child_name,
+          [],
+        )
+      }
+    }
+  }
+  match first_child_named_local(worksheet, "dataConsolidate") {
+    None => ()
+    Some(data_consolidate) => {
+      emit_source_element_attrs(
+        "data-ooxml-data-consolidate", data_consolidate, out,
+      )
+      match first_child_named_local(data_consolidate, "dataRefs") {
+        None => ()
+        Some(data_refs) => {
+          emit_source_element_attrs(
+            "data-ooxml-data-consolidate-data-refs", data_refs, out,
+          )
+          emit_indexed_child_attrs(
+            out,
+            "data-ooxml-data-consolidate",
+            data_refs,
+            "dataRef",
+            ["ref", "name", "sheet", "id"],
+          )
+        }
+      }
+    }
+  }
+  match first_child_named_local(worksheet, "customSheetViews") {
+    None => ()
+    Some(views) => {
+      emit_source_element_attrs("data-ooxml-custom-sheet-views", views, out)
+      emit_indexed_child_attrs(
+        out,
+        "data-ooxml-custom-sheet-views",
+        views,
+        "customSheetView",
+        ["guid", "scale", "state", "view", "topLeftCell"],
+      )
+    }
+  }
+  match first_child_named_local(worksheet, "sheetViews") {
+    None => ()
+    Some(sheet_views) => {
+      emit_source_element_attrs("data-ooxml-sheet-views", sheet_views, out)
+      let views = direct_children_named_local(sheet_views, "sheetView")
+      out.push(
+        svg_attr(
+          "data-ooxml-sheet-views-sheetView-count",
+          views.length().to_string(),
+        ),
+      )
+      for i, view in views {
+        let view_prefix = "data-ooxml-sheet-views-sheetView-" + i.to_string()
+        emit_source_element_attrs(view_prefix, view, out)
+        emit_indexed_child_attrs(out, view_prefix, view, "pivotSelection", [
+          "pane", "showHeader", "label", "data", "extendable", "count", "axis", "dimension",
+          "start", "min", "max", "activeRow", "activeCol", "previousRow", "previousCol",
+          "click",
+        ])
+      }
+    }
+  }
+  match first_child_named_local(worksheet, "sheetCalcPr") {
+    None => ()
+    Some(sheet_calc_pr) =>
+      emit_source_element_attrs("data-ooxml-sheet-calc-pr", sheet_calc_pr, out)
+  }
+  match first_child_named_local(worksheet, "scenarios") {
+    None => ()
+    Some(scenarios) => {
+      emit_source_element_attrs("data-ooxml-scenarios", scenarios, out)
+      emit_indexed_child_attrs(
+        out,
+        "data-ooxml-scenarios",
+        scenarios,
+        "scenario",
+        ["name", "comment", "user", "locked", "hidden", "count"],
+      )
+      let scenario_nodes = direct_children_named_local(scenarios, "scenario")
+      for i, scenario in scenario_nodes {
+        let scenario_prefix = "data-ooxml-scenarios-scenario-" + i.to_string()
+        emit_indexed_child_attrs(out, scenario_prefix, scenario, "inputCells", [
+          "r", "deleted", "undone", "val", "numFmtId",
+        ])
+      }
+    }
+  }
+  match first_child_named_local(worksheet, "cellWatches") {
+    None => ()
+    Some(watches) => {
+      emit_source_element_attrs("data-ooxml-cell-watches", watches, out)
+      emit_indexed_child_attrs(
+        out,
+        "data-ooxml-cell-watches",
+        watches,
+        "cellWatch",
+        ["r"],
+      )
+    }
+  }
+  match first_child_named_local(worksheet, "ignoredErrors") {
+    None => ()
+    Some(errors) => {
+      emit_source_element_attrs("data-ooxml-ignored-errors", errors, out)
+      emit_indexed_child_attrs(
+        out,
+        "data-ooxml-ignored-errors",
+        errors,
+        "ignoredError",
+        [
+          "sqref", "evalError", "twoDigitTextYear", "numberStoredAsText", "formula",
+          "formulaRange", "unlockedFormula", "emptyCellReference", "listDataValidation",
+          "calculatedColumn", "containsErrors",
+        ],
+      )
+    }
+  }
+  match first_child_named_local(worksheet, "dataValidations") {
+    None => ()
+    Some(validations) => {
+      emit_source_element_attrs("data-ooxml-data-validations", validations, out)
+      let items = direct_children_named_local(validations, "dataValidation")
+      out.push(
+        svg_attr(
+          "data-ooxml-data-validations-dataValidation-count",
+          items.length().to_string(),
+        ),
+      )
+      for i, validation in items {
+        let prefix = "data-ooxml-data-validations-dataValidation-" +
+          i.to_string()
+        emit_source_element_attrs(prefix, validation, out)
+        for
+          key in [
+            "type", "errorStyle", "imeMode", "operator", "allowBlank", "showDropDown",
+            "showInputMessage", "showErrorMessage", "errorTitle", "error", "promptTitle",
+            "prompt", "sqref",
+          ] {
+          match attr_value_local(validation, key) {
+            Some(v) => out.push(svg_attr(prefix + "-" + key, v))
+            None => ()
+          }
+        }
+        for child_name in ["formula1", "formula2"] {
+          match first_child_named_local(validation, child_name) {
+            None => ()
+            Some(formula) => {
+              out.push(svg_attr(prefix + "-" + child_name, "1"))
+              out.push(
+                svg_attr(
+                  prefix + "-" + child_name + "-text",
+                  xml_text_content(formula),
+                ),
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+  match first_child_named_local(worksheet, "smartTags") {
+    None => ()
+    Some(smart_tags) => {
+      emit_source_element_attrs("data-ooxml-smart-tags", smart_tags, out)
+      let cell_tags = direct_children_named_local(smart_tags, "cellSmartTags")
+      out.push(
+        svg_attr(
+          "data-ooxml-smart-tags-cell-smart-tags-count",
+          cell_tags.length().to_string(),
+        ),
+      )
+      for i, cell_tag in cell_tags {
+        let prefix = "data-ooxml-smart-tags-cell-smart-tags-" + i.to_string()
+        emit_source_element_attrs(prefix, cell_tag, out)
+        let entries = direct_children_named_local(cell_tag, "cellSmartTag")
+        out.push(
+          svg_attr(prefix + "-cellSmartTag-count", entries.length().to_string()),
+        )
+        for j, entry in entries {
+          let entry_prefix = prefix + "-cellSmartTag-" + j.to_string()
+          emit_source_element_attrs(entry_prefix, entry, out)
+          emit_indexed_child_attrs(out, entry_prefix, entry, "cellSmartTagPr", [
+            "key", "val",
+          ])
+        }
+      }
+    }
+  }
+  match first_child_named_local(worksheet, "singleXmlCells") {
+    None => ()
+    Some(single_xml_cells) => {
+      emit_source_element_attrs(
+        "data-ooxml-single-xml-cells", single_xml_cells, out,
+      )
+      let cells = direct_children_named_local(single_xml_cells, "singleXmlCell")
+      out.push(
+        svg_attr(
+          "data-ooxml-single-xml-cells-singleXmlCell-count",
+          cells.length().to_string(),
+        ),
+      )
+      for i, cell in cells {
+        let cell_prefix = "data-ooxml-single-xml-cells-singleXmlCell-" +
+          i.to_string()
+        emit_source_element_attrs(cell_prefix, cell, out)
+        for key in ["id", "r", "connectionId"] {
+          match attr_value_local(cell, key) {
+            Some(v) => out.push(svg_attr(cell_prefix + "-" + key, v))
+            None => ()
+          }
+        }
+        match first_child_named_local(cell, "xmlCellPr") {
+          None => ()
+          Some(xml_cell_pr) => {
+            let pr_prefix = cell_prefix + "-xmlCellPr"
+            emit_source_element_attrs(pr_prefix, xml_cell_pr, out)
+            for key in ["id", "uniqueName"] {
+              match attr_value_local(xml_cell_pr, key) {
+                Some(v) => out.push(svg_attr(pr_prefix + "-" + key, v))
+                None => ()
+              }
+            }
+            match first_child_named_local(xml_cell_pr, "xmlPr") {
+              None => ()
+              Some(xml_pr) => {
+                let xml_pr_prefix = pr_prefix + "-xmlPr"
+                emit_source_element_attrs(xml_pr_prefix, xml_pr, out)
+                for key in ["mapId", "xpath", "xmlDataType"] {
+                  match attr_value_local(xml_pr, key) {
+                    Some(v) => out.push(svg_attr(xml_pr_prefix + "-" + key, v))
+                    None => ()
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  match first_child_named_local(worksheet, "webPublishItems") {
+    None => ()
+    Some(items) => {
+      emit_source_element_attrs("data-ooxml-web-publish-items", items, out)
+      emit_indexed_child_attrs(
+        out,
+        "data-ooxml-web-publish-items",
+        items,
+        "webPublishItem",
+        [
+          "id", "divId", "sourceType", "sourceRef", "sourceObject", "destinationFile",
+          "title", "autoRepublish",
+        ],
+      )
+    }
+  }
+}
+
+///|
 fn sml_metadata_attrs(
   worksheet : @xml.Element,
   workbook_root? : @xml.Element? = None,
+  connections? : @domain.CT_Connections? = None,
+  pivot_cache_definitions? : Array[@domain.CT_PivotCacheDefinition] = [],
+  calc_chain? : @domain.CT_CalcChain? = None,
+  xml_maps? : @domain.CT_MapInfo? = None,
+  volatile_dependencies? : @domain.CT_VolTypes? = None,
+  metadata? : @domain.CT_Metadata? = None,
+  single_xml_cells? : Array[@domain.CT_SingleXmlCells] = [],
+  external_links? : Array[@domain.CT_ExternalLink] = [],
+  query_tables? : Array[@domain.CT_QueryTable] = [],
+  revision_headers? : @domain.CT_RevisionHeaders? = None,
+  revision_logs? : Array[@domain.CT_Revisions] = [],
+  user_names? : @domain.CT_Users? = None,
+  custom_property_resolver? : (String) -> @xml.Element? = _ => None,
   stylesheet_root? : @xml.Element? = None,
 ) -> Array[@xml.Attribute] {
   let out : Array[@xml.Attribute] = []
@@ -11736,15 +15971,33 @@ fn sml_metadata_attrs(
   // metadata when the verifier routes those elements through
   // `xl/workbook.xml` (the catalog's `xlsx:workbook` aux-host).
   //
-  // The per-worksheet scan below ALSO covers each of these
-  // element names, so the legacy harness behaviour (which dropped
-  // workbook-level elements as direct worksheet children) keeps
-  // working — this addition is strictly a fallback when the
-  // workbook is the source.
+  // The per-worksheet scan below also covers the same element names
+  // when a catalog fixture deliberately routes them through a
+  // worksheet-shaped host; the workbook part remains the owner when
+  // `workbook_root` is supplied.
   match workbook_root {
     None => ()
     Some(wb) => emit_workbook_metadata_attrs(wb, out)
   }
+  // §18.13 — `/xl/connections.xml` is a workbook-level part, but not
+  // a child of `<workbook>`. Keep it as a separate typed source.
+  match connections {
+    None => ()
+    Some(connections) => emit_connections_metadata_attrs(connections, out)
+  }
+  emit_pivot_cache_definition_part_attrs(pivot_cache_definitions, out)
+  emit_calc_chain_metadata_attrs(calc_chain, out)
+  emit_xml_maps_metadata_attrs(xml_maps, out)
+  emit_volatile_dependencies_metadata_attrs(volatile_dependencies, out)
+  emit_metadata_part_attrs(metadata, out)
+  emit_single_xml_cells_part_attrs(single_xml_cells, out)
+  emit_external_link_part_attrs(external_links, out)
+  emit_query_table_metadata_attrs(query_tables, out)
+  emit_revision_metadata_attrs(revision_headers, revision_logs, out)
+  emit_shared_users_metadata_attrs(user_names, out)
+  emit_custom_properties_metadata_attrs(
+    worksheet, custom_property_resolver, out,
+  )
   // §18.8.39 CT_Stylesheet — when an `<styleSheet>` root is
   // supplied, surface per-section counts so the catalog harness's
   // differential render check can detect a change to any styles
@@ -11755,6 +16008,7 @@ fn sml_metadata_attrs(
     None => ()
     Some(ss) => emit_stylesheet_metadata_attrs(ss, out)
   }
+  emit_worksheet_metadata_attrs(worksheet, out)
 
   // §18.3.1.85 sheetProtection — surface every locked-action flag
   // that differs from its XSD default plus the crypto envelope so
@@ -11821,6 +16075,50 @@ fn sml_metadata_attrs(
     )
     if ranges.length() > 0 {
       out.push(svg_attr("data-ooxml-protected-ranges", ranges.join(";")))
+    }
+    let protected_ranges : Array[@xml.Element] = []
+    match prs {
+      None => ()
+      Some(container) =>
+        for child in container.children {
+          if child is @xml.Node::Element(ce) &&
+            ce.name.local_name == "protectedRange" {
+            protected_ranges.push(ce)
+          }
+        }
+    }
+    for pr in pr_direct {
+      protected_ranges.push(pr)
+    }
+    for i, protected_range in protected_ranges {
+      let prefix = "data-ooxml-protected-range-" + i.to_string()
+      emit_source_element_attrs(prefix, protected_range, out)
+      for
+        key in [
+          "sqref", "name", "algorithmName", "hashValue", "saltValue", "spinCount",
+          "password",
+        ] {
+        match attr_value_local(protected_range, key) {
+          Some(v) => out.push(svg_attr(prefix + "-" + key, v))
+          None => ()
+        }
+      }
+      let descriptors = direct_children_named_local(
+        protected_range, "securityDescriptor",
+      )
+      out.push(
+        svg_attr(
+          prefix + "-securityDescriptor-count",
+          descriptors.length().to_string(),
+        ),
+      )
+      for j, descriptor in descriptors {
+        let descriptor_prefix = prefix + "-securityDescriptor-" + j.to_string()
+        emit_source_element_attrs(descriptor_prefix, descriptor, out)
+        out.push(
+          svg_attr(descriptor_prefix + "-text", xml_text_content(descriptor)),
+        )
+      }
     }
   }
 
@@ -12301,6 +16599,893 @@ fn sheet_view_show_zeros(worksheet : @xml.Element) -> Bool? {
         None => None
       }
   }
+}
+
+///|
+/// §18.3.1.64 `<rowBreaks>/<colBreaks>` and §18.3.1.1 `<brk>` —
+/// render manual page breaks as dashed page-boundary rules.  `id`
+/// names the row/column before the break; the visual line sits on
+/// the following grid boundary.
+fn render_sheet_page_breaks(
+  row_breaks : @domain.CT_PageBreak?,
+  col_breaks : @domain.CT_PageBreak?,
+  layout : SheetLayout,
+) -> @xml.Node? {
+  let lines : Array[@xml.Node] = []
+  match row_breaks {
+    Some(breaks) =>
+      for brk in breaks.brks {
+        match page_break_row_y(brk, layout) {
+          Some(y) =>
+            lines.push(
+              svg_elem(
+                "line",
+                [
+                  svg_attr("x1", "0"),
+                  svg_attr("y1", format_d(y)),
+                  svg_attr("x2", format_d(layout.total_width)),
+                  svg_attr("y2", format_d(y)),
+                  svg_attr("stroke", "#7f7f7f"),
+                  svg_attr("stroke-width", "1"),
+                  svg_attr("stroke-dasharray", "4 3"),
+                  svg_attr("data-ooxml-page-break", "row"),
+                  svg_attr("data-ooxml-page-break-id", brk.id.to_string()),
+                  svg_attr(
+                    "data-ooxml-page-break-manual",
+                    if brk.man {
+                      "1"
+                    } else {
+                      "0"
+                    },
+                  ),
+                ],
+                [],
+              ),
+            )
+          None => ()
+        }
+      }
+    None => ()
+  }
+  match col_breaks {
+    Some(breaks) =>
+      for brk in breaks.brks {
+        match page_break_col_x(brk, layout) {
+          Some(x) =>
+            lines.push(
+              svg_elem(
+                "line",
+                [
+                  svg_attr("x1", format_d(x)),
+                  svg_attr("y1", "0"),
+                  svg_attr("x2", format_d(x)),
+                  svg_attr("y2", format_d(layout.total_height)),
+                  svg_attr("stroke", "#7f7f7f"),
+                  svg_attr("stroke-width", "1"),
+                  svg_attr("stroke-dasharray", "4 3"),
+                  svg_attr("data-ooxml-page-break", "col"),
+                  svg_attr("data-ooxml-page-break-id", brk.id.to_string()),
+                  svg_attr(
+                    "data-ooxml-page-break-manual",
+                    if brk.man {
+                      "1"
+                    } else {
+                      "0"
+                    },
+                  ),
+                ],
+                [],
+              ),
+            )
+          None => ()
+        }
+      }
+    None => ()
+  }
+  if lines.length() == 0 {
+    None
+  } else {
+    Some(svg_elem("g", [svg_attr("class", "page-breaks")], lines))
+  }
+}
+
+///|
+fn page_break_row_y(brk : @domain.CT_Break, layout : SheetLayout) -> Double? {
+  if layout.row_count <= 0 {
+    return None
+  }
+  let id = brk.id
+  if id <= 0 {
+    return Some(0.0)
+  }
+  if id < layout.row_positions.length() {
+    Some(layout.row_positions[id])
+  } else if id <= layout.row_heights.length() {
+    Some(layout.row_positions[id - 1] + layout.row_heights[id - 1])
+  } else {
+    None
+  }
+}
+
+///|
+fn page_break_col_x(brk : @domain.CT_Break, layout : SheetLayout) -> Double? {
+  if layout.column_count <= 0 {
+    return None
+  }
+  let id = brk.id
+  if id <= 0 {
+    return Some(0.0)
+  }
+  if id < layout.column_positions.length() {
+    Some(layout.column_positions[id])
+  } else if id <= layout.column_widths.length() {
+    Some(layout.column_positions[id - 1] + layout.column_widths[id - 1])
+  } else {
+    None
+  }
+}
+
+///|
+/// §18.3.1.84 `<picture>` — worksheet background image.  The
+/// relationship id is resolved through the worksheet part's `_rels`;
+/// when resolved, the image covers the visible worksheet body and
+/// sits below all cell/grid overlays.
+fn render_sheet_background_picture(
+  picture : @domain.CT_SheetBackgroundPicture?,
+  layout : SheetLayout,
+  image_resolver : (String) -> String?,
+) -> @xml.Node? {
+  let pic = match picture {
+    None => return None
+    Some(p) => p
+  }
+  if pic.r_id.length() == 0 {
+    return None
+  }
+  match image_resolver(pic.r_id) {
+    None => None
+    Some(href) =>
+      Some(
+        svg_elem(
+          "image",
+          [
+            svg_attr("class", "sheet-background-picture"),
+            svg_attr("x", "0"),
+            svg_attr("y", "0"),
+            svg_attr("width", format_d(layout.total_width)),
+            svg_attr("height", format_d(layout.total_height)),
+            svg_attr("href", href),
+            svg_attr("preserveAspectRatio", "none"),
+            svg_attr("data-ooxml-sheet-background-picture", "1"),
+            svg_attr("data-ooxml-sheet-background-picture-r-id", pic.r_id),
+          ],
+          [],
+        ),
+      )
+  }
+}
+
+///|
+/// §18.3.1.63 `<pageSetup>` — paint a lightweight print-page
+/// frame and setup glyph.  Root `data-ooxml-page-setup-*`
+/// attributes are metadata only; this layer is the visible print
+/// contract: the page has an explicit paper/orientation/scale/fit
+/// setup that a print pipeline must honour.
+fn render_sheet_page_setup(
+  worksheet : @xml.Element,
+  page_width : Double,
+  page_height : Double,
+  margin_left : Double,
+  margin_top : Double,
+  margin_right : Double,
+) -> @xml.Node? {
+  match first_child_named_local(worksheet, "pageSetup") {
+    None => None
+    Some(ps) => {
+      let orientation = attr_value_local(ps, "orientation").unwrap_or("default")
+      let paper_size = parse_int_attr_or(ps, "paperSize", 1)
+      let scale = parse_int_attr_or(ps, "scale", 100)
+      let fit_to_width = parse_int_attr_or(ps, "fitToWidth", 1)
+      let fit_to_height = parse_int_attr_or(ps, "fitToHeight", 1)
+      let copies = parse_int_attr_or(ps, "copies", 1)
+      let black_and_white = parse_xsd_boolean_or(
+        attr_value_local(ps, "blackAndWhite"),
+        false,
+      )
+      let draft = parse_xsd_boolean_or(attr_value_local(ps, "draft"), false)
+      let stroke = if black_and_white {
+        "#555555"
+      } else if draft {
+        "#8A6D24"
+      } else {
+        "#3E78B2"
+      }
+      let dash = if draft { "3 3" } else { "7 4" }
+      let marker_w = if orientation == "landscape" { 34.0 } else { 22.0 }
+      let marker_h = if orientation == "landscape" { 22.0 } else { 34.0 }
+      let marker_x = if margin_left >= marker_w + 12.0 {
+        6.0
+      } else {
+        page_width - margin_right + 6.0
+      }
+      let marker_y = if margin_top >= marker_h + 18.0 { 6.0 } else { 6.0 }
+      let label = page_setup_label(
+        paper_size, orientation, scale, fit_to_width, fit_to_height, copies,
+      )
+      let nodes : Array[@xml.Node] = [
+        svg_elem(
+          "rect",
+          [
+            svg_attr("x", "0.5"),
+            svg_attr("y", "0.5"),
+            svg_attr("width", format_d(page_width - 1.0)),
+            svg_attr("height", format_d(page_height - 1.0)),
+            svg_attr("fill", "none"),
+            svg_attr("stroke", stroke),
+            svg_attr("stroke-width", "1"),
+            svg_attr("stroke-dasharray", dash),
+          ],
+          [],
+        ),
+        svg_elem(
+          "rect",
+          [
+            svg_attr("x", format_d(marker_x)),
+            svg_attr("y", format_d(marker_y)),
+            svg_attr("width", format_d(marker_w)),
+            svg_attr("height", format_d(marker_h)),
+            svg_attr("rx", "1.5"),
+            svg_attr("fill", "#FFFFFF"),
+            svg_attr("stroke", stroke),
+            svg_attr("stroke-width", "1"),
+          ],
+          [],
+        ),
+        svg_elem(
+          "line",
+          [
+            svg_attr("x1", format_d(marker_x + 4.0)),
+            svg_attr("y1", format_d(marker_y + marker_h - 5.0)),
+            svg_attr("x2", format_d(marker_x + marker_w - 4.0)),
+            svg_attr("y2", format_d(marker_y + marker_h - 5.0)),
+            svg_attr("stroke", stroke),
+            svg_attr("stroke-width", "1"),
+          ],
+          [],
+        ),
+        svg_elem(
+          "text",
+          [
+            svg_attr("x", format_d(marker_x)),
+            svg_attr("y", format_d(marker_y + marker_h + 10.0)),
+            svg_attr("font-size", "8"),
+            svg_attr("font-family", "Arial, sans-serif"),
+            svg_attr("fill", stroke),
+          ],
+          [svg_text(label)],
+        ),
+      ]
+      let attrs : Array[@xml.Attribute] = [
+        svg_attr("class", "page-setup"),
+        svg_attr("data-ooxml-page-setup", "1"),
+        svg_attr("data-ooxml-page-setup-paper-size", paper_size.to_string()),
+        svg_attr("data-ooxml-page-setup-orientation", orientation),
+        svg_attr("data-ooxml-page-setup-scale", scale.to_string()),
+      ]
+      if fit_to_width != 1 || fit_to_height != 1 {
+        attrs.push(
+          svg_attr(
+            "data-ooxml-page-setup-fit",
+            fit_to_width.to_string() + "x" + fit_to_height.to_string(),
+          ),
+        )
+      }
+      if black_and_white {
+        attrs.push(svg_attr("data-ooxml-page-setup-black-and-white", "1"))
+      }
+      if draft {
+        attrs.push(svg_attr("data-ooxml-page-setup-draft", "1"))
+      }
+      Some(svg_elem("g", attrs, nodes))
+    }
+  }
+}
+
+///|
+fn page_setup_label(
+  paper_size : Int,
+  orientation : String,
+  scale : Int,
+  fit_to_width : Int,
+  fit_to_height : Int,
+  copies : Int,
+) -> String {
+  let orientation_label = match orientation {
+    "landscape" => "landscape"
+    "portrait" => "portrait"
+    _ => "default"
+  }
+  let fit_label = if fit_to_width != 1 || fit_to_height != 1 {
+    " fit " + fit_to_width.to_string() + "x" + fit_to_height.to_string()
+  } else {
+    ""
+  }
+  let copies_label = if copies > 1 {
+    " copies " + copies.to_string()
+  } else {
+    ""
+  }
+  "paper " +
+  paper_size.to_string() +
+  " " +
+  orientation_label +
+  " " +
+  scale.to_string() +
+  "%" +
+  fit_label +
+  copies_label
+}
+
+///|
+/// §18.3.1.31 `<legacyDrawing>` — worksheet-scoped legacy VML shapes.
+/// The worksheet carries only the relationship id; the facade resolves
+/// that id to the VML Drawing part and supplies its `<xml>` root.  This
+/// renderer emits paint only from the resolved VML payload, with no
+/// worksheet-local placeholder when the relationship is absent or empty.
+fn render_sheet_legacy_drawing(
+  worksheet : @xml.Element,
+  legacy_drawing : @xml.Element?,
+) -> @xml.Node? {
+  let legacy = match first_child_named_local(worksheet, "legacyDrawing") {
+    None => return None
+    Some(e) => e
+  }
+  let rid = match attr_value_local(legacy, "id") {
+    Some(v) => v
+    None => return None
+  }
+  if rid.length() == 0 {
+    return None
+  }
+  let root = match legacy_drawing {
+    Some(e) => e
+    None => return None
+  }
+  let nodes = render_vml_drawing_root(root)
+  if nodes.length() == 0 {
+    return None
+  }
+  Some(
+    svg_elem(
+      "g",
+      [
+        svg_attr("class", "legacy-drawing"),
+        svg_attr("data-ooxml-legacy-drawing", "1"),
+        svg_attr("data-ooxml-legacy-drawing-r-id", rid),
+      ],
+      nodes,
+    ),
+  )
+}
+
+///|
+fn render_vml_drawing_root(root : @xml.Element) -> Array[@xml.Node] {
+  let nodes : Array[@xml.Node] = []
+  for child in root.children {
+    match child {
+      Element(e) =>
+        for n in @vml.render_vml(e) {
+          nodes.push(n)
+        }
+      _ => ()
+    }
+  }
+  nodes
+}
+
+///|
+/// §18.3.1.20 `<controls>` / §18.3.1.32 `<control>` — render worksheet
+/// controls only when the facade resolved the control persistence part.
+/// The anchor comes from `controlPr/anchor`; visible caption/class data
+/// comes from the resolved ActiveX/control part, so unresolved controls
+/// do not get a worksheet-local placeholder.
+fn render_sheet_controls(
+  controls : @domain.CT_Controls?,
+  layout : SheetLayout,
+  control_part_resolver : (String) -> @xml.Element?,
+) -> @xml.Node? {
+  let control_list = match controls {
+    Some(c) => c
+    None => return None
+  }
+  let nodes : Array[@xml.Node] = []
+  for control in control_list.controls {
+    let control_pr = match control.control_pr {
+      Some(cp) => cp
+      None => continue
+    }
+    let rid = if control.r_id.length() > 0 {
+      control.r_id
+    } else {
+      control_pr.r_id
+    }
+    if rid.length() == 0 {
+      continue
+    }
+    let control_root = match control_part_resolver(rid) {
+      Some(root) => root
+      None => continue
+    }
+    let anchor_el = match control_pr.anchor {
+      Some(anchor) => anchor
+      None => continue
+    }
+    let anchor = try @domain.CT_ObjectAnchor::new(anchor_el) catch {
+      _ => continue
+    } noraise {
+      value => value
+    }
+    let box = match comment_anchor_box(anchor, layout) {
+      Some(bounds) => bounds
+      None => continue
+    }
+    nodes.push(
+      render_control_surface(control, control_pr, control_root, box, rid),
+    )
+  }
+  if nodes.length() == 0 {
+    return None
+  }
+  Some(svg_elem("g", [svg_attr("class", "controls")], nodes))
+}
+
+///|
+fn render_control_surface(
+  control : @domain.CT_Control,
+  control_pr : @domain.CT_ControlPr,
+  control_root : @xml.Element,
+  anchor_box : CommentAnchorBox,
+  rid : String,
+) -> @xml.Node {
+  let b = anchor_box.bounds
+  let caption = active_x_control_caption(control_root)
+  let label = if caption.length() > 0 {
+    caption
+  } else if control.name.length() > 0 {
+    control.name
+  } else {
+    control_pr.alt_text
+  }
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("class", "control"),
+    svg_attr(
+      "transform",
+      "translate(" + format_d(b.x) + "," + format_d(b.y) + ")",
+    ),
+    svg_attr("data-ooxml-control", "1"),
+    svg_attr("data-ooxml-control-r-id", rid),
+    svg_attr("data-ooxml-control-shape-id", control.shape_id.to_string()),
+    svg_attr("data-ooxml-control-anchor-from", anchor_box.from_ref),
+    svg_attr("data-ooxml-control-anchor-to", anchor_box.to_ref),
+    svg_attr("data-ooxml-control-disabled", bool_data_attr(control_pr.disabled)),
+    svg_attr("data-ooxml-control-print", bool_data_attr(control_pr.print)),
+  ]
+  if control.name.length() > 0 {
+    attrs.push(svg_attr("data-ooxml-control-name", control.name))
+  }
+  if control_pr.alt_text.length() > 0 {
+    attrs.push(svg_attr("data-ooxml-control-alt-text", control_pr.alt_text))
+  }
+  match attr_value_local(control_root, "classid") {
+    Some(value) => attrs.push(svg_attr("data-ooxml-control-classid", value))
+    None => ()
+  }
+  let fill = if control_pr.disabled { "#F2F2F2" } else { "#F7FBFF" }
+  let stroke = if control_pr.disabled { "#7F7F7F" } else { "#4F81BD" }
+  let children : Array[@xml.Node] = [
+    svg_elem(
+      "rect",
+      [
+        svg_attr("x", "0"),
+        svg_attr("y", "0"),
+        svg_attr("width", format_d(b.width)),
+        svg_attr("height", format_d(b.height)),
+        svg_attr("fill", fill),
+        svg_attr("stroke", stroke),
+        svg_attr("stroke-width", "1"),
+      ],
+      [],
+    ),
+  ]
+  if label.length() > 0 {
+    children.push(
+      svg_elem(
+        "text",
+        [
+          svg_attr("x", format_d(b.width / 2.0)),
+          svg_attr("y", format_d(b.height / 2.0)),
+          svg_attr("text-anchor", "middle"),
+          svg_attr("dominant-baseline", "middle"),
+          svg_attr("font-size", "11"),
+          svg_attr("font-family", "Arial, sans-serif"),
+          svg_attr("fill", "#1F1F1F"),
+        ],
+        [svg_text(label)],
+      ),
+    )
+  }
+  svg_elem("g", attrs, children)
+}
+
+///|
+fn active_x_control_caption(root : @xml.Element) -> String {
+  for prop in sml_descendants_named_local(root, "ocxPr") {
+    if attr_value_local(prop, "name").unwrap_or("") == "Caption" {
+      match attr_value_local(prop, "value") {
+        Some(value) => return value
+        None => ()
+      }
+    }
+  }
+  ""
+}
+
+///|
+/// §18.3.1.32 `<legacyDrawingHF>` — a worksheet-scoped VML drawing
+/// relationship used for header/footer graphics.  The worksheet owns
+/// only the relationship id; the facade resolves the VML part and
+/// this renderer emits the resolved VML payload directly.
+fn render_sheet_legacy_drawing_hf(
+  worksheet : @xml.Element,
+  legacy_drawing_hf : @xml.Element?,
+) -> @xml.Node? {
+  let legacy = match first_child_named_local(worksheet, "legacyDrawingHF") {
+    None => return None
+    Some(e) => e
+  }
+  let rid = match attr_value_local(legacy, "id") {
+    Some(v) => v
+    None => return None
+  }
+  if rid.length() == 0 {
+    return None
+  }
+  let root = match legacy_drawing_hf {
+    Some(e) => e
+    None => return None
+  }
+  let nodes = render_vml_drawing_root(root)
+  if nodes.length() == 0 {
+    return None
+  }
+  Some(
+    svg_elem(
+      "g",
+      [
+        svg_attr("class", "legacy-drawing-hf"),
+        svg_attr("data-ooxml-legacy-drawing-hf", "1"),
+        svg_attr("data-ooxml-legacy-drawing-hf-r-id", rid),
+      ],
+      nodes,
+    ),
+  )
+}
+
+///|
+/// §18.3.1.46 — render worksheet running headers / footers into the
+/// page margin bands.  Excel stores each line as an ST_Xstring with
+/// `&L` / `&C` / `&R` section controls and inline formatting tokens.
+/// The renderer projects every declared page variant (odd / even /
+/// first) as a visible trace line; callers that paginate can later
+/// select the exact variant per physical page.
+fn render_sheet_header_footer(
+  header_footer : @domain.CT_HeaderFooter?,
+  page_width : Double,
+  page_height : Double,
+  margin_left : Double,
+  margin_top : Double,
+  margin_right : Double,
+  margin_bottom : Double,
+) -> @xml.Node? {
+  let hf = match header_footer {
+    None => return None
+    Some(h) => h
+  }
+  let nodes : Array[@xml.Node] = []
+  let mut header_index = 0
+  let mut footer_index = 0
+  fn add_entry(kind : String, raw : String, is_header : Bool) -> Unit {
+    let line_index = if is_header {
+      let i = header_index
+      header_index = header_index + 1
+      i
+    } else {
+      let i = footer_index
+      footer_index = footer_index + 1
+      i
+    }
+    let (left, center, right) = header_footer_sections(raw)
+    let y = header_footer_line_y(
+      is_header, line_index, page_height, margin_top, margin_bottom,
+    )
+    let left_x = if hf.align_with_margins { margin_left } else { 0.0 }
+    let right_x = if hf.align_with_margins {
+      page_width - margin_right
+    } else {
+      page_width
+    }
+    header_footer_push_text(nodes, kind, "left", left, left_x, y, "start")
+    header_footer_push_text(
+      nodes,
+      kind,
+      "center",
+      center,
+      page_width / 2.0,
+      y,
+      "middle",
+    )
+    header_footer_push_text(nodes, kind, "right", right, right_x, y, "end")
+  }
+  match hf.odd_header {
+    Some(s) => add_entry("oddHeader", s, true)
+    None => ()
+  }
+  match hf.even_header {
+    Some(s) => add_entry("evenHeader", s, true)
+    None => ()
+  }
+  match hf.first_header {
+    Some(s) => add_entry("firstHeader", s, true)
+    None => ()
+  }
+  match hf.odd_footer {
+    Some(s) => add_entry("oddFooter", s, false)
+    None => ()
+  }
+  match hf.even_footer {
+    Some(s) => add_entry("evenFooter", s, false)
+    None => ()
+  }
+  match hf.first_footer {
+    Some(s) => add_entry("firstFooter", s, false)
+    None => ()
+  }
+  if nodes.length() == 0 {
+    None
+  } else {
+    Some(
+      svg_elem(
+        "g",
+        [
+          svg_attr("class", "header-footer"),
+          svg_attr(
+            "data-ooxml-header-footer-different-odd-even",
+            if hf.different_odd_even {
+              "1"
+            } else {
+              "0"
+            },
+          ),
+          svg_attr(
+            "data-ooxml-header-footer-different-first",
+            if hf.different_first {
+              "1"
+            } else {
+              "0"
+            },
+          ),
+          svg_attr(
+            "data-ooxml-header-footer-scale-with-doc",
+            if hf.scale_with_doc {
+              "1"
+            } else {
+              "0"
+            },
+          ),
+          svg_attr(
+            "data-ooxml-header-footer-align-with-margins",
+            if hf.align_with_margins {
+              "1"
+            } else {
+              "0"
+            },
+          ),
+        ],
+        nodes,
+      ),
+    )
+  }
+}
+
+///|
+fn header_footer_line_y(
+  is_header : Bool,
+  line_index : Int,
+  page_height : Double,
+  margin_top : Double,
+  margin_bottom : Double,
+) -> Double {
+  let line_step = 13.0
+  let offset = line_index.to_double() * line_step
+  if is_header {
+    let base = if margin_top >= 36.0 { margin_top * 0.35 } else { 12.0 }
+    base + offset
+  } else {
+    let footer_band = if margin_bottom >= 36.0 {
+      margin_bottom * 0.35
+    } else {
+      14.0
+    }
+    page_height - margin_bottom + footer_band + offset
+  }
+}
+
+///|
+fn header_footer_push_text(
+  nodes : Array[@xml.Node],
+  kind : String,
+  section : String,
+  value : String,
+  x : Double,
+  y : Double,
+  anchor : String,
+) -> Unit {
+  let text = value.trim().to_owned()
+  if text == "" {
+    return
+  }
+  nodes.push(
+    svg_elem(
+      "text",
+      [
+        svg_attr("class", "header-footer-text"),
+        svg_attr("x", format_d(x)),
+        svg_attr("y", format_d(y)),
+        svg_attr("text-anchor", anchor),
+        svg_attr("dominant-baseline", "middle"),
+        svg_attr("font-size", "9pt"),
+        svg_attr("font-family", "Calibri, Arial, sans-serif"),
+        svg_attr("fill", "#444444"),
+        svg_attr("data-ooxml-header-footer-kind", kind),
+        svg_attr("data-ooxml-header-footer-section", section),
+      ],
+      [svg_text(text)],
+    ),
+  )
+}
+
+///|
+fn header_footer_sections(raw : String) -> (String, String, String) {
+  let left = StringBuilder::new()
+  let center = StringBuilder::new()
+  let right = StringBuilder::new()
+  let mut section = 1
+  let mut i = 0
+  let len = raw.length()
+  fn write_current(c : Char) -> Unit {
+    match section {
+      0 => left.write_char(c)
+      2 => right.write_char(c)
+      _ => center.write_char(c)
+    }
+  }
+  fn write_current_string(s : String) -> Unit {
+    match section {
+      0 => left.write_string(s)
+      2 => right.write_string(s)
+      _ => center.write_string(s)
+    }
+  }
+  while i < len {
+    let c = raw.code_unit_at(i).to_int()
+    if c == '&'.to_int() && i + 1 < len {
+      let next = raw.code_unit_at(i + 1).to_int()
+      if next == '&'.to_int() {
+        write_current('&')
+        i = i + 2
+        continue
+      }
+      if next == 'L'.to_int() {
+        section = 0
+        i = i + 2
+        continue
+      }
+      if next == 'C'.to_int() {
+        section = 1
+        i = i + 2
+        continue
+      }
+      if next == 'R'.to_int() {
+        section = 2
+        i = i + 2
+        continue
+      }
+      if next == 'P'.to_int() || next == 'N'.to_int() {
+        write_current_string("1")
+        i = i + 2
+        continue
+      }
+      if next == 'A'.to_int() {
+        write_current_string("Sheet")
+        i = i + 2
+        continue
+      }
+      if next == 'F'.to_int() {
+        write_current_string("Workbook")
+        i = i + 2
+        continue
+      }
+      if next == 'D'.to_int() {
+        write_current_string("Date")
+        i = i + 2
+        continue
+      }
+      if next == 'T'.to_int() {
+        write_current_string("Time")
+        i = i + 2
+        continue
+      }
+      if next == 'G'.to_int() {
+        write_current_string("[picture]")
+        i = i + 2
+        continue
+      }
+      if next == '"'.to_int() {
+        i = i + 2
+        while i < len && raw.code_unit_at(i).to_int() != '"'.to_int() {
+          i = i + 1
+        }
+        if i < len {
+          i = i + 1
+        }
+        continue
+      }
+      if next == 'K'.to_int() {
+        i = i + 2
+        let mut consumed = 0
+        while i < len &&
+              consumed < 8 &&
+              header_footer_is_hex(raw.code_unit_at(i).to_int()) {
+          i = i + 1
+          consumed = consumed + 1
+        }
+        continue
+      }
+      if header_footer_is_ascii_digit(next) {
+        i = i + 1
+        while i < len &&
+              header_footer_is_ascii_digit(raw.code_unit_at(i).to_int()) {
+          i = i + 1
+        }
+        continue
+      }
+      if next == 'B'.to_int() ||
+        next == 'I'.to_int() ||
+        next == 'U'.to_int() ||
+        next == 'E'.to_int() ||
+        next == 'S'.to_int() ||
+        next == 'X'.to_int() ||
+        next == 'Y'.to_int() {
+        i = i + 2
+        continue
+      }
+    }
+    write_current(Int::unsafe_to_char(c))
+    i = i + 1
+  }
+  (left.to_string(), center.to_string(), right.to_string())
+}
+
+///|
+fn header_footer_is_ascii_digit(c : Int) -> Bool {
+  c >= '0'.to_int() && c <= '9'.to_int()
+}
+
+///|
+fn header_footer_is_hex(c : Int) -> Bool {
+  (c >= '0'.to_int() && c <= '9'.to_int()) ||
+  (c >= 'A'.to_int() && c <= 'F'.to_int()) ||
+  (c >= 'a'.to_int() && c <= 'f'.to_int())
 }
 
 ///|
@@ -13375,6 +18560,7 @@ fn render_table_chrome_over(
         }
         let range = attr_value_local(element, "ref").unwrap_or(meta.ref_value)
         push_autofilter_arrows_for_range(out, layout, range, Some(filter))
+        push_sort_state_glyphs(out, layout, range, element)
       }
       None => ()
     }
@@ -13403,9 +18589,372 @@ fn render_table_chrome_over(
         filter.range.to_a1(),
       )
       push_autofilter_arrows_for_range(out, layout, range, Some(filter))
+      push_sort_state_glyphs(out, layout, range, element)
     }
   }
   out
+}
+
+///|
+/// §18.3.1.92 `<sortState>` / §18.3.1.91 `<sortCondition>` — paint
+/// the worksheet/table AutoFilter sort indicator on the filtered
+/// header cell.  The rows are persisted in their sorted order by the
+/// producing application; this glyph surfaces the saved view state in
+/// editing-view chrome without reordering sheet data.
+fn push_sort_state_glyphs(
+  out : Array[@xml.Node],
+  layout : SheetLayout,
+  filter_range : String,
+  auto_filter : @xml.Element,
+) -> Unit {
+  let sort_state = match first_child_named_local(auto_filter, "sortState") {
+    Some(s) => s
+    None => return
+  }
+  let sort_condition = match
+    first_child_named_local(sort_state, "sortCondition") {
+    Some(s) => s
+    None => return
+  }
+  let parts = filter_range.split(":").collect()
+  let filter_start = match parts.length() {
+    0 => return
+    _ => parts[0].to_owned()
+  }
+  let (header_row, fallback_col) = match parse_cell_ref(filter_start) {
+    Some(p) => p
+    None => return
+  }
+  let sort_ref = attr_value_local(sort_condition, "ref").unwrap_or("")
+  let sort_col = if sort_ref.length() > 0 {
+    let sort_parts = sort_ref.split(":").collect()
+    let sort_start = match sort_parts.length() {
+      0 => sort_ref
+      _ => sort_parts[0].to_owned()
+    }
+    match parse_cell_ref(sort_start) {
+      Some((_row, col)) => col
+      None => fallback_col
+    }
+  } else {
+    fallback_col
+  }
+  let descending = match attr_value_local(sort_condition, "descending") {
+    Some(v) => v == "1" || v == "true"
+    None => false
+  }
+  match
+    table_range_pixel_box(layout, header_row, header_row, sort_col, sort_col) {
+    Some(box) => push_sort_state_glyph(out, box, descending)
+    None => ()
+  }
+}
+
+///|
+fn push_sort_state_glyph(
+  out : Array[@xml.Node],
+  box : (Double, Double, Double, Double),
+  descending : Bool,
+) -> Unit {
+  let (x, y, w, h) = box
+  if w < 22.0 || h < 12.0 {
+    return
+  }
+  let cx = x + w - 24.0
+  let cy = y + h / 2.0
+  let tri_w = 7.0
+  let tri_h = 5.0
+  let path_d = if descending {
+    "M " +
+    format_d(cx - tri_w / 2.0) +
+    " " +
+    format_d(cy - tri_h / 2.0) +
+    " L " +
+    format_d(cx + tri_w / 2.0) +
+    " " +
+    format_d(cy - tri_h / 2.0) +
+    " L " +
+    format_d(cx) +
+    " " +
+    format_d(cy + tri_h / 2.0) +
+    " Z"
+  } else {
+    "M " +
+    format_d(cx - tri_w / 2.0) +
+    " " +
+    format_d(cy + tri_h / 2.0) +
+    " L " +
+    format_d(cx + tri_w / 2.0) +
+    " " +
+    format_d(cy + tri_h / 2.0) +
+    " L " +
+    format_d(cx) +
+    " " +
+    format_d(cy - tri_h / 2.0) +
+    " Z"
+  }
+  out.push(
+    svg_elem(
+      "path",
+      [
+        svg_attr("d", path_d),
+        svg_attr("fill", "#1F4E79"),
+        svg_attr("stroke", "#FFFFFF"),
+        svg_attr("stroke-width", "0.5"),
+        svg_attr(
+          "data-ooxml-sort-state",
+          if descending {
+            "descending"
+          } else {
+            "ascending"
+          },
+        ),
+      ],
+      [],
+    ),
+  )
+}
+
+///|
+/// §18.3.1.78 `<selection>` — draw saved editing-view selection
+/// outlines from the typed worksheet view projection.  The caller
+/// gates this behind `show_table_chrome`; print/page output keeps the
+/// saved cursor state suppressed.
+fn render_sheet_selection_overlays(
+  worksheet : @domain.CT_Worksheet,
+  layout : SheetLayout,
+) -> Array[@xml.Node] {
+  let out : Array[@xml.Node] = []
+  match worksheet.sheet_views {
+    None => ()
+    Some(sheet_views) =>
+      for sheet_view in sheet_views.sheet_views {
+        for selection in sheet_view.selections {
+          push_sheet_selection_overlay(out, layout, selection)
+        }
+      }
+  }
+  out
+}
+
+///|
+fn push_sheet_selection_overlay(
+  out : Array[@xml.Node],
+  layout : SheetLayout,
+  selection : @domain.CT_Selection,
+) -> Unit {
+  for raw in selection.sqref.split(" ") {
+    let range = raw.trim().to_owned()
+    if range == "" {
+      continue
+    }
+    let parts = range.split(":").collect()
+    let (start_ref, end_ref) = match parts.length() {
+      1 => (parts[0].to_owned(), parts[0].to_owned())
+      2 => (parts[0].to_owned(), parts[1].to_owned())
+      _ => continue
+    }
+    let (row1, col1) = match parse_cell_ref(start_ref) {
+      Some(p) => p
+      None => continue
+    }
+    let (row2, col2) = match parse_cell_ref(end_ref) {
+      Some(p) => p
+      None => continue
+    }
+    let top = if row1 < row2 { row1 } else { row2 }
+    let bottom = if row1 > row2 { row1 } else { row2 }
+    let left = if col1 < col2 { col1 } else { col2 }
+    let right = if col1 > col2 { col1 } else { col2 }
+    match table_range_pixel_box(layout, top, bottom, left, right) {
+      None => ()
+      Some(box) => {
+        let (x, y, w, h) = box
+        if w <= 0.0 || h <= 0.0 {
+          continue
+        }
+        let attrs : Array[@xml.Attribute] = [
+          svg_attr("x", format_d(x + 1.0)),
+          svg_attr("y", format_d(y + 1.0)),
+          svg_attr("width", format_d(if w > 2.0 { w - 2.0 } else { w })),
+          svg_attr("height", format_d(if h > 2.0 { h - 2.0 } else { h })),
+          svg_attr("fill", "none"),
+          svg_attr("stroke", "#217346"),
+          svg_attr("stroke-width", "2"),
+          svg_attr("pointer-events", "none"),
+          svg_attr("data-ooxml-selection", range),
+          svg_attr("data-ooxml-selection-pane", selection.pane),
+        ]
+        match selection.active_cell {
+          Some(cell) => attrs.push(svg_attr("data-ooxml-active-cell", cell))
+          None => ()
+        }
+        out.push(svg_elem("rect", attrs, []))
+      }
+    }
+  }
+}
+
+///|
+/// Build editing-view badges for §18.5.1.3 `<tableColumn>` metadata.
+/// These are deliberately gated by `show_table_chrome` at the call
+/// site: print/export output keeps table metadata suppressed, while
+/// catalog and editing-view renderers can verify that structured
+/// column definitions, calculated-column formulas, totals formulas,
+/// and XML column mappings were consumed from the table part.
+fn render_table_column_metadata(
+  tables : Array[@xml.Element],
+  layout : SheetLayout,
+) -> Array[@xml.Node] {
+  let out : Array[@xml.Node] = []
+  for table_elt in tables {
+    let meta = match parse_table_meta(table_elt) {
+      None => continue
+      Some(m) => m
+    }
+    let table = try @domain.CT_Table::new(table_elt) catch {
+      _ => continue
+    } noraise {
+      t => t
+    }
+    let columns = match table.table_columns {
+      None => continue
+      Some(c) => c
+    }
+    if columns.columns.length() == 0 {
+      continue
+    }
+    let max_columns = meta.col_end - meta.col_start + 1
+    for column_index, column in columns.columns {
+      if column_index >= max_columns {
+        continue
+      }
+      let sheet_col = meta.col_start + column_index
+      match
+        table_range_pixel_box(
+          layout,
+          meta.row_start,
+          meta.row_start,
+          sheet_col,
+          sheet_col,
+        ) {
+        Some(header_box) => {
+          push_table_metadata_badge(
+            out, header_box, 0, "col", "#5B9BD5", "#FFFFFF", "column",
+          )
+          match column.xml_column_pr {
+            Some(_) =>
+              push_table_metadata_badge(
+                out, header_box, 1, "xml", "#70AD47", "#FFFFFF", "xml-column",
+              )
+            None => ()
+          }
+        }
+        None => ()
+      }
+      match column.calculated_column_formula {
+        Some(_) => {
+          let data_row = if meta.header_row_count > 0 {
+            meta.row_start + meta.header_row_count
+          } else {
+            meta.row_start
+          }
+          let row = if data_row <= meta.row_end {
+            data_row
+          } else {
+            meta.row_start
+          }
+          match table_range_pixel_box(layout, row, row, sheet_col, sheet_col) {
+            Some(data_box) =>
+              push_table_metadata_badge(
+                out, data_box, 0, "fx", "#4472C4", "#FFFFFF", "calculated-column-formula",
+              )
+            None => ()
+          }
+        }
+        None => ()
+      }
+      match column.totals_row_formula {
+        Some(_) => {
+          let totals_row = if meta.totals_row_count > 0 {
+            meta.row_end - meta.totals_row_count + 1
+          } else {
+            meta.row_end
+          }
+          match
+            table_range_pixel_box(
+              layout, totals_row, totals_row, sheet_col, sheet_col,
+            ) {
+            Some(totals_box) =>
+              push_table_metadata_badge(
+                out, totals_box, 0, "tot", "#C00000", "#FFFFFF", "totals-row-formula",
+              )
+            None => ()
+          }
+        }
+        None => ()
+      }
+    }
+  }
+  out
+}
+
+///|
+fn push_table_metadata_badge(
+  out : Array[@xml.Node],
+  box : (Double, Double, Double, Double),
+  lane : Int,
+  label : String,
+  fill : String,
+  text_fill : String,
+  kind : String,
+) -> Unit {
+  let (x, y, w, h) = box
+  if w < 12.0 || h < 9.0 {
+    return
+  }
+  let badge_w = match label {
+    "tot" | "xml" => 18.0
+    _ => 13.0
+  }
+  let badge_h = 8.0
+  let badge_x = x + 2.0 + lane.to_double() * (badge_w + 2.0)
+  let badge_y = y + 2.0
+  if badge_x + badge_w > x + w - 1.0 {
+    return
+  }
+  out.push(
+    svg_elem(
+      "rect",
+      [
+        svg_attr("x", format_d(badge_x)),
+        svg_attr("y", format_d(badge_y)),
+        svg_attr("width", format_d(badge_w)),
+        svg_attr("height", format_d(badge_h)),
+        svg_attr("rx", "1"),
+        svg_attr("ry", "1"),
+        svg_attr("fill", fill),
+        svg_attr("data-ooxml-table-column-meta", kind),
+      ],
+      [],
+    ),
+  )
+  out.push(
+    svg_elem(
+      "text",
+      [
+        svg_attr("x", format_d(badge_x + badge_w / 2.0)),
+        svg_attr("y", format_d(badge_y + badge_h / 2.0)),
+        svg_attr("text-anchor", "middle"),
+        svg_attr("dominant-baseline", "middle"),
+        svg_attr("font-family", "Arial, sans-serif"),
+        svg_attr("font-size", "6"),
+        svg_attr("fill", text_fill),
+        svg_attr("data-ooxml-table-column-meta-label", kind),
+      ],
+      [svg_text(label)],
+    ),
+  )
 }
 
 ///|
@@ -13431,13 +18980,17 @@ fn push_autofilter_arrows_for_range(
   }
   for col in start_col..<=end_col {
     let col_id = col - start_col
+    let active = match filter {
+      Some(f) => autofilter_column_active(f, col_id)
+      None => false
+    }
     match filter {
       Some(f) => if !autofilter_button_visible(f, col_id) { continue }
       None => ()
     }
     match table_range_pixel_box(layout, header_row, header_row, col, col) {
       Some(box) =>
-        for n in render_autofilter_arrow(box) {
+        for n in render_autofilter_arrow(box, active) {
           out.push(n)
         }
       None => ()
@@ -13460,6 +19013,22 @@ fn autofilter_button_visible(
 }
 
 ///|
+fn autofilter_column_active(
+  filter : @domain.CT_AutoFilter,
+  col_id : Int,
+) -> Bool {
+  for column in filter.filter_columns {
+    if column.col_id == col_id {
+      match column.rule {
+        Some(_) => return true
+        None => ()
+      }
+    }
+  }
+  false
+}
+
+///|
 fn find_worksheet_autofilter_element(worksheet : @xml.Element) -> @xml.Element? {
   for child in worksheet.children {
     match child {
@@ -13476,6 +19045,7 @@ fn find_worksheet_autofilter_element(worksheet : @xml.Element) -> @xml.Element? 
 /// gray rounded square at the right edge with a black `▼` glyph.
 fn render_autofilter_arrow(
   box : (Double, Double, Double, Double),
+  active : Bool,
 ) -> Array[@xml.Node] {
   let (cx, cy, cw, ch) = box
   // Skip tiny / hidden cells — there's no room for an arrow.
@@ -13488,26 +19058,27 @@ fn render_autofilter_arrow(
   let btn_x = cx + cw - btn_w - 2.0
   let btn_y = cy + (ch - btn_h) / 2.0
   let out : Array[@xml.Node] = []
+  let button_fill = if active { "#DDEBFF" } else { "#F2F2F2" }
+  let button_stroke = if active { "#4472C4" } else { "#7F7F7F" }
+  let arrow_fill = if active { "#1F4E79" } else { "#404040" }
   // Button background — light gray with a 1px darker border (Excel
   // paints `#D9D9D9` fill on a `#7F7F7F` stroke).
-  out.push(
-    svg_elem(
-      "rect",
-      [
-        svg_attr("x", format_d(btn_x)),
-        svg_attr("y", format_d(btn_y)),
-        svg_attr("width", format_d(btn_w)),
-        svg_attr("height", format_d(btn_h)),
-        svg_attr("rx", "1"),
-        svg_attr("ry", "1"),
-        svg_attr("fill", "#F2F2F2"),
-        svg_attr("stroke", "#7F7F7F"),
-        svg_attr("stroke-width", "0.5"),
-        svg_attr("data-ooxml-autofilter", "button"),
-      ],
-      [],
-    ),
-  )
+  let button_attrs : Array[@xml.Attribute] = [
+    svg_attr("x", format_d(btn_x)),
+    svg_attr("y", format_d(btn_y)),
+    svg_attr("width", format_d(btn_w)),
+    svg_attr("height", format_d(btn_h)),
+    svg_attr("rx", "1"),
+    svg_attr("ry", "1"),
+    svg_attr("fill", button_fill),
+    svg_attr("stroke", button_stroke),
+    svg_attr("stroke-width", "0.5"),
+    svg_attr("data-ooxml-autofilter", "button"),
+  ]
+  if active {
+    button_attrs.push(svg_attr("data-ooxml-autofilter-active", "1"))
+  }
+  out.push(svg_elem("rect", button_attrs, []))
   // Arrow glyph — a downward triangle drawn as `<path>` for
   // pixel-accurate alignment (using a `<text>▼</text>` would inherit
   // font fallback variance across rsvg / cairo).
@@ -13533,7 +19104,7 @@ fn render_autofilter_arrow(
       "path",
       [
         svg_attr("d", path_d),
-        svg_attr("fill", "#404040"),
+        svg_attr("fill", arrow_fill),
         svg_attr("data-ooxml-autofilter", "arrow"),
       ],
       [],
@@ -13552,70 +19123,290 @@ fn render_comment_indicators(
   layout : SheetLayout,
 ) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
-  let comment_list = match
-    first_child_named_local(comments_root, "commentList") {
-    Some(cl) => cl
-    None => return out
+  let comments = try @domain.CT_Comments::new(comments_root) catch {
+    _ => return out
+  } noraise {
+    value => value
   }
-  for node in comment_list.children {
-    match node {
-      @xml.Node::Element(c) =>
-        if c.name.local_name == "comment" {
-          match attr_value_local(c, "ref") {
-            Some(cell_ref) =>
-              match lookup_cell_layout(layout, cell_ref) {
-                Some(cl) => {
-                  // A right-triangle hugging the cell's top-right
-                  // corner; side ≈ 6 px, capped to the cell so tiny
-                  // cells stay proportional.
-                  let s = {
-                    let side = 6.0
-                    let cap = if cl.width < cl.height {
-                      cl.width
-                    } else {
-                      cl.height
-                    }
-                    if side > cap * 0.5 {
-                      cap * 0.5
-                    } else {
-                      side
-                    }
-                  }
-                  if s > 0.0 {
-                    let rx = cl.x + cl.width
-                    let pts = format_d(rx - s) +
-                      "," +
-                      format_d(cl.y) +
-                      " " +
-                      format_d(rx) +
-                      "," +
-                      format_d(cl.y) +
-                      " " +
-                      format_d(rx) +
-                      "," +
-                      format_d(cl.y + s)
-                    out.push(
-                      svg_elem(
-                        "polygon",
-                        [
-                          svg_attr("points", pts),
-                          svg_attr("fill", "#c00000"),
-                          svg_attr("data-ooxml-comment-ref", cell_ref),
-                        ],
-                        [],
-                      ),
-                    )
-                  }
-                }
-                None => ()
-              }
+  let authors = comments.authors.authors
+  for comment in comments.comment_list.comment {
+    let cell_ref = first_cell_of_range(comment.ref_)
+    match lookup_cell_layout(layout, cell_ref) {
+      Some(cl) => {
+        // A right-triangle hugging the cell's top-right corner; side
+        // ≈ 6 px, capped to the cell so tiny cells stay proportional.
+        let s = {
+          let side = 6.0
+          let cap = if cl.width < cl.height { cl.width } else { cl.height }
+          if side > cap * 0.5 {
+            cap * 0.5
+          } else {
+            side
+          }
+        }
+        if s > 0.0 {
+          let rx = cl.x + cl.width
+          let pts = format_d(rx - s) +
+            "," +
+            format_d(cl.y) +
+            " " +
+            format_d(rx) +
+            "," +
+            format_d(cl.y) +
+            " " +
+            format_d(rx) +
+            "," +
+            format_d(cl.y + s)
+          out.push(
+            svg_elem(
+              "polygon",
+              [
+                svg_attr("points", pts),
+                svg_attr("fill", "#c00000"),
+                svg_attr("data-ooxml-comment-ref", cell_ref),
+              ],
+              [],
+            ),
+          )
+          match render_comment_callout(comment, authors, cl, layout) {
+            Some(callout) => out.push(callout)
             None => ()
           }
         }
-      _ => ()
+      }
+      None => ()
     }
   }
   out
+}
+
+///|
+priv struct CommentAnchorBox {
+  bounds : DrawingBounds
+  from_ref : String
+  to_ref : String
+  move_with_cells : Bool
+  size_with_cells : Bool
+}
+
+///|
+fn comment_anchor_box(
+  anchor : @domain.CT_ObjectAnchor,
+  layout : SheetLayout,
+) -> CommentAnchorBox? {
+  let (from_el, to_el) = match (anchor.from, anchor.to) {
+    (Some(f), Some(t)) => (f, t)
+    _ => return None
+  }
+  let from_marker = try @drawing.CT_Marker::new(from_el) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
+  let to_marker = try @drawing.CT_Marker::new(to_el) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
+  let from_ref = match marker_cell_ref(from_marker) {
+    Some(value) => value
+    None => return None
+  }
+  let to_ref = match marker_cell_ref(to_marker) {
+    Some(value) => value
+    None => return None
+  }
+  let from_pos = marker_position(from_marker, layout)
+  let to_pos = marker_position(to_marker, layout)
+  let width = to_pos.0 - from_pos.0
+  let height = to_pos.1 - from_pos.1
+  if width <= 0.0 || height <= 0.0 {
+    return None
+  }
+  Some({
+    bounds: { x: from_pos.0, y: from_pos.1, width, height },
+    from_ref,
+    to_ref,
+    move_with_cells: anchor.move_with_cells,
+    size_with_cells: anchor.size_with_cells,
+  })
+}
+
+///|
+fn marker_cell_ref(marker : @drawing.CT_Marker) -> String? {
+  let col = try @string.parse_int(marker.col) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
+  let row = try @string.parse_int(marker.row) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
+  if col < 0 || row < 0 {
+    return None
+  }
+  let col_name = try @address.column_index_to_letter(col) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
+  Some(col_name + (row + 1).to_string())
+}
+
+///|
+fn render_comment_callout(
+  comment : @domain.CT_Comment,
+  authors : Array[String],
+  cell : CellLayout,
+  layout : SheetLayout,
+) -> @xml.Node? {
+  let body = comment.text.to_plain_text().trim().to_owned()
+  let author = spreadsheet_comment_author(comment, authors)
+  let has_pr = match comment.comment_pr {
+    Some(_) => true
+    None => false
+  }
+  if body == "" && author == "" && !has_pr {
+    return None
+  }
+  let anchor_box = match comment.comment_pr {
+    Some(comment_pr) => comment_anchor_box(comment_pr.anchor, layout)
+    None => None
+  }
+  let mut content_height = 18.0
+  if author != "" {
+    content_height = content_height + 12.0
+  }
+  if body != "" {
+    content_height = content_height + 14.0
+  }
+  if has_pr {
+    content_height = content_height + 8.0
+  }
+  let (x, y, width, height) = match anchor_box {
+    Some(anchor) =>
+      (
+        anchor.bounds.x,
+        anchor.bounds.y,
+        anchor.bounds.width,
+        anchor.bounds.height,
+      )
+    None => (cell.x + cell.width + 4.0, cell.y + 2.0, 148.0, content_height)
+  }
+  let children : Array[@xml.Node] = [
+    svg_elem(
+      "rect",
+      [
+        svg_attr("x", format_d(x)),
+        svg_attr("y", format_d(y)),
+        svg_attr("width", format_d(width)),
+        svg_attr("height", format_d(height)),
+        svg_attr("rx", "3"),
+        svg_attr("fill", "#fff8d7"),
+        svg_attr("stroke", "#c8a600"),
+        svg_attr("stroke-width", "1"),
+      ],
+      [],
+    ),
+  ]
+  let mut text_y = y + 13.0
+  if author != "" {
+    children.push(
+      svg_elem(
+        "text",
+        [
+          svg_attr("x", format_d(x + 6.0)),
+          svg_attr("y", format_d(text_y)),
+          svg_attr("font-size", "8pt"),
+          svg_attr("font-family", "Calibri, Arial, sans-serif"),
+          svg_attr("font-weight", "700"),
+          svg_attr("fill", "#5a4a00"),
+        ],
+        [svg_text(author)],
+      ),
+    )
+    text_y = text_y + 12.0
+  }
+  if body != "" {
+    children.push(
+      svg_elem(
+        "text",
+        [
+          svg_attr("x", format_d(x + 6.0)),
+          svg_attr("y", format_d(text_y)),
+          svg_attr("font-size", "8pt"),
+          svg_attr("font-family", "Calibri, Arial, sans-serif"),
+          svg_attr("fill", "#222222"),
+        ],
+        [svg_text(body)],
+      ),
+    )
+    text_y = text_y + 12.0
+  }
+  if has_pr {
+    children.push(
+      svg_elem(
+        "rect",
+        [
+          svg_attr("x", format_d(x + 6.0)),
+          svg_attr("y", format_d(text_y - 5.0)),
+          svg_attr("width", "18"),
+          svg_attr("height", "4"),
+          svg_attr("fill", "#c8a600"),
+          svg_attr("data-ooxml-comment-pr", "1"),
+        ],
+        [],
+      ),
+    )
+  }
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("class", "comment-callout"),
+    svg_attr("data-ooxml-comment-ref", comment.ref_),
+  ]
+  match anchor_box {
+    Some(anchor) => {
+      attrs.push(svg_attr("data-ooxml-comment-anchor", "1"))
+      attrs.push(svg_attr("data-ooxml-comment-anchor-from", anchor.from_ref))
+      attrs.push(svg_attr("data-ooxml-comment-anchor-to", anchor.to_ref))
+      attrs.push(
+        svg_attr(
+          "data-ooxml-comment-anchor-move-with-cells",
+          if anchor.move_with_cells {
+            "1"
+          } else {
+            "0"
+          },
+        ),
+      )
+      attrs.push(
+        svg_attr(
+          "data-ooxml-comment-anchor-size-with-cells",
+          if anchor.size_with_cells {
+            "1"
+          } else {
+            "0"
+          },
+        ),
+      )
+    }
+    None => ()
+  }
+  Some(svg_elem("g", attrs, children))
+}
+
+///|
+fn spreadsheet_comment_author(
+  comment : @domain.CT_Comment,
+  authors : Array[String],
+) -> String {
+  let idx = comment.author_id
+  if idx >= 0 && idx < authors.length() {
+    authors[idx]
+  } else {
+    ""
+  }
 }
 
 ///|
@@ -13645,6 +19436,7 @@ fn render_data_validation_arrows(
                               for
                                 n in render_autofilter_arrow(
                                   (cl.x, cl.y, cl.width, cl.height),
+                                  false,
                                 ) {
                                 out.push(n)
                               }

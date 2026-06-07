@@ -31,6 +31,462 @@ fn sml_ws_color(name : String, hex : String) -> @xml.Element {
 }
 
 ///|
+/// Worksheet elements whose semantics are already consumed by the
+/// SpreadsheetML SVG renderer, but whose schema-synthesized singleton
+/// probe may not include enough surrounding sheet content to make the
+/// consumption visible.  The catalog routes these through a real
+/// worksheet root with deterministic cells so the verifier measures the
+/// renderer path, not an empty wrapper.
+fn is_sml_worksheet_render_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "spreadsheetml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match local_name {
+    "dimension" => type_local == "CT_SheetDimension"
+    "sheetFormatPr" => type_local == "CT_SheetFormatPr"
+    "cols" => type_local == "CT_Cols"
+    "col" => type_local == "CT_Col"
+    "sheetData" => type_local == "CT_SheetData"
+    "row" => type_local == "CT_Row"
+    "c" => type_local == "CT_Cell"
+    "mergeCells" => type_local == "CT_MergeCells"
+    "mergeCell" => type_local == "CT_MergeCell"
+    "conditionalFormatting" => type_local == "CT_ConditionalFormatting"
+    "cfRule" => type_local == "CT_CfRule"
+    "colorScale" => type_local == "CT_ColorScale"
+    "dataBar" => type_local == "CT_DataBar"
+    "iconSet" => type_local == "CT_IconSet"
+    "cfvo" => type_local == "CT_Cfvo"
+    "color" => type_local == "CT_Color"
+    _ => false
+  }
+}
+
+///|
+fn sml_layout_nodes(elements : Array[@xml.Element]) -> Array[@xml.Node] {
+  let nodes : Array[@xml.Node] = []
+  for e in elements {
+    nodes.push(Element(e))
+  }
+  nodes
+}
+
+///|
+fn sml_layout_el(
+  ns : String,
+  name : String,
+  attrs : Array[@xml.Attribute],
+  children : Array[@xml.Element],
+) -> @xml.Element {
+  xe(ns, name, attrs, sml_layout_nodes(children))
+}
+
+///|
+fn sml_layout_inline_cell(
+  ns : String,
+  ref_ : String,
+  text : String,
+) -> @xml.Element {
+  sml_layout_el(ns, "c", [xa("r", ref_), xa("t", "inlineStr")], [
+    sml_layout_el(ns, "is", [], [xe(ns, "t", [], [Text(text)])]),
+  ])
+}
+
+///|
+fn sml_layout_row(
+  ns : String,
+  num : String,
+  cells : Array[@xml.Element],
+) -> @xml.Element {
+  sml_layout_el(ns, "row", [xa("r", num)], cells)
+}
+
+///|
+fn sml_layout_sheet_data(ns : String) -> @xml.Element {
+  sml_layout_el(ns, "sheetData", [], [
+    sml_layout_row(ns, "1", [
+      sml_layout_inline_cell(ns, "A1", "Catalog"),
+      sml_layout_inline_cell(ns, "B1", "Width"),
+      sml_layout_inline_cell(ns, "C1", "Height"),
+    ]),
+    sml_layout_row(ns, "2", [
+      sml_layout_inline_cell(ns, "A2", "Sheet"),
+      sml_layout_inline_cell(ns, "B2", "16"),
+      sml_layout_inline_cell(ns, "C2", "24"),
+    ]),
+  ])
+}
+
+///|
+fn sml_layout_dimension(ns : String, ref_ : String) -> @xml.Element {
+  xe(ns, "dimension", [xa("ref", ref_)], [])
+}
+
+///|
+fn sml_layout_visible_col(ns : String) -> @xml.Element {
+  xe(
+    ns,
+    "col",
+    [
+      xa("min", "2"),
+      xa("max", "2"),
+      xa("width", "24"),
+      xa("customWidth", "1"),
+      xa("outlineLevel", "1"),
+    ],
+    [],
+  )
+}
+
+///|
+fn sml_layout_merge_cell(ns : String, ref_ : String) -> @xml.Element {
+  xe(ns, "mergeCell", [xa("ref", ref_)], [])
+}
+
+///|
+fn sml_layout_numeric_cell(
+  ns : String,
+  ref_ : String,
+  value : String,
+) -> @xml.Element {
+  sml_layout_el(ns, "c", [xa("r", ref_)], [xe(ns, "v", [], [Text(value)])])
+}
+
+///|
+fn sml_layout_numeric_sheet_data(ns : String) -> @xml.Element {
+  sml_layout_el(ns, "sheetData", [], [
+    sml_layout_row(ns, "1", [sml_layout_numeric_cell(ns, "A1", "10")]),
+    sml_layout_row(ns, "2", [sml_layout_numeric_cell(ns, "A2", "30")]),
+    sml_layout_row(ns, "3", [sml_layout_numeric_cell(ns, "A3", "20")]),
+    sml_layout_row(ns, "4", [sml_layout_numeric_cell(ns, "A4", "40")]),
+  ])
+}
+
+///|
+fn sml_layout_cfvo(ns : String, type_ : String, val : String?) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = [xa("type", type_)]
+  match val {
+    Some(v) => attrs.push(xa("val", v))
+    None => ()
+  }
+  xe(ns, "cfvo", attrs, [])
+}
+
+///|
+fn sml_layout_cf_color(ns : String, argb : String) -> @xml.Element {
+  xe(ns, "color", [xa("rgb", argb)], [])
+}
+
+///|
+fn sml_layout_data_bar_children(ns : String) -> Array[@xml.Element] {
+  [
+    sml_layout_cfvo(ns, "min", None),
+    sml_layout_cfvo(ns, "max", None),
+    sml_layout_cf_color(ns, "FF638EC6"),
+  ]
+}
+
+///|
+fn sml_layout_data_bar(ns : String) -> @xml.Element {
+  sml_layout_el(ns, "dataBar", [], sml_layout_data_bar_children(ns))
+}
+
+///|
+fn sml_layout_cf_rule(
+  ns : String,
+  type_ : String,
+  child : @xml.Element,
+) -> @xml.Element {
+  sml_layout_el(ns, "cfRule", [xa("type", type_), xa("priority", "1")], [child])
+}
+
+///|
+fn sml_layout_conditional_formatting(
+  ns : String,
+  rules : Array[@xml.Element],
+) -> @xml.Element {
+  sml_layout_el(ns, "conditionalFormatting", [xa("sqref", "A1:A4")], rules)
+}
+
+///|
+fn sml_layout_cf_worksheet(
+  ns : String,
+  conditional_formatting : @xml.Element,
+) -> @xml.Element {
+  sml_layout_worksheet(ns, [
+    sml_layout_dimension(ns, "A1:A4"),
+    sml_layout_numeric_sheet_data(ns),
+    conditional_formatting,
+  ])
+}
+
+///|
+fn sml_layout_target_with_attrs(
+  target : @xml.Element,
+  attrs : Array[(String, String)],
+) -> @xml.Element {
+  {
+    name: target.name,
+    attributes: catalog_force_attrs(target.attributes, attrs),
+    children: target.children,
+  }
+}
+
+///|
+fn sml_layout_target_with_children(
+  target : @xml.Element,
+  children : Array[@xml.Node],
+) -> @xml.Element {
+  { name: target.name, attributes: target.attributes, children }
+}
+
+///|
+fn sml_layout_worksheet(
+  ns : String,
+  children : Array[@xml.Element],
+) -> @xml.Element {
+  sml_layout_el(ns, "worksheet", [], children)
+}
+
+///|
+/// Catalog host for worksheet render targets. Each branch places the
+/// target in its ECMA-376 worksheet slot and supplies only the
+/// surrounding facts required by the existing renderer to make that
+/// target observable: dimensions, column definitions, rows, cells, and
+/// conditional-formatting populations.
+fn catalog_sml_worksheet_render_root(target : @xml.Element) -> @xml.Element {
+  let ns = target.name.ns.unwrap_or(NS_S)
+  match target.name.local_name {
+    "dimension" => {
+      let dim = sml_layout_target_with_attrs(target, [("ref", "A1:C3")])
+      sml_layout_worksheet(ns, [
+        dim,
+        sml_layout_el(ns, "sheetData", [], [
+          sml_layout_row(ns, "1", [
+            sml_layout_inline_cell(ns, "A1", "Dimension"),
+          ]),
+        ]),
+      ])
+    }
+    "sheetFormatPr" => {
+      let fmt = sml_layout_target_with_attrs(target, [
+        ("defaultColWidth", "16"),
+        ("defaultRowHeight", "24"),
+      ])
+      sml_layout_worksheet(ns, [
+        sml_layout_dimension(ns, "A1:C2"),
+        fmt,
+        sml_layout_sheet_data(ns),
+      ])
+    }
+    "cols" => {
+      let cols = sml_layout_target_with_children(target, [
+        Element(sml_layout_visible_col(ns)),
+      ])
+      sml_layout_worksheet(ns, [
+        sml_layout_dimension(ns, "A1:C2"),
+        cols,
+        sml_layout_sheet_data(ns),
+      ])
+    }
+    "col" => {
+      let col = sml_layout_target_with_attrs(target, [
+        ("min", "2"),
+        ("max", "2"),
+        ("width", "24"),
+        ("customWidth", "1"),
+        ("outlineLevel", "1"),
+      ])
+      sml_layout_worksheet(ns, [
+        sml_layout_dimension(ns, "A1:C2"),
+        sml_layout_el(ns, "cols", [], [col]),
+        sml_layout_sheet_data(ns),
+      ])
+    }
+    "sheetData" => {
+      let sheet_data = sml_layout_target_with_children(target, [
+        Element(
+          sml_layout_row(ns, "1", [
+            sml_layout_inline_cell(ns, "A1", TEXT_MARKER),
+            sml_layout_inline_cell(ns, "B1", "Data"),
+          ]),
+        ),
+      ])
+      sml_layout_worksheet(ns, [sml_layout_dimension(ns, "A1:B1"), sheet_data])
+    }
+    "row" => {
+      let row : @xml.Element = {
+        name: target.name,
+        attributes: catalog_force_attrs(target.attributes, [
+          ("r", "1"),
+          ("ht", "24"),
+          ("customHeight", "1"),
+        ]),
+        children: [
+          @xml.Node::Element(sml_layout_inline_cell(ns, "A1", TEXT_MARKER)),
+          @xml.Node::Element(sml_layout_inline_cell(ns, "B1", "Row")),
+        ],
+      }
+      sml_layout_worksheet(ns, [
+        sml_layout_dimension(ns, "A1:B1"),
+        sml_layout_el(ns, "sheetData", [], [row]),
+      ])
+    }
+    "c" => {
+      let cell : @xml.Element = {
+        name: target.name,
+        attributes: catalog_force_attrs(target.attributes, [
+          ("r", "A1"),
+          ("t", "inlineStr"),
+        ]),
+        children: [
+          @xml.Node::Element(
+            sml_layout_el(ns, "is", [], [xe(ns, "t", [], [Text(TEXT_MARKER)])]),
+          ),
+        ],
+      }
+      sml_layout_worksheet(ns, [
+        sml_layout_dimension(ns, "A1:B1"),
+        sml_layout_el(ns, "sheetData", [], [
+          sml_layout_row(ns, "1", [
+            cell,
+            sml_layout_inline_cell(ns, "B1", "Cell"),
+          ]),
+        ]),
+      ])
+    }
+    "mergeCells" => {
+      let merge_cells = sml_layout_target_with_attrs(
+        sml_layout_target_with_children(target, [
+          Element(sml_layout_merge_cell(ns, "A1:B1")),
+        ]),
+        [("count", "1")],
+      )
+      sml_layout_worksheet(ns, [
+        sml_layout_dimension(ns, "A1:B1"),
+        merge_cells,
+        sml_layout_el(ns, "sheetData", [], [
+          sml_layout_row(ns, "1", [
+            sml_layout_inline_cell(ns, "A1", "Merged"),
+            sml_layout_inline_cell(ns, "B1", "Hidden"),
+          ]),
+        ]),
+      ])
+    }
+    "mergeCell" => {
+      let merge_cell = sml_layout_target_with_attrs(target, [("ref", "A1:B1")])
+      sml_layout_worksheet(ns, [
+        sml_layout_dimension(ns, "A1:B1"),
+        sml_layout_el(ns, "mergeCells", [xa("count", "1")], [merge_cell]),
+        sml_layout_el(ns, "sheetData", [], [
+          sml_layout_row(ns, "1", [
+            sml_layout_inline_cell(ns, "A1", "Merged"),
+            sml_layout_inline_cell(ns, "B1", "Hidden"),
+          ]),
+        ]),
+      ])
+    }
+    "conditionalFormatting" => {
+      let conditional_formatting = sml_layout_target_with_attrs(
+        sml_layout_target_with_children(target, [
+          Element(sml_layout_cf_rule(ns, "dataBar", sml_layout_data_bar(ns))),
+        ]),
+        [("sqref", "A1:A4")],
+      )
+      sml_layout_cf_worksheet(ns, conditional_formatting)
+    }
+    "cfRule" => {
+      let cf_rule = sml_layout_target_with_attrs(
+        sml_layout_target_with_children(target, [
+          Element(sml_layout_data_bar(ns)),
+        ]),
+        [("type", "dataBar"), ("priority", "1")],
+      )
+      sml_layout_cf_worksheet(
+        ns,
+        sml_layout_conditional_formatting(ns, [cf_rule]),
+      )
+    }
+    "dataBar" => {
+      let data_bar = sml_layout_target_with_children(
+        target,
+        sml_layout_nodes(sml_layout_data_bar_children(ns)),
+      )
+      sml_layout_cf_worksheet(
+        ns,
+        sml_layout_conditional_formatting(ns, [
+          sml_layout_cf_rule(ns, "dataBar", data_bar),
+        ]),
+      )
+    }
+    "colorScale" => {
+      let color_scale = sml_layout_target_with_children(target, [
+        Element(sml_layout_cfvo(ns, "min", None)),
+        Element(sml_layout_cfvo(ns, "max", None)),
+        Element(sml_layout_cf_color(ns, "FFFFFFFF")),
+        Element(sml_layout_cf_color(ns, "FFFF0000")),
+      ])
+      sml_layout_cf_worksheet(
+        ns,
+        sml_layout_conditional_formatting(ns, [
+          sml_layout_cf_rule(ns, "colorScale", color_scale),
+        ]),
+      )
+    }
+    "iconSet" => {
+      let icon_set = sml_layout_target_with_attrs(
+        sml_layout_target_with_children(target, [
+          Element(sml_layout_cfvo(ns, "percent", Some("0"))),
+          Element(sml_layout_cfvo(ns, "percent", Some("33"))),
+          Element(sml_layout_cfvo(ns, "percent", Some("67"))),
+        ]),
+        [("iconSet", "3TrafficLights1")],
+      )
+      sml_layout_cf_worksheet(
+        ns,
+        sml_layout_conditional_formatting(ns, [
+          sml_layout_cf_rule(ns, "iconSet", icon_set),
+        ]),
+      )
+    }
+    "cfvo" => {
+      let cfvo = sml_layout_target_with_attrs(target, [("type", "max")])
+      let data_bar = sml_layout_el(ns, "dataBar", [], [
+        sml_layout_cfvo(ns, "min", None),
+        cfvo,
+        sml_layout_cf_color(ns, "FF638EC6"),
+      ])
+      sml_layout_cf_worksheet(
+        ns,
+        sml_layout_conditional_formatting(ns, [
+          sml_layout_cf_rule(ns, "dataBar", data_bar),
+        ]),
+      )
+    }
+    "color" => {
+      let color = sml_layout_target_with_attrs(target, [("rgb", "FF638EC6")])
+      let data_bar = sml_layout_el(ns, "dataBar", [], [
+        sml_layout_cfvo(ns, "min", None),
+        sml_layout_cfvo(ns, "max", None),
+        color,
+      ])
+      sml_layout_cf_worksheet(
+        ns,
+        sml_layout_conditional_formatting(ns, [
+          sml_layout_cf_rule(ns, "dataBar", data_bar),
+        ]),
+      )
+    }
+    _ => target
+  }
+}
+
+///|
 fn sml_ws_pane() -> @xml.Element {
   xe(
     NS_S,

@@ -25,6 +25,7 @@ import {
   "trkbt10/ooxml/ecma376/opc",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/context" @sml_context,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/viewer" @sml_viewer,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/sparkline" @sml_sparkline,
   "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,
   "trkbt10/ooxml/util/glyph",

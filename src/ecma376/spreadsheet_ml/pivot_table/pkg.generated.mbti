@@ -162,6 +162,14 @@ pub(all) struct PivotCacheDefinition {
   save_data : Bool
   invalid : Bool
   refresh_on_load : Bool
+  cache_hierarchies : @domain.CT_CacheHierarchies?
+  kpis : @domain.CT_PCDKPIs?
+  tuple_cache : @domain.CT_TupleCache?
+  calculated_items : @domain.CT_CalculatedItems?
+  calculated_members : @domain.CT_CalculatedMembers?
+  dimensions : @domain.CT_Dimensions?
+  measure_groups : @domain.CT_MeasureGroups?
+  maps : @domain.CT_MeasureDimensionMaps?
 } derive(Eq, @debug.Debug)
 pub fn PivotCacheDefinition::field_count(Self) -> Int
 pub fn PivotCacheDefinition::shared_item_caption(Self, Int, Int) -> String
@@ -185,6 +193,8 @@ pub(all) struct PivotFieldDef {
   subtotal_top : Bool
   default_subtotal : Bool
   items : Array[PivotItemDef]
+  items_declared_count : Int?
+  auto_sort_scope : @domain.CT_AutoSortScope?
 } derive(Eq, @debug.Debug)
 
 pub(all) enum PivotFilterCandidateScope {
@@ -276,6 +286,12 @@ pub(all) struct PivotTableDefinition {
   page_fields : Array[PageFieldDef]
   filters : Array[PivotFilterDef]
   data_fields : Array[DataFieldDef]
+  formats : @domain.CT_Formats?
+  conditional_formats : @domain.CT_ConditionalFormats?
+  chart_formats : @domain.CT_ChartFormats?
+  pivot_hierarchies : @domain.CT_PivotHierarchies?
+  row_hierarchies_usage : @domain.CT_RowHierarchiesUsage?
+  col_hierarchies_usage : @domain.CT_ColHierarchiesUsage?
   style_info : PivotTableStyleInfo?
 } derive(Eq, @debug.Debug)
 pub fn PivotTableDefinition::aggregation_function_for(Self, Int) -> DataConsolidateFunction

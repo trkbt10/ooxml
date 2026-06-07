@@ -69,11 +69,11 @@ pub fn AlgorithmType::from_attr(
 }
 
 ///|
-/// Report whether the engine has a faithful (non-fallback)
-/// implementation for the supplied algorithm type. `composite` is
-/// now faithfully implemented (constraint-driven child placement);
-/// `conn`, `sp`, and `tx` still fall back to `lin` in this package
-/// and are reported as unsupported here so callers can warn.
+/// Report whether the engine has an explicit dispatch for the
+/// supplied algorithm type. Every canonical §21.4.7.1 token is
+/// handled by `dispatch_algorithm`; connector / space / text
+/// algorithms are intentionally non-distributing passes rather than
+/// aliases for a different layout.
 pub fn AlgorithmType::is_supported(self : AlgorithmType) -> Bool {
   match self {
     AlgLin
@@ -82,8 +82,10 @@ pub fn AlgorithmType::is_supported(self : AlgorithmType) -> Bool {
     | AlgHierRoot
     | AlgHierChild
     | AlgPyra
-    | AlgComposite => true
-    _ => false
+    | AlgComposite
+    | AlgConn
+    | AlgSp
+    | AlgTx => true
   }
 }
 
@@ -245,9 +247,9 @@ pub(all) enum FunctionType {
   /// §21.4.7.33 revPos — reverse 1-based position from the end of
   /// the sibling list.
   FnRevPos
-  /// §21.4.7.33 var — reference a layout variable. Always
-  /// evaluates to 0 in this package; the layout-variable resolver
-  /// is a separate audit gap.
+  /// §21.4.7.33 var — reference a layout variable from the
+  /// current layout-node scope (`varLst` / inherited parent
+  /// variable values).
   FnVar
 } derive(Eq, Debug)
 
@@ -463,6 +465,7 @@ pub(all) struct ChooseBranch {
 pub(all) struct Shape {
   preset : @preset_geometry.PresetShape?
   hide_geom : Bool
+  adjustments : Array[@preset_geometry.Adjustment]
 } derive(Eq, Debug)
 
 ///|
@@ -492,6 +495,7 @@ pub(all) struct LayoutNode {
   shape : Shape?
   pres_of : PresOfSpec?
   constraints : Array[Constraint]
+  layout_vars : Array[(String, String)]
   children : Array[LayoutChild]
 } derive(Eq, Debug)
 
@@ -520,6 +524,10 @@ pub(all) struct DiagramPoint {
   text : String?
   pr_set : @xml.Element?
   sp_pr : @xml.Element?
+  /// §21.4.5.4 prSet/presLayoutVars — point-scoped layout variables.
+  /// They share CT_LayoutVariablePropertySet with layoutNode/varLst and
+  /// feed the same `if func="var"` evaluation path.
+  layout_vars : Array[(String, String)]
 } derive(Eq, Debug)
 
 ///|
@@ -567,6 +575,14 @@ pub(all) struct NodeBounds {
   point_id : String
   bounds : BoundsRect
   shape : @preset_geometry.PresetShape
+  /// §21.4.2.27 shape/@hideGeom — true for text-only SmartArt nodes
+  /// whose layout shape should contribute bounds/text but no visible
+  /// geometry.
+  hide_geom : Bool
+  /// §21.4.2.27 shape/adjLst — preset shape adjustment guides carried
+  /// by DiagramML `adj` records and consumed by DrawingML preset
+  /// geometry rendering.
+  adjustments : Array[@preset_geometry.Adjustment]
   /// §21.4.2.19 layoutNode/@styleLbl — the presentation style label of
   /// the emitting layout node, used by the renderer to pick this node's
   /// colour from the matching colorsDef `<dgm:styleLbl>` fill list.
@@ -595,6 +611,7 @@ pub(all) struct EvalContext {
   depth : Int
   results : Array[NodeBounds]
   node_bounds_by_name : Map[String, BoundsRect]
+  layout_vars : Array[(String, String)]
 }
 
 ///|

@@ -3873,6 +3873,8 @@ pub(all) struct CT_Worksheet {
   ignored_errors : CT_IgnoredErrors?
   smart_tags : CT_SmartTags?
   drawing : CT_Drawing?
+  legacy_drawing : CT_LegacyDrawing?
+  legacy_drawing_hf : CT_LegacyDrawing?
   drawing_hf : CT_DrawingHF?
   picture : CT_SheetBackgroundPicture?
   ole_objects : CT_OleObjects?

@@ -362,6 +362,22 @@ pub(all) struct PivotCacheDefinition {
   /// §18.10.1.67 @refreshOnLoad — true when the app should refresh
   /// on workbook open.
   refresh_on_load : Bool
+  /// §18.10.1.67 optional cache hierarchy metadata.
+  cache_hierarchies : @domain.CT_CacheHierarchies?
+  /// §18.10.1.67 optional OLAP KPI metadata.
+  kpis : @domain.CT_PCDKPIs?
+  /// §18.10.1.67 optional tuple-cache metadata.
+  tuple_cache : @domain.CT_TupleCache?
+  /// §18.10.1.67 optional calculated-item metadata.
+  calculated_items : @domain.CT_CalculatedItems?
+  /// §18.10.1.67 optional calculated-member metadata.
+  calculated_members : @domain.CT_CalculatedMembers?
+  /// §18.10.1.67 optional OLAP dimensions.
+  dimensions : @domain.CT_Dimensions?
+  /// §18.10.1.67 optional OLAP measure groups.
+  measure_groups : @domain.CT_MeasureGroups?
+  /// §18.10.1.67 optional OLAP measure-to-dimension maps.
+  maps : @domain.CT_MeasureDimensionMaps?
 } derive(Eq, Debug)
 
 ///|
@@ -475,6 +491,12 @@ pub(all) struct PivotFieldDef {
   /// §18.10.1.46 items child — per-field item dictionary in
   /// display order.
   items : Array[PivotItemDef]
+  /// §18.10.1.46 items/@count — declared item count from the
+  /// wrapper, preserved for metadata consumers.
+  items_declared_count : Int?
+  /// §18.10.1.5 autoSortScope child — typed pivot-area scope for
+  /// field auto-sort metadata.
+  auto_sort_scope : @domain.CT_AutoSortScope?
 } derive(Eq, Debug)
 
 ///|
@@ -674,6 +696,18 @@ pub(all) struct PivotTableDefinition {
   filters : Array[PivotFilterDef]
   /// §18.10.1.23 dataFields child.
   data_fields : Array[DataFieldDef]
+  /// §18.10.1.31 formats child — PivotTable differential-format scopes.
+  formats : @domain.CT_Formats?
+  /// §18.10.1.19 conditionalFormats child — pivot CF scope metadata.
+  conditional_formats : @domain.CT_ConditionalFormats?
+  /// §18.10.1.13 chartFormats child — PivotChart format mappings.
+  chart_formats : @domain.CT_ChartFormats?
+  /// §18.10.1.71 pivotHierarchies child — OLAP hierarchy metadata.
+  pivot_hierarchies : @domain.CT_PivotHierarchies?
+  /// §18.10.1.82 rowHierarchiesUsage child.
+  row_hierarchies_usage : @domain.CT_RowHierarchiesUsage?
+  /// §18.10.1.14 colHierarchiesUsage child.
+  col_hierarchies_usage : @domain.CT_ColHierarchiesUsage?
   /// §18.10.1.74 pivotTableStyleInfo child — the referenced table-style
   /// name + band/header toggles.  `None` when absent.
   style_info : PivotTableStyleInfo?

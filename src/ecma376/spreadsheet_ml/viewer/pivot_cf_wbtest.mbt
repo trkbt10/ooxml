@@ -140,12 +140,18 @@ test "pivot_value_cf_style resolves dxf font scheme through theme font map" {
 test "pivot_cell renders a resolved dxf font family override" {
   let font : ResolvedFont = {
     family: "Pivot Theme Minor",
+    charset: None,
     size: 11.0,
     bold: false,
     italic: false,
     underline: false,
     strikethrough: false,
+    outline: false,
+    shadow: false,
+    condense: false,
+    extend: false,
     color: None,
+    vertical_align: "baseline",
   }
   let node = pivot_cell(
     0.0,

@@ -19,11 +19,96 @@ fn fixture_bytes() -> Bytes {
         "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/></Relationships>",
       ),
     ),
-    ("xl/workbook.xml", bytes("<s:workbook xmlns:s=\"urn:s\"/>")),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
     (
       "xl/worksheets/sheet1.xml",
       bytes(
         "<s:worksheet xmlns:s=\"urn:s\"><s:sheetData><s:row><s:c><s:v>Hello xlsx</s:v></s:c></s:row></s:sheetData></s:worksheet>",
+      ),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+fn fixture_with_legacy_drawing() -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "<Override PartName=\"/xl/drawings/vmlDrawing1.vml\" ContentType=\"application/vnd.openxmlformats-officedocument.vmlDrawing\"/>" +
+        "<Override PartName=\"/xl/drawings/vmlDrawingHF1.vml\" ContentType=\"application/vnd.openxmlformats-officedocument.vmlDrawing\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
+    (
+      "xl/worksheets/sheet1.xml",
+      bytes(
+        "<s:worksheet xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:dimension ref=\"A1:B2\"/><s:sheetData><s:row r=\"1\"><s:c r=\"A1\"><s:v>7</s:v></s:c></s:row></s:sheetData>" +
+        "<s:legacyDrawing r:id=\"rIdLegacy\"/>" +
+        "<s:legacyDrawingHF r:id=\"rIdLegacyHF\"/>" +
+        "</s:worksheet>",
+      ),
+    ),
+    (
+      "xl/worksheets/_rels/sheet1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdLegacy\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing\" Target=\"../drawings/vmlDrawing1.vml\"/>" +
+        "<Relationship Id=\"rIdLegacyHF\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing\" Target=\"../drawings/vmlDrawingHF1.vml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/drawings/vmlDrawing1.vml",
+      bytes(
+        "<xml xmlns:v=\"urn:schemas-microsoft-com:vml\">" +
+        "<v:rect style=\"position:absolute;left:12pt;top:18pt;width:36pt;height:20pt\" fillcolor=\"#C0504D\" strokecolor=\"#8064A2\"/>" +
+        "</xml>",
+      ),
+    ),
+    (
+      "xl/drawings/vmlDrawingHF1.vml",
+      bytes(
+        "<xml xmlns:v=\"urn:schemas-microsoft-com:vml\">" +
+        "<v:rect style=\"position:absolute;left:8pt;top:6pt;width:42pt;height:14pt\" fillcolor=\"#F2F7FF\" strokecolor=\"#2F5597\"/>" +
+        "</xml>",
       ),
     ),
   ])
@@ -732,7 +817,14 @@ fn fixture_with_drawing() -> Bytes {
         "</Relationships>",
       ),
     ),
-    ("xl/workbook.xml", bytes("<s:workbook xmlns:s=\"urn:s\"/>")),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
     (
       "xl/worksheets/sheet1.xml",
       bytes(
@@ -790,7 +882,14 @@ fn fixture_with_drawing_rid_order() -> Bytes {
         "</Relationships>",
       ),
     ),
-    ("xl/workbook.xml", bytes("<s:workbook xmlns:s=\"urn:s\"/>")),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
     (
       "xl/worksheets/sheet1.xml",
       bytes(
@@ -815,6 +914,178 @@ fn fixture_with_drawing_rid_order() -> Bytes {
 }
 
 ///|
+fn fixture_with_chartsheet_chart() -> Bytes {
+  let drawing = "<xdr:wsDr xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\">" +
+    "<xdr:absoluteAnchor><xdr:pos x=\"0\" y=\"0\"/><xdr:ext cx=\"9144000\" cy=\"5143500\"/>" +
+    "<xdr:graphicFrame><xdr:nvGraphicFramePr><xdr:cNvPr id=\"2\" name=\"Chart 1\"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>" +
+    "<xdr:xfrm><a:off xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" x=\"0\" y=\"0\"/>" +
+    "<a:ext xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" cx=\"9144000\" cy=\"5143500\"/></xdr:xfrm>" +
+    "<a:graphic xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/chart\">" +
+    "<c:chart xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" r:id=\"rIdChart\"/>" +
+    "</a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:absoluteAnchor></xdr:wsDr>"
+  let chart = "<c:chartSpace xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"><c:chart><c:plotArea><c:layout/>" +
+    "<c:barChart><c:barDir val=\"bar\"/><c:grouping val=\"clustered\"/><c:varyColors val=\"0\"/>" +
+    "<c:ser><c:idx val=\"0\"/><c:order val=\"0\"/><c:tx><c:strRef><c:f>Sheet1!$A$1</c:f><c:strCache><c:ptCount val=\"1\"/><c:pt idx=\"0\"><c:v>Sales</c:v></c:pt></c:strCache></c:strRef></c:tx>" +
+    "<c:cat><c:strRef><c:f>Sheet1!$A$2:$A$3</c:f><c:strCache><c:ptCount val=\"2\"/><c:pt idx=\"0\"><c:v>Q1</c:v></c:pt><c:pt idx=\"1\"><c:v>Q2</c:v></c:pt></c:strCache></c:strRef></c:cat>" +
+    "<c:val><c:numRef><c:f>Sheet1!$B$2:$B$3</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val=\"2\"/><c:pt idx=\"0\"><c:v>10</c:v></c:pt><c:pt idx=\"1\"><c:v>30</c:v></c:pt></c:numCache></c:numRef></c:val>" +
+    "</c:ser><c:axId val=\"111111111\"/><c:axId val=\"222222222\"/></c:barChart>" +
+    "<c:catAx><c:axId val=\"111111111\"/><c:scaling><c:orientation val=\"minMax\"/></c:scaling><c:delete val=\"0\"/><c:axPos val=\"b\"/><c:crossAx val=\"222222222\"/></c:catAx>" +
+    "<c:valAx><c:axId val=\"222222222\"/><c:scaling><c:orientation val=\"minMax\"/></c:scaling><c:delete val=\"0\"/><c:axPos val=\"l\"/><c:crossAx val=\"111111111\"/></c:valAx>" +
+    "</c:plotArea><c:plotVisOnly val=\"1\"/><c:dispBlanksAs val=\"gap\"/></c:chart></c:chartSpace>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/chartsheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml\"/>" +
+        "<Override PartName=\"/xl/drawings/drawing1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawing+xml\"/>" +
+        "<Override PartName=\"/xl/charts/chart1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet\" Target=\"chartsheets/sheet1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Chart1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
+    (
+      "xl/chartsheets/sheet1.xml",
+      bytes(
+        "<s:chartsheet xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheetViews><s:sheetView workbookViewId=\"0\"/></s:sheetViews><s:drawing r:id=\"rIdD1\"/></s:chartsheet>",
+      ),
+    ),
+    (
+      "xl/chartsheets/_rels/sheet1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdD1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\" Target=\"../drawings/drawing1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("xl/drawings/drawing1.xml", bytes(drawing)),
+    (
+      "xl/drawings/_rels/drawing1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdChart\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"../charts/chart1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("xl/charts/chart1.xml", bytes(chart)),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+fn fixture_with_shared_workbook_revisions() -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "<Override PartName=\"/xl/revisions/revisionHeaders.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.revisionHeaders+xml\"/>" +
+        "<Override PartName=\"/xl/revisions/revisionLog1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.revisionLog+xml\"/>" +
+        "<Override PartName=\"/xl/revisions/userNames.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.userNames+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+        "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/revisionHeaders\" Target=\"revisions/revisionHeaders.xml\"/>" +
+        "<Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/usernames\" Target=\"revisions/userNames.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
+    (
+      "xl/worksheets/sheet1.xml",
+      bytes(
+        "<s:worksheet xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
+        "<s:sheetData><s:row r=\"1\"><s:c r=\"A1\"><s:v>1</s:v></s:c></s:row></s:sheetData>" +
+        "</s:worksheet>",
+      ),
+    ),
+    (
+      "xl/revisions/revisionHeaders.xml",
+      bytes(
+        "<s:headers xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" guid=\"{233BEE23-EB5C-4542-905D-0230EFFED88B}\" trackRevisions=\"1\" preserveHistory=\"45\">" +
+        "<s:header guid=\"{A5A4B6F1-2B31-4B09-9AC8-000000000001}\" dateTime=\"2026-06-06T00:00:00Z\" maxSheetId=\"1\" userName=\"Catalog User\" r:id=\"rId1\">" +
+        "<s:sheetIdMap count=\"1\"><s:sheetId val=\"1\"/></s:sheetIdMap>" +
+        "</s:header></s:headers>",
+      ),
+    ),
+    (
+      "xl/revisions/_rels/revisionHeaders.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/revisionLog\" Target=\"revisionLog1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/revisions/revisionLog1.xml",
+      bytes(
+        "<s:revisions xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
+        "<s:rcv guid=\"{A5A4B6F1-2B31-4B09-9AC8-000000000002}\" action=\"add\"/>" +
+        "</s:revisions>",
+      ),
+    ),
+    (
+      "xl/revisions/userNames.xml",
+      bytes(
+        "<s:users xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" count=\"1\">" +
+        "<s:userInfo guid=\"{A5A4B6F1-2B31-4B09-9AC8-000000000003}\" name=\"Catalog User\" id=\"7\" dateTime=\"2026-06-06T00:00:00Z\"/>" +
+        "</s:users>",
+      ),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
 test "xlsx context resolves worksheet drawing part into WorksheetPart.drawing" {
   let workbook = open(fixture_with_drawing())
   assert_eq(workbook.worksheets.length(), 1)
@@ -832,6 +1103,94 @@ test "xlsx context resolves worksheet drawing by drawing r:id" {
     workbook.worksheets[0].drawing_part,
     Some("/xl/drawings/drawing2.xml"),
   )
+}
+
+///|
+test "xlsx context resolves worksheet legacyDrawing VML part into to_svg" {
+  set_context_fixture_font_faces(["Calibri"])
+  let workbook = open(fixture_with_legacy_drawing())
+  assert_eq(workbook.worksheets.length(), 1)
+  match workbook.worksheets[0].legacy_drawing {
+    Some(root) => assert_eq(root.name.local_name, "xml")
+    None => fail("expected WorksheetPart.legacy_drawing to be resolved")
+  }
+  assert_eq(
+    workbook.worksheets[0].legacy_drawing_part,
+    Some("/xl/drawings/vmlDrawing1.vml"),
+  )
+  match workbook.worksheets[0].legacy_drawing_hf {
+    Some(root) => assert_eq(root.name.local_name, "xml")
+    None => fail("expected WorksheetPart.legacy_drawing_hf to be resolved")
+  }
+  assert_eq(
+    workbook.worksheets[0].legacy_drawing_hf_part,
+    Some("/xl/drawings/vmlDrawingHF1.vml"),
+  )
+  let svg = workbook.to_svg(debug_attrs=true)
+  assert_true(svg.contains("class=\"legacy-drawing\""))
+  assert_true(svg.contains("data-ooxml-legacy-drawing-r-id=\"rIdLegacy\""))
+  assert_true(svg.contains("fill=\"#C0504D\""))
+  assert_true(svg.contains("stroke=\"#8064A2\""))
+  assert_true(svg.contains("class=\"legacy-drawing-hf\""))
+  assert_true(svg.contains("data-ooxml-legacy-drawing-hf-r-id=\"rIdLegacyHF\""))
+  assert_true(svg.contains("fill=\"#F2F7FF\""))
+  assert_true(svg.contains("stroke=\"#2F5597\""))
+}
+
+///|
+test "xlsx context resolves shared workbook revision and userNames parts into to_svg" {
+  set_context_fixture_font_faces(["Calibri"])
+  let workbook = open(fixture_with_shared_workbook_revisions())
+  assert_eq(
+    workbook.revision_headers_part,
+    Some("/xl/revisions/revisionHeaders.xml"),
+  )
+  match workbook.revision_headers {
+    Some(headers) => {
+      assert_eq(headers.header.length(), 1)
+      assert_eq(headers.guid, "{233BEE23-EB5C-4542-905D-0230EFFED88B}")
+    }
+    None => fail("expected revision headers")
+  }
+  assert_eq(workbook.revision_logs.length(), 1)
+  assert_eq(workbook.revision_logs[0].name, "/xl/revisions/revisionLog1.xml")
+  assert_eq(workbook.revision_logs[0].value.rcv.length(), 1)
+  assert_eq(workbook.user_names_part, Some("/xl/revisions/userNames.xml"))
+  match workbook.user_names {
+    Some(users) => {
+      assert_eq(users.user_info.length(), 1)
+      assert_eq(users.user_info[0].name, "Catalog User")
+    }
+    None => fail("expected shared users")
+  }
+  let reopened = open(workbook.save())
+  assert_eq(reopened.revision_logs.length(), 1)
+  let svg = reopened.to_svg(debug_attrs=true)
+  assert_true(svg.contains("data-ooxml-revision-headers=\"1\""))
+  assert_true(
+    svg.contains(
+      "data-ooxml-revision-headers-guid=\"{233BEE23-EB5C-4542-905D-0230EFFED88B}\"",
+    ),
+  )
+  assert_true(svg.contains("data-ooxml-revision-log-0-rcv-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-shared-users-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-shared-user-0-name=\"Catalog User\""))
+}
+
+///|
+test "xlsx context to_svg renders chartsheet drawing chart" {
+  let workbook = open(fixture_with_chartsheet_chart())
+  assert_eq(workbook.worksheets.length(), 0)
+  assert_eq(workbook.chartsheets.length(), 1)
+  match workbook.chartsheets[0].drawing_part {
+    Some(path) => assert_eq(path, "/xl/drawings/drawing1.xml")
+    None => fail("expected chartsheet drawing part")
+  }
+  let svg = open(workbook.save()).to_svg(debug_attrs=true)
+  assert_true(svg.contains("data-ooxml-chartsheet=\"1\""))
+  assert_true(svg.contains("data-ooxml-chartsheet-drawing-r-id=\"rIdD1\""))
+  assert_true(svg.contains("class=\"drawings\""))
+  assert_true(svg.contains("data-ooxml=\"chart\""))
 }
 
 ///|
@@ -886,7 +1245,14 @@ fn fixture_with_hyperlink() -> Bytes {
         "</Relationships>",
       ),
     ),
-    ("xl/workbook.xml", bytes("<s:workbook xmlns:s=\"urn:s\"/>")),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
     (
       "xl/worksheets/sheet1.xml",
       bytes(
@@ -902,8 +1268,86 @@ fn fixture_with_hyperlink() -> Bytes {
 }
 
 ///|
+fn fixture_with_query_table() -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "<Override PartName=\"/xl/queryTables/queryTable1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.queryTable+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/worksheets/_rels/sheet1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdQuery1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/queryTable\" Target=\"../queryTables/queryTable1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"" +
+        ns_s +
+        "\" xmlns:r=\"" +
+        ns_r +
+        "\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
+    (
+      "xl/worksheets/sheet1.xml",
+      bytes(
+        "<s:worksheet xmlns:s=\"" +
+        ns_s +
+        "\">" +
+        "<s:sheetData><s:row r=\"1\"><s:c r=\"A1\"><s:v>1</s:v></s:c></s:row></s:sheetData>" +
+        "</s:worksheet>",
+      ),
+    ),
+    (
+      "xl/queryTables/queryTable1.xml",
+      bytes(
+        "<s:queryTable xmlns:s=\"" +
+        ns_s +
+        "\" name=\"Query1\" connectionId=\"2\" refreshOnLoad=\"1\">" +
+        "<s:queryTableRefresh nextId=\"8\"><s:queryTableFields count=\"1\">" +
+        "<s:queryTableField id=\"5\" name=\"Amount\" tableColumnId=\"3\"/>" +
+        "</s:queryTableFields></s:queryTableRefresh></s:queryTable>",
+      ),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
 test "xlsx context to_svg resolves worksheet hyperlink r:id to external URL" {
   let workbook = open(fixture_with_hyperlink())
+  set_context_fixture_font_faces(["Calibri"])
   // The catalog harness path keeps debug attrs so `data-ooxml-*`
   // survives; the default production path strips them but the `<a>`
   // wrapper is a draw primitive, so it survives regardless.
@@ -911,6 +1355,20 @@ test "xlsx context to_svg resolves worksheet hyperlink r:id to external URL" {
   assert_true(svg.contains("<a "))
   assert_true(svg.contains("xlink:href=\"https://example.com/\""))
   assert_true(svg.contains("href=\"https://example.com/\""))
+}
+
+///|
+test "xlsx context resolves worksheet queryTable relationships" {
+  let workbook = open(fixture_with_query_table())
+  assert_eq(workbook.worksheets.length(), 1)
+  assert_eq(workbook.worksheets[0].query_tables.length(), 1)
+  set_context_fixture_font_faces(["Calibri"])
+  let svg = workbook.to_svg(debug_attrs=true)
+  assert_true(svg.contains("data-ooxml-query-tables-count=\"1\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-name=\"Query1\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-connection-id=\"2\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-refresh-on-load=\"1\""))
+  assert_true(svg.contains("data-ooxml-query-table-0-refresh-next-id=\"8\""))
 }
 
 ///|
@@ -942,6 +1400,24 @@ fn decode_utf8(bytes : Bytes) -> String {
 }
 
 ///|
+fn set_context_fixture_font_faces(families : Array[String]) -> Unit {
+  let bytes = try
+    @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
+  catch {
+    _ => abort("cannot load test font src/util/glyph/fixtures/subset.ttf")
+  } noraise {
+    b => b
+  }
+  let faces : Map[String, Bytes] = Map([], capacity=families.length())
+  for family in families {
+    faces[family] = bytes
+  }
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(resolver=@glyph.FontResolver::in_memory(faces)),
+  )
+}
+
+///|
 /// §18.3.1.4 — `Workbook::to_svg` concatenates one `<svg>` per sheet.
 /// Each sheet's generated ids (clip paths, gradient / pattern defs)
 /// must be namespaced so they stay globally unique once concatenated;
@@ -949,6 +1425,7 @@ fn decode_utf8(bytes : Bytes) -> String {
 /// the first match. Renders the real multi-sheet PivotTableFormats
 /// fixture and asserts every `clip_*` id is unique.
 test "spreadsheet_ml to_svg keeps per-sheet ids unique" {
+  set_context_fixture_font_faces(["Calibri", "Noto Sans"])
   let svg = try {
     let bytes = @fs.read_file_to_bytes(
       "references/raw/ecma376-1/OfficeOpenXML-SpreadsheetMLStyles/PivotTableFormats.xlsx",

@@ -132,6 +132,1355 @@ fn dgm_elem(
 }
 
 ///|
+fn catalog_dgm_elem(
+  ns : String,
+  tag : String,
+  attrs : Array[@xml.Attribute],
+  kids : Array[@xml.Node],
+) -> @xml.Element {
+  xep("dgm", ns, tag, attrs, kids)
+}
+
+///|
+fn catalog_diagram_ns_for(content : @xml.Element) -> String {
+  content.name.ns.unwrap_or(NS_DGM)
+}
+
+///|
+fn catalog_diagram_part_ns_for(content : @xml.Element) -> String {
+  let ns = catalog_diagram_ns_for(content)
+  if ns.contains("drawingml/diagram") {
+    ns
+  } else if ns.contains("purl.oclc.org/ooxml") {
+    "http://purl.oclc.org/ooxml/drawingml/diagram"
+  } else {
+    NS_DGM
+  }
+}
+
+///|
+fn catalog_diagram_main_ns_for(diagram_ns : String) -> String {
+  if diagram_ns.contains("purl.oclc.org/ooxml") {
+    "http://purl.oclc.org/ooxml/drawingml/main"
+  } else {
+    NS_A
+  }
+}
+
+///|
+fn catalog_diagram_default_doc_point(ns : String) -> @xml.Element {
+  catalog_dgm_elem(ns, "pt", [xa("modelId", "0"), xa("type", "doc")], [])
+}
+
+///|
+fn catalog_diagram_default_text(ns : String, text : String) -> @xml.Element {
+  let main_ns = catalog_diagram_main_ns_for(ns)
+  catalog_dgm_elem(ns, "t", [], [
+    Element(xe(main_ns, "bodyPr", [], [])),
+    Element(xe(main_ns, "lstStyle", [], [])),
+    Element(
+      xe(main_ns, "p", [], [
+        Element(
+          xe(main_ns, "r", [], [Element(xe(main_ns, "t", [], [Text(text)]))]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_diagram_default_node_point(ns : String) -> @xml.Element {
+  catalog_dgm_elem(ns, "pt", [xa("modelId", "1"), xa("type", "node")], [
+    Element(catalog_diagram_default_text(ns, "Catalog")),
+  ])
+}
+
+///|
+fn catalog_diagram_pr_set_for_render(content : @xml.Element) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [xa("presStyleLbl", "node2")])
+}
+
+///|
+fn catalog_diagram_node_point_with_pr_set(
+  ns : String,
+  pr_set : @xml.Element,
+) -> @xml.Element {
+  catalog_dgm_elem(ns, "pt", [xa("modelId", "1"), xa("type", "node")], [
+    Element(pr_set),
+    Element(catalog_diagram_default_text(ns, "Catalog")),
+  ])
+}
+
+///|
+fn catalog_diagram_default_connection(ns : String) -> @xml.Element {
+  catalog_dgm_elem(
+    ns,
+    "cxn",
+    [
+      xa("modelId", "101"),
+      xa("srcId", "0"),
+      xa("destId", "1"),
+      xa("srcOrd", "0"),
+      xa("destOrd", "0"),
+    ],
+    [],
+  )
+}
+
+///|
+fn catalog_diagram_connection_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [
+    xa("modelId", "101"),
+    xa("srcId", "0"),
+    xa("destId", "1"),
+    xa("srcOrd", "0"),
+    xa("destOrd", "0"),
+    xa("type", "parOf"),
+  ])
+}
+
+///|
+fn catalog_diagram_connection_list_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  {
+    name: content.name,
+    attributes: content.attributes,
+    children: [Element(catalog_diagram_default_connection(ns))],
+  }
+}
+
+///|
+fn catalog_diagram_connection_data_model_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  let cxn_lst = if content.name.local_name == "cxnLst" {
+    catalog_diagram_connection_list_for_render(content)
+  } else if content.name.local_name == "cxn" {
+    catalog_dgm_elem(ns, "cxnLst", [], [
+      Element(catalog_diagram_connection_for_render(content)),
+    ])
+  } else {
+    catalog_dgm_elem(ns, "cxnLst", [], [
+      Element(catalog_diagram_default_connection(ns)),
+    ])
+  }
+  catalog_dgm_elem(ns, "dataModel", [], [
+    Element(
+      catalog_dgm_elem(ns, "ptLst", [], [
+        Element(catalog_diagram_default_doc_point(ns)),
+        Element(catalog_diagram_default_node_point(ns)),
+      ]),
+    ),
+    Element(cxn_lst),
+  ])
+}
+
+///|
+fn catalog_diagram_bg_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  let main_ns = catalog_diagram_main_ns_for(ns)
+  {
+    name: content.name,
+    attributes: content.attributes,
+    children: [
+      Element(
+        xe(main_ns, "solidFill", [], [
+          Element(xe(main_ns, "srgbClr", [xa("val", "E6F2FF")], [])),
+        ]),
+      ),
+    ],
+  }
+}
+
+///|
+fn catalog_diagram_whole_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  let main_ns = catalog_diagram_main_ns_for(ns)
+  {
+    name: content.name,
+    attributes: content.attributes,
+    children: [
+      Element(
+        xe(main_ns, "ln", [xa("w", "38100")], [
+          Element(
+            xe(main_ns, "solidFill", [], [
+              Element(xe(main_ns, "srgbClr", [xa("val", "C00000")], [])),
+            ]),
+          ),
+        ]),
+      ),
+    ],
+  }
+}
+
+///|
+fn catalog_diagram_pt_for_render(content : @xml.Element) -> @xml.Element {
+  let has_text = first_child_named_local_local(content, "t") is Some(_)
+  let kids : Array[@xml.Node] = []
+  for child in content.children {
+    kids.push(child)
+  }
+  if !has_text {
+    kids.push(
+      Element(
+        catalog_diagram_default_text(
+          catalog_diagram_part_ns_for(content),
+          "Catalog",
+        ),
+      ),
+    )
+  }
+  let forced = catalog_diagram_attr_forced(
+    { name: content.name, attributes: content.attributes, children: kids },
+    [xa("modelId", "1"), xa("type", "node")],
+  )
+  forced
+}
+
+///|
+fn catalog_diagram_pt_lst_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  {
+    name: content.name,
+    attributes: content.attributes,
+    children: [
+      Element(catalog_diagram_default_doc_point(ns)),
+      Element(catalog_diagram_default_node_point(ns)),
+    ],
+  }
+}
+
+///|
+fn catalog_diagram_active_data_model_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  let data_children : Array[@xml.Node] = []
+  if content.name.local_name == "bg" {
+    data_children.push(Element(catalog_diagram_bg_for_render(content)))
+  }
+  if content.name.local_name == "whole" {
+    data_children.push(Element(catalog_diagram_whole_for_render(content)))
+  }
+  if content.name.local_name == "ptLst" {
+    data_children.push(Element(catalog_diagram_pt_lst_for_render(content)))
+  } else {
+    let pt_nodes : Array[@xml.Node] = [
+      Element(catalog_diagram_default_doc_point(ns)),
+    ]
+    if content.name.local_name == "pt" {
+      pt_nodes.push(Element(catalog_diagram_pt_for_render(content)))
+    } else if content.name.local_name == "t" {
+      pt_nodes.push(
+        Element(
+          catalog_dgm_elem(ns, "pt", [xa("modelId", "1"), xa("type", "node")], [
+            Element(content),
+          ]),
+        ),
+      )
+    } else if content.name.local_name == "prSet" {
+      pt_nodes.push(
+        Element(
+          catalog_diagram_node_point_with_pr_set(
+            ns,
+            catalog_diagram_pr_set_for_render(content),
+          ),
+        ),
+      )
+    } else {
+      pt_nodes.push(Element(catalog_diagram_default_node_point(ns)))
+    }
+    data_children.push(Element(catalog_dgm_elem(ns, "ptLst", [], pt_nodes)))
+  }
+  data_children.push(
+    Element(
+      catalog_dgm_elem(ns, "cxnLst", [], [
+        Element(catalog_diagram_default_connection(ns)),
+      ]),
+    ),
+  )
+  catalog_dgm_elem(ns, "dataModel", [], data_children)
+}
+
+///|
+fn catalog_diagram_active_colors_root(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  catalog_dgm_elem(
+    ns,
+    "colorsDef",
+    [xa("uniqueId", "urn:catalog:diagram-colors-active")],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(
+        catalog_dgm_elem(ns, "styleLbl", [xa("name", "node1")], [
+          Element(content),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_effect_color_list_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let main_ns = catalog_diagram_main_ns_for(catalog_diagram_ns_for(content))
+  {
+    name: content.name,
+    attributes: content.attributes,
+    children: [Element(xe(main_ns, "srgbClr", [xa("val", "C00000")], []))],
+  }
+}
+
+///|
+fn catalog_diagram_effect_colors_root(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  catalog_dgm_elem(
+    ns,
+    "colorsDef",
+    [xa("uniqueId", "urn:catalog:diagram-colors-effect")],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(
+        catalog_dgm_elem(ns, "styleLbl", [xa("name", "node1")], [
+          Element(catalog_diagram_effect_color_list_for_render(content)),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_effect_style_def() -> @xml.Element {
+  let ns = DIAGRAM_URI
+  let main_ns = NS_A
+  let style = xe(main_ns, "style", [], [
+    Element(xe(main_ns, "lnRef", [xa("idx", "1")], [])),
+    Element(xe(main_ns, "fillRef", [xa("idx", "1")], [])),
+    Element(xe(main_ns, "effectRef", [xa("idx", "1")], [])),
+    Element(xe(main_ns, "fontRef", [xa("idx", "minor")], [])),
+  ])
+  catalog_dgm_elem(
+    ns,
+    "styleDef",
+    [xa("uniqueId", "urn:catalog:diagram-style-effect")],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(
+        catalog_dgm_elem(ns, "styleLbl", [xa("name", "node1")], [Element(style)]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_text_effect_sp3d(main_ns : String) -> @xml.Element {
+  xe(main_ns, "sp3d", [xa("extrusionH", "190500"), xa("contourW", "38100")], [
+    Element(
+      xe(main_ns, "extrusionClr", [], [
+        Element(xe(main_ns, "srgbClr", [xa("val", "404040")], [])),
+      ]),
+    ),
+    Element(
+      xe(main_ns, "contourClr", [], [
+        Element(xe(main_ns, "srgbClr", [xa("val", "202020")], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_diagram_text_props_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let main_ns = catalog_diagram_main_ns_for(ns)
+  if content.name.local_name == "txPr" {
+    let kids = catalog_diagram_text_props_children_for_render(content, main_ns)
+    { name: content.name, attributes: content.attributes, children: kids }
+  } else {
+    catalog_dgm_elem(ns, "txPr", [], [
+      Element(catalog_diagram_text_effect_sp3d(main_ns)),
+    ])
+  }
+}
+
+///|
+fn catalog_diagram_text_props_children_for_render(
+  content : @xml.Element,
+  main_ns : String,
+) -> Array[@xml.Node] {
+  let kids : Array[@xml.Node] = []
+  let mut has_sp3d = false
+  for child in content.children {
+    match child {
+      @xml.Node::Element(e) =>
+        if e.name.local_name == "sp3d" {
+          has_sp3d = true
+          kids.push(
+            @xml.Node::Element(catalog_diagram_visible_text_effect_sp3d(e)),
+          )
+        } else {
+          kids.push(child)
+        }
+      _ => kids.push(child)
+    }
+  }
+  if !has_sp3d {
+    kids.push(@xml.Node::Element(catalog_diagram_text_effect_sp3d(main_ns)))
+  }
+  kids
+}
+
+///|
+fn catalog_diagram_visible_text_effect_sp3d(
+  sp3d : @xml.Element,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  for a in sp3d.attributes {
+    if a.name.local_name != "extrusionH" && a.name.local_name != "contourW" {
+      attrs.push(a)
+    }
+  }
+  attrs.push(xa("extrusionH", "190500"))
+  attrs.push(xa("contourW", "38100"))
+  { name: sp3d.name, attributes: attrs, children: sp3d.children }
+}
+
+///|
+fn catalog_diagram_text_effect_style_def() -> @xml.Element {
+  let ns = DIAGRAM_URI
+  let main_ns = NS_A
+  catalog_dgm_elem(
+    ns,
+    "styleDef",
+    [xa("uniqueId", "urn:catalog:diagram-style-text-effect")],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(
+        catalog_dgm_elem(ns, "styleLbl", [xa("name", "node1")], [
+          Element(
+            catalog_dgm_elem(ns, "txPr", [], [
+              Element(catalog_diagram_text_effect_sp3d(main_ns)),
+            ]),
+          ),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_text_effect_style_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  catalog_dgm_elem(
+    ns,
+    "styleDef",
+    [xa("uniqueId", "urn:catalog:diagram-style-text-effect-active")],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(
+        catalog_dgm_elem(ns, "styleLbl", [xa("name", "node1")], [
+          Element(catalog_diagram_text_props_for_render(content)),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_text_effect_color_list_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let main_ns = catalog_diagram_main_ns_for(catalog_diagram_ns_for(content))
+  {
+    name: content.name,
+    attributes: content.attributes,
+    children: [Element(xe(main_ns, "srgbClr", [xa("val", "C00000")], []))],
+  }
+}
+
+///|
+fn catalog_diagram_text_effect_colors_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  catalog_dgm_elem(
+    ns,
+    "colorsDef",
+    [xa("uniqueId", "urn:catalog:diagram-colors-text-effect")],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(
+        catalog_dgm_elem(ns, "styleLbl", [xa("name", "node1")], [
+          Element(catalog_diagram_text_effect_color_list_for_render(content)),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_text_effect_colors_def() -> @xml.Element {
+  catalog_diagram_text_effect_colors_root(dgm_elem("txEffectClrLst", [], []))
+}
+
+///|
+fn catalog_diagram_style_label_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let main_ns = catalog_diagram_main_ns_for(ns)
+  let style = xe(main_ns, "style", [], [
+    Element(
+      xe(main_ns, "lnRef", [xa("idx", "1")], [
+        Element(xe(main_ns, "srgbClr", [xa("val", "C00000")], [])),
+      ]),
+    ),
+    Element(xe(main_ns, "fillRef", [xa("idx", "1")], [])),
+    Element(xe(main_ns, "effectRef", [xa("idx", "1")], [])),
+    Element(xe(main_ns, "fontRef", [xa("idx", "minor")], [])),
+  ])
+  if content.name.local_name == "styleLbl" {
+    let forced = catalog_diagram_attr_forced(content, [xa("name", "node1")])
+    {
+      name: forced.name,
+      attributes: forced.attributes,
+      children: [Element(style)],
+    }
+  } else {
+    catalog_dgm_elem(ns, "styleLbl", [xa("name", "node1")], [
+      Element(content),
+      Element(style),
+    ])
+  }
+}
+
+///|
+fn catalog_diagram_active_style_root(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  catalog_dgm_elem(
+    ns,
+    "styleDef",
+    [xa("uniqueId", "urn:catalog:diagram-style-active")],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(catalog_diagram_style_label_for_render(content)),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_attr_forced(
+  element : @xml.Element,
+  forced : Array[@xml.Attribute],
+) -> @xml.Element {
+  fn is_forced(local_name : String) -> Bool {
+    for attr in forced {
+      if attr.name.local_name == local_name {
+        return true
+      }
+    }
+    false
+  }
+
+  let attrs : Array[@xml.Attribute] = []
+  for attr in element.attributes {
+    if !is_forced(attr.name.local_name) {
+      attrs.push(attr)
+    }
+  }
+  for attr in forced {
+    attrs.push(attr)
+  }
+  { name: element.name, attributes: attrs, children: element.children }
+}
+
+///|
+fn catalog_diagram_pres_of_for_render(content : @xml.Element) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [
+    xa("axis", "ch"),
+    xa("ptType", "node"),
+    xa("st", "1"),
+    xa("cnt", "1"),
+  ])
+}
+
+///|
+fn catalog_diagram_constr_for_render(content : @xml.Element) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [
+    xa("type", "w"),
+    xa("for", "self"),
+    xa("val", "450000"),
+    xa("refType", "none"),
+  ])
+}
+
+///|
+fn catalog_diagram_constr_lst_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let kids : Array[@xml.Node] = []
+  kids.push(
+    Element(
+      catalog_dgm_elem(ns, "constr", [xa("type", "w"), xa("val", "450000")], []),
+    ),
+  )
+  kids.push(
+    Element(
+      catalog_dgm_elem(ns, "constr", [xa("type", "h"), xa("val", "360000")], []),
+    ),
+  )
+  { name: content.name, attributes: content.attributes, children: kids }
+}
+
+///|
+fn catalog_diagram_active_layout_root(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let local_name = content.name.local_name
+  let shape = if local_name == "shape" {
+    content
+  } else {
+    catalog_dgm_elem(ns, "shape", [xa("type", "rect")], [])
+  }
+  let pres_of = if local_name == "presOf" {
+    catalog_diagram_pres_of_for_render(content)
+  } else {
+    catalog_dgm_elem(ns, "presOf", [xa("axis", "ch"), xa("ptType", "node")], [])
+  }
+  let constr_lst = if local_name == "constrLst" {
+    catalog_diagram_constr_lst_for_render(content)
+  } else if local_name == "constr" {
+    catalog_dgm_elem(ns, "constrLst", [], [
+      Element(catalog_diagram_constr_for_render(content)),
+      Element(
+        catalog_dgm_elem(ns, "constr", [xa("type", "h"), xa("val", "360000")], []),
+      ),
+    ])
+  } else {
+    catalog_dgm_elem(ns, "constrLst", [], [
+      Element(
+        catalog_dgm_elem(ns, "constr", [xa("type", "w"), xa("val", "900000")], []),
+      ),
+      Element(
+        catalog_dgm_elem(ns, "constr", [xa("type", "h"), xa("val", "360000")], []),
+      ),
+    ])
+  }
+  let root_node = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "lin")], [])),
+      Element(shape),
+      Element(pres_of),
+      Element(constr_lst),
+    ],
+  )
+  catalog_dgm_elem(
+    ns,
+    "layoutDef",
+    [xa("uniqueId", "urn:catalog:diagram-layout-active"), xa("minVer", ns)],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_adj_for_render(content : @xml.Element) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [xa("idx", "1"), xa("val", "10000")])
+}
+
+///|
+fn catalog_diagram_adj_lst_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  if content.name.local_name == "adjLst" {
+    {
+      name: content.name,
+      attributes: content.attributes,
+      children: [
+        Element(
+          catalog_dgm_elem(ns, "adj", [xa("idx", "1"), xa("val", "10000")], []),
+        ),
+      ],
+    }
+  } else {
+    catalog_dgm_elem(ns, "adjLst", [], [
+      Element(catalog_diagram_adj_for_render(content)),
+    ])
+  }
+}
+
+///|
+fn catalog_diagram_adjustment_layout_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let shape = catalog_dgm_elem(ns, "shape", [xa("type", "parallelogram")], [
+    Element(catalog_diagram_adj_lst_for_render(content)),
+  ])
+  let root_node = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "lin")], [])),
+      Element(shape),
+      Element(
+        catalog_dgm_elem(
+          ns,
+          "presOf",
+          [xa("axis", "ch"), xa("ptType", "node")],
+          [],
+        ),
+      ),
+      Element(
+        catalog_dgm_elem(ns, "constrLst", [], [
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "w"), xa("val", "900000")],
+              [],
+            ),
+          ),
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "h"), xa("val", "360000")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+    ],
+  )
+  catalog_dgm_elem(
+    ns,
+    "layoutDef",
+    [xa("uniqueId", "urn:catalog:diagram-layout-adjustment"), xa("minVer", ns)],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_rule_for_render(content : @xml.Element) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [xa("type", "w"), xa("val", "900000")])
+}
+
+///|
+fn catalog_diagram_rule_lst_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  if content.name.local_name == "ruleLst" {
+    {
+      name: content.name,
+      attributes: content.attributes,
+      children: [
+        Element(
+          catalog_dgm_elem(ns, "rule", [xa("type", "w"), xa("val", "900000")], []),
+        ),
+        Element(
+          catalog_dgm_elem(ns, "rule", [xa("type", "h"), xa("val", "360000")], []),
+        ),
+      ],
+    }
+  } else {
+    catalog_dgm_elem(ns, "ruleLst", [], [
+      Element(catalog_diagram_rule_for_render(content)),
+      Element(
+        catalog_dgm_elem(ns, "rule", [xa("type", "h"), xa("val", "360000")], []),
+      ),
+    ])
+  }
+}
+
+///|
+fn catalog_diagram_rule_layout_root(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let root_node = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "lin")], [])),
+      Element(catalog_dgm_elem(ns, "shape", [xa("type", "rect")], [])),
+      Element(
+        catalog_dgm_elem(
+          ns,
+          "presOf",
+          [xa("axis", "ch"), xa("ptType", "node")],
+          [],
+        ),
+      ),
+      Element(catalog_diagram_rule_lst_for_render(content)),
+    ],
+  )
+  catalog_dgm_elem(
+    ns,
+    "layoutDef",
+    [xa("uniqueId", "urn:catalog:diagram-layout-rule"), xa("minVer", ns)],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_alg_for_render(content : @xml.Element) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [xa("type", "cycle")])
+}
+
+///|
+fn catalog_diagram_param_for_render(content : @xml.Element) -> @xml.Element {
+  catalog_diagram_attr_forced(content, [
+    xa("type", "linDir"),
+    xa("val", "fromR"),
+  ])
+}
+
+///|
+fn catalog_diagram_algorithm_layout_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let alg = if content.name.local_name == "alg" {
+    catalog_diagram_alg_for_render(content)
+  } else {
+    catalog_dgm_elem(ns, "alg", [xa("type", "lin")], [
+      Element(catalog_diagram_param_for_render(content)),
+    ])
+  }
+  let leaf = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "leaf"), xa("styleLbl", "node1")],
+    [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "sp")], [])),
+      Element(catalog_dgm_elem(ns, "shape", [xa("type", "rect")], [])),
+      Element(
+        catalog_dgm_elem(
+          ns,
+          "presOf",
+          [xa("axis", "self"), xa("ptType", "all")],
+          [],
+        ),
+      ),
+    ],
+  )
+  let root_node = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(alg),
+      Element(
+        catalog_dgm_elem(ns, "constrLst", [], [
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "w"), xa("val", "900000")],
+              [],
+            ),
+          ),
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "h"), xa("val", "600000")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        catalog_dgm_elem(
+          ns,
+          "forEach",
+          [xa("name", "each"), xa("axis", "ch"), xa("ptType", "node")],
+          [Element(leaf)],
+        ),
+      ),
+    ],
+  )
+  catalog_dgm_elem(
+    ns,
+    "layoutDef",
+    [xa("uniqueId", "urn:catalog:diagram-layout-algorithm"), xa("minVer", ns)],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_leaf_layout_node_for_render(
+  ns : String,
+  name : String,
+) -> @xml.Element {
+  catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", name), xa("styleLbl", "node1")],
+    [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "sp")], [])),
+      Element(catalog_dgm_elem(ns, "shape", [xa("type", "rect")], [])),
+      Element(
+        catalog_dgm_elem(
+          ns,
+          "presOf",
+          [xa("axis", "self"), xa("ptType", "all")],
+          [],
+        ),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_layout_node_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let forced = catalog_diagram_attr_forced(content, [
+    xa("name", "leaf"),
+    xa("styleLbl", "node1"),
+  ])
+  {
+    name: forced.name,
+    attributes: forced.attributes,
+    children: [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "sp")], [])),
+      Element(catalog_dgm_elem(ns, "shape", [xa("type", "rect")], [])),
+      Element(
+        catalog_dgm_elem(
+          ns,
+          "presOf",
+          [xa("axis", "self"), xa("ptType", "all")],
+          [],
+        ),
+      ),
+    ],
+  }
+}
+
+///|
+fn catalog_diagram_for_each_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let forced = catalog_diagram_attr_forced(content, [
+    xa("name", "each"),
+    xa("axis", "ch"),
+    xa("ptType", "node"),
+  ])
+  {
+    name: forced.name,
+    attributes: forced.attributes,
+    children: [Element(catalog_diagram_leaf_layout_node_for_render(ns, "leaf"))],
+  }
+}
+
+///|
+fn catalog_diagram_if_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let forced = catalog_diagram_attr_forced(content, [
+    xa("name", "ifBranch"),
+    xa("func", "cnt"),
+    xa("axis", "ch"),
+    xa("ptType", "node"),
+    xa("op", "gte"),
+    xa("val", "1"),
+  ])
+  {
+    name: forced.name,
+    attributes: forced.attributes,
+    children: [
+      Element(catalog_diagram_leaf_layout_node_for_render(ns, "choiceLeaf")),
+    ],
+  }
+}
+
+///|
+fn catalog_diagram_false_if(ns : String) -> @xml.Element {
+  catalog_dgm_elem(
+    ns,
+    "if",
+    [
+      xa("name", "falseBranch"),
+      xa("func", "cnt"),
+      xa("axis", "ch"),
+      xa("ptType", "node"),
+      xa("op", "gt"),
+      xa("val", "99"),
+    ],
+    [],
+  )
+}
+
+///|
+fn catalog_diagram_else_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let forced = catalog_diagram_attr_forced(content, [xa("name", "elseBranch")])
+  {
+    name: forced.name,
+    attributes: forced.attributes,
+    children: [
+      Element(catalog_diagram_leaf_layout_node_for_render(ns, "elseLeaf")),
+    ],
+  }
+}
+
+///|
+fn catalog_diagram_choose_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let forced = catalog_diagram_attr_forced(content, [xa("name", "choice")])
+  let branch = catalog_dgm_elem(
+    ns,
+    "if",
+    [
+      xa("name", "visibleBranch"),
+      xa("func", "cnt"),
+      xa("axis", "ch"),
+      xa("ptType", "node"),
+      xa("op", "gte"),
+      xa("val", "1"),
+    ],
+    [Element(catalog_diagram_leaf_layout_node_for_render(ns, "choiceLeaf"))],
+  )
+  {
+    name: forced.name,
+    attributes: forced.attributes,
+    children: [Element(branch)],
+  }
+}
+
+///|
+fn catalog_diagram_choice_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  match content.name.local_name {
+    "choose" => catalog_diagram_choose_for_render(content)
+    "if" =>
+      catalog_dgm_elem(ns, "choose", [xa("name", "choice")], [
+        Element(catalog_diagram_if_for_render(content)),
+      ])
+    "else" =>
+      catalog_dgm_elem(ns, "choose", [xa("name", "choice")], [
+        Element(catalog_diagram_false_if(ns)),
+        Element(catalog_diagram_else_for_render(content)),
+      ])
+    _ => catalog_diagram_choose_for_render(content)
+  }
+}
+
+///|
+fn catalog_diagram_layout_flow_layout_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let child : @xml.Element = match content.name.local_name {
+    "layoutNode" =>
+      catalog_dgm_elem(
+        ns,
+        "forEach",
+        [xa("name", "each"), xa("axis", "ch"), xa("ptType", "node")],
+        [Element(catalog_diagram_layout_node_for_render(content))],
+      )
+    "forEach" => catalog_diagram_for_each_for_render(content)
+    "choose" | "if" | "else" => catalog_diagram_choice_for_render(content)
+    _ => catalog_diagram_for_each_for_render(content)
+  }
+  let root_node = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "lin")], [])),
+      Element(
+        catalog_dgm_elem(ns, "constrLst", [], [
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "w"), xa("val", "900000")],
+              [],
+            ),
+          ),
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "h"), xa("val", "600000")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(child),
+    ],
+  )
+  catalog_dgm_elem(
+    ns,
+    "layoutDef",
+    [xa("uniqueId", "urn:catalog:diagram-layout-flow"), xa("minVer", ns)],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_var_info(local_name : String) -> (String, String, String) {
+  match local_name {
+    "orgChart" => ("orgChart", "1", "true")
+    "chMax" => ("chMax", "4", "4")
+    "chPref" => ("chPref", "2", "2")
+    "bulletEnabled" => ("bulEnabled", "1", "true")
+    "dir" => ("dir", "rev", "rev")
+    "hierBranch" => ("hierBranch", "hang", "hang")
+    "animOne" => ("animOne", "branch", "branch")
+    "animLvl" => ("animLvl", "lvl", "lvl")
+    "resizeHandles" => ("resizeHandles", "exact", "exact")
+    _ => ("dir", "rev", "rev")
+  }
+}
+
+///|
+fn catalog_diagram_var_lst_for_render(content : @xml.Element) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  if content.name.local_name == "varLst" {
+    let dir = catalog_dgm_elem(ns, "dir", [xa("val", "rev")], [])
+    {
+      name: content.name,
+      attributes: content.attributes,
+      children: [Element(dir)],
+    }
+  } else {
+    let (_, attr_val, _) = catalog_diagram_var_info(content.name.local_name)
+    let variable = catalog_diagram_attr_forced(content, [xa("val", attr_val)])
+    catalog_dgm_elem(ns, "varLst", [], [Element(variable)])
+  }
+}
+
+///|
+fn catalog_diagram_layout_variable_layout_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_ns_for(content)
+  let (arg, _, compare_val) = catalog_diagram_var_info(content.name.local_name)
+  let var_lst = catalog_diagram_var_lst_for_render(content)
+  let branch = catalog_dgm_elem(
+    ns,
+    "if",
+    [
+      xa("name", "variableBranch"),
+      xa("func", "var"),
+      xa("arg", arg),
+      xa("op", "equ"),
+      xa("val", compare_val),
+    ],
+    [Element(catalog_diagram_leaf_layout_node_for_render(ns, "variableLeaf"))],
+  )
+  let root_node = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(var_lst),
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "lin")], [])),
+      Element(
+        catalog_dgm_elem(ns, "constrLst", [], [
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "w"), xa("val", "900000")],
+              [],
+            ),
+          ),
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "h"), xa("val", "600000")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        catalog_dgm_elem(ns, "choose", [xa("name", "varChoice")], [
+          Element(branch),
+        ]),
+      ),
+    ],
+  )
+  catalog_dgm_elem(
+    ns,
+    "layoutDef",
+    [xa("uniqueId", "urn:catalog:diagram-layout-variable"), xa("minVer", ns)],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
+fn catalog_diagram_pres_layout_vars_for_render(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  if content.name.local_name == "presLayoutVars" {
+    {
+      name: content.name,
+      attributes: content.attributes,
+      children: [Element(catalog_dgm_elem(ns, "dir", [xa("val", "rev")], []))],
+    }
+  } else {
+    catalog_dgm_elem(ns, "presLayoutVars", [], [
+      Element(catalog_diagram_attr_forced(content, [xa("val", "rev")])),
+    ])
+  }
+}
+
+///|
+fn catalog_diagram_point_variable_data_model_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  let pr_set = catalog_dgm_elem(ns, "prSet", [], [
+    Element(catalog_diagram_pres_layout_vars_for_render(content)),
+  ])
+  catalog_dgm_elem(ns, "dataModel", [], [
+    Element(
+      catalog_dgm_elem(ns, "ptLst", [], [
+        Element(catalog_diagram_default_doc_point(ns)),
+        Element(catalog_diagram_node_point_with_pr_set(ns, pr_set)),
+      ]),
+    ),
+    Element(
+      catalog_dgm_elem(ns, "cxnLst", [], [
+        Element(catalog_diagram_default_connection(ns)),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_diagram_point_variable_layout_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  let ns = catalog_diagram_part_ns_for(content)
+  let branch = catalog_dgm_elem(
+    ns,
+    "if",
+    [
+      xa("name", "pointVariableBranch"),
+      xa("func", "var"),
+      xa("arg", "dir"),
+      xa("op", "equ"),
+      xa("val", "rev"),
+    ],
+    [Element(catalog_diagram_leaf_layout_node_for_render(ns, "pointVarLeaf"))],
+  )
+  let each = catalog_dgm_elem(
+    ns,
+    "forEach",
+    [xa("name", "eachPoint"), xa("axis", "ch"), xa("ptType", "node")],
+    [
+      Element(
+        catalog_dgm_elem(ns, "choose", [xa("name", "pointVarChoice")], [
+          Element(branch),
+        ]),
+      ),
+    ],
+  )
+  let root_node = catalog_dgm_elem(
+    ns,
+    "layoutNode",
+    [xa("name", "root"), xa("styleLbl", "node1")],
+    [
+      Element(catalog_dgm_elem(ns, "alg", [xa("type", "lin")], [])),
+      Element(
+        catalog_dgm_elem(ns, "constrLst", [], [
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "w"), xa("val", "900000")],
+              [],
+            ),
+          ),
+          Element(
+            catalog_dgm_elem(
+              ns,
+              "constr",
+              [xa("type", "h"), xa("val", "600000")],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(each),
+    ],
+  )
+  catalog_dgm_elem(
+    ns,
+    "layoutDef",
+    [xa("uniqueId", "urn:catalog:diagram-point-variable"), xa("minVer", ns)],
+    [
+      Element(catalog_dgm_elem(ns, "title", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "desc", [xa("val", "Catalog")], [])),
+      Element(catalog_dgm_elem(ns, "catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
 /// `<dgm:extLst>` using DrawingML's `a:CT_OfficeArtExtensionList`
 /// payload shape. The extension body is lax, so the catalog-local
 /// namespace is schema-valid without another Office relationship.

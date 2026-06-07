@@ -29,6 +29,24 @@ pub(all) struct WorksheetPart {
   /// part's own `_rels` file when looking up `r:embed` Ids. `None`
   /// when no drawing reference exists.
   drawing_part : String?
+  /// §18.3.1.31 `<legacyDrawing>` — worksheet-scoped VML Drawing
+  /// part resolved from the worksheet part's `.../vmlDrawing`
+  /// relationship.  The root is the raw null-namespace `<xml>` VML
+  /// wrapper so the viewer can hand the payload to the chapter-neutral
+  /// VML renderer without the context depending on SVG details.
+  legacy_drawing : @xml.Element?
+  /// OPC part name of the VML Drawing XML (e.g.
+  /// `/xl/drawings/vmlDrawing1.vml`). `None` when the worksheet has
+  /// no `<legacyDrawing>` relationship or it cannot be resolved.
+  legacy_drawing_part : String?
+  /// §18.3.1.32 `<legacyDrawingHF>` — VML Drawing part used by
+  /// header/footer graphics, resolved through the worksheet part's
+  /// relationships.  Kept separate from `legacy_drawing` because the
+  /// two worksheet elements own distinct relationship ids and drawing
+  /// parts.
+  legacy_drawing_hf : @xml.Element?
+  /// OPC part name of the header/footer VML Drawing XML.
+  legacy_drawing_hf_part : String?
   /// §18.5.1.2 `<table>` parts referenced by the worksheet's
   /// `<tableParts>/<tablePart r:id="…"/>` children, loaded through
   /// the worksheet-part `_rels`. Each entry is the raw `<table>`
@@ -47,6 +65,53 @@ pub(all) struct WorksheetPart {
   /// `<commentList>/<comment @ref>` cells to paint the comment
   /// indicator triangle.  `None` when the worksheet has no comments.
   comments : @xml.Element?
+  /// §18.12 `<queryTable>` parts referenced by worksheet relationships.
+  /// Each entry is parsed as typed `CT_QueryTable`; the connection id
+  /// points into the workbook-level §18.13 `connections` part.
+  query_tables : Array[@sml.CT_QueryTable]
+  /// §18.5.2 tableSingleCells parts referenced by worksheet relationships.
+  /// Each root is parsed as `CT_SingleXmlCells`.
+  single_xml_cells : Array[SingleXmlCellsPart]
+  /// §18.3.1.20 `<controls>` — ActiveX/form-control persistence
+  /// parts resolved from `<control r:id="...">` relationships.  The
+  /// worksheet element supplies the anchor and relationship id; the
+  /// resolved part supplies control-specific properties such as the
+  /// ActiveX caption/class id.
+  control_parts : Array[WorksheetControlPart]
+  /// §18.3.1.16 `<customProperties>` — application-defined sheet
+  /// custom property parts resolved from `<customPr r:id>`.
+  custom_property_parts : Array[WorksheetCustomPropertyPart]
+} derive(Eq, Debug)
+
+///|
+pub(all) struct WorksheetControlPart {
+  r_id : String
+  name : String
+  value : @xml.Element
+} derive(Eq, Debug)
+
+///|
+pub(all) struct WorksheetCustomPropertyPart {
+  r_id : String
+  name : String
+  value : @xml.Element
+} derive(Eq, Debug)
+
+///|
+pub(all) struct SingleXmlCellsPart {
+  name : String
+  value : @sml.CT_SingleXmlCells
+} derive(Eq, Debug)
+
+///|
+pub(all) struct ChartsheetPart {
+  name : String
+  value : @sml.CT_Chartsheet
+  /// §18.3.1.36 `<chartsheet>/<drawing r:id=...>` resolved through
+  /// the chartsheet part relationships.  The drawing part carries the
+  /// graphicFrame that points at the actual §21.2 chart part.
+  drawing : @drawing.WsDr?
+  drawing_part : String?
 } derive(Eq, Debug)
 
 ///|
@@ -55,12 +120,56 @@ pub(all) struct Workbook {
   workbook_part : String
   workbook : @sml.CT_Workbook
   worksheets : Array[WorksheetPart]
+  chartsheets : Array[ChartsheetPart]
   shared_strings : @sml.CT_Sst?
   styles : @sml.CT_Stylesheet?
   /// §18.9 Metadata part (`/xl/metadata.xml`). Cells reference
   /// this workbook-level store through CT_Cell `@cm` / `@vm`.
   metadata : @sml.CT_Metadata?
+  /// §18.13 External Connections part (`/xl/connections.xml`). Query
+  /// tables and external data refresh metadata reference this
+  /// workbook-level store by connection id.
+  connections : @sml.CT_Connections?
+  /// §18.6 Calculation Chain part (`/xl/calcChain.xml`). Formula cells
+  /// reference this workbook-level dependency order by cell ref.
+  calc_chain : @sml.CT_CalcChain?
+  /// §18.16 Custom XML Mappings part (`/xl/xmlMaps.xml`). Worksheet
+  /// tableSingleCells and XML column mappings refer to these map ids.
+  xml_maps : @sml.CT_MapInfo?
+  /// §18.15 Volatile Dependencies part
+  /// (`/xl/volatileDependencies.xml`). RTD/OLAP formula dependency
+  /// metadata is workbook-level rather than worksheet-local.
+  volatile_dependencies : @sml.CT_VolTypes?
+  /// §18.11.1.2 Shared Workbook Revision Headers part.  Discovered
+  /// through the workbook part's `.../revisionHeaders` relationship
+  /// rather than a fixed path because the OPC part name is package
+  /// owned.
+  revision_headers_part : String?
+  revision_headers : @sml.CT_RevisionHeaders?
+  /// §18.11.1.20 Shared Workbook Revision Log parts referenced by
+  /// the revision headers part's `.../revisionLog` relationships.
+  revision_logs : Array[RevisionLogPart]
+  /// §18.14 External Link parts referenced by workbook
+  /// `<externalReferences>/<externalReference r:id>`.
+  external_links : Array[ExternalLinkPart]
+  /// §18.11.1.27 User Names part for shared-workbook editing state,
+  /// discovered through the workbook part's `.../usernames`
+  /// relationship.
+  user_names_part : String?
+  user_names : @sml.CT_Users?
   theme : @opc.PackagePart?
+} derive(Eq, Debug)
+
+///|
+pub(all) struct RevisionLogPart {
+  name : String
+  value : @sml.CT_Revisions
+} derive(Eq, Debug)
+
+///|
+pub(all) struct ExternalLinkPart {
+  name : String
+  value : @sml.CT_ExternalLink
 } derive(Eq, Debug)
 
 ///|
@@ -75,11 +184,32 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
     let workbook = @sml_reader.read_workbook(
       opc_package.required_part(workbook_part, section="6.3.3", source_path="/").data,
     )
+    let revision_headers_info = read_workbook_revision_headers(
+      opc_package, workbook_part,
+    )
+    let (revision_headers_part, revision_headers) = match
+      revision_headers_info {
+      Some((name, value)) => (Some(name), Some(value))
+      None => (None, None)
+    }
+    let revision_logs = match revision_headers_part {
+      Some(name) => read_workbook_revision_logs(opc_package, name)
+      None => []
+    }
+    let external_links = read_workbook_external_links(
+      opc_package, workbook_part,
+    )
+    let user_names_info = read_workbook_user_names(opc_package, workbook_part)
+    let (user_names_part, user_names) = match user_names_info {
+      Some((name, value)) => (Some(name), Some(value))
+      None => (None, None)
+    }
     {
       opc_package,
       workbook_part,
       workbook,
       worksheets: read_worksheets(opc_package, workbook_part, workbook),
+      chartsheets: read_chartsheets(opc_package, workbook_part, workbook),
       // ECMA-376 §18.4.8 specifies `<sst>` as the top-level element
       // name in xl/sharedStrings.xml; use `read_sst` not the
       // `read_shared_strings` legacy alias so Office-produced
@@ -93,10 +223,27 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
       metadata: opc_package.read_optional(
         "/xl/metadata.xml", @sml_reader.read_metadata,
       ),
+      connections: opc_package.read_optional(
+        "/xl/connections.xml", @sml_reader.read_connections,
+      ),
+      calc_chain: opc_package.read_optional(
+        "/xl/calcChain.xml", @sml_reader.read_calc_chain,
+      ),
+      xml_maps: opc_package.read_optional(
+        "/xl/xmlMaps.xml", @sml_reader.read_map_info,
+      ),
+      volatile_dependencies: opc_package.read_optional(
+        "/xl/volatileDependencies.xml", @sml_reader.read_vol_types,
+      ),
+      revision_headers_part,
+      revision_headers,
+      revision_logs,
+      external_links,
+      user_names_part,
+      user_names,
       // §18.8.3 / OPC §11.3.10 — discover the theme part via
-      // the workbook's relationship table; fall back to the
-      // canonical path so packages without an explicit rel
-      // (legacy producers) still render with a theme.
+      // the workbook's relationship table. A canonical theme part is
+      // used only when present and no relationship names another part.
       theme: locate_theme_part(opc_package, workbook_part),
     }
   } catch {
@@ -163,7 +310,7 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
 
 ///|
 pub fn Workbook::save_or_raise(self : Workbook) -> Bytes raise SaveError {
-  let opc_package = self.opc_package
+  let mut opc_package = self.opc_package
     .with_part(self.workbook_part, @sml_builder.write_workbook(self.workbook))
     .with_optional_part(
       "/xl/sharedStrings.xml",
@@ -180,12 +327,74 @@ pub fn Workbook::save_or_raise(self : Workbook) -> Bytes raise SaveError {
       self.metadata,
       @sml_builder.write_metadata,
     )
+    .with_optional_part(
+      "/xl/connections.xml",
+      self.connections,
+      @sml_builder.write_connections,
+    )
+    .with_optional_part(
+      "/xl/calcChain.xml",
+      self.calc_chain,
+      @sml_builder.write_calc_chain,
+    )
+    .with_optional_part(
+      "/xl/xmlMaps.xml",
+      self.xml_maps,
+      @sml_builder.write_map_info,
+    )
+    .with_optional_part(
+      "/xl/volatileDependencies.xml",
+      self.volatile_dependencies,
+      @sml_builder.write_vol_types,
+    )
+  match self.revision_headers_part {
+    Some(name) =>
+      match self.revision_headers {
+        Some(headers) =>
+          opc_package = opc_package.with_part(
+            name,
+            @sml_builder.write_headers(headers),
+          )
+        None => ()
+      }
+    None => ()
+  }
+  for log in self.revision_logs {
+    opc_package = opc_package.with_part(
+      log.name,
+      @sml_builder.write_revisions(log.value),
+    )
+  }
+  for link in self.external_links {
+    opc_package = opc_package.with_part(
+      link.name,
+      @sml_builder.write_external_link(link.value),
+    )
+  }
+  match self.user_names_part {
+    Some(name) =>
+      match self.user_names {
+        Some(users) =>
+          opc_package = opc_package.with_part(
+            name,
+            @sml_builder.write_users(users),
+          )
+        None => ()
+      }
+    None => ()
+  }
   let mut saved = opc_package
   for worksheet in self.worksheets {
     saved = saved.with_part(
       worksheet.name,
       @sml_builder.write_worksheet(worksheet.value),
     )
+    for single_xml_cells in worksheet.single_xml_cells {
+      saved = saved.with_part(
+        single_xml_cells.name,
+        @sml_builder.write_table_single_cells(single_xml_cells.value),
+      )
+    }
   }
   saved.save() catch {
     err =>
@@ -265,10 +474,18 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
     self.workbook_part,
     self.workbook,
   )
+  let pivot_cache_definitions = read_pivot_cache_definitions(
+    self.opc_package,
+    cache_lookup,
+  )
   for sheet_index, worksheet in self.worksheets {
     let image_resolver = build_drawing_image_resolver(
       self.opc_package,
       worksheet.drawing_part,
+    )
+    let worksheet_image_resolver = build_worksheet_image_resolver(
+      self.opc_package,
+      worksheet.name,
     )
     // §21.2 — resolve `<c:chart r:id>` references on a graphicFrame
     // through the worksheet drawing's `_rels` so the chart renderer
@@ -284,6 +501,12 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
     let hyperlink_resolver = build_worksheet_hyperlink_resolver(
       self.opc_package,
       worksheet.name,
+    )
+    let control_part_resolver = build_worksheet_control_part_resolver(
+      worksheet.control_parts,
+    )
+    let custom_property_resolver = build_worksheet_custom_property_resolver(
+      worksheet.custom_property_parts,
     )
     // §18.10 — discover any pivot tables tied to this worksheet via
     // the worksheet-part's relationships (`…/pivotTable` rels point
@@ -322,18 +545,54 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       worksheet.value,
       shared_strings=self.shared_strings,
       drawing=worksheet.drawing,
+      legacy_drawing=worksheet.legacy_drawing,
+      legacy_drawing_hf=worksheet.legacy_drawing_hf,
       image_resolver~,
+      worksheet_image_resolver~,
       styles=self.styles,
       theme=theme_root,
       date1904~,
       id_prefix="s" + sheet_index.to_string() + "-",
       pivots~,
+      pivot_cache_definitions~,
       tables=worksheet.tables,
       comments=worksheet.comments,
+      query_tables=worksheet.query_tables,
+      revision_headers=self.revision_headers,
+      revision_logs=revision_log_values(self.revision_logs),
+      user_names=self.user_names,
       workbook=Some(self.workbook.element),
+      connections=self.connections,
+      calc_chain=self.calc_chain,
+      xml_maps=self.xml_maps,
+      volatile_dependencies=self.volatile_dependencies,
+      metadata=self.metadata,
+      single_xml_cells=single_xml_cells_values(worksheet.single_xml_cells),
+      external_links=external_link_values(self.external_links),
       evaluated_cells=Some(evaluated),
       part_resolver=chart_part_resolver,
       hyperlink_resolver~,
+      control_part_resolver~,
+      custom_property_resolver~,
+    )
+    buf.write_string(result.svg)
+  }
+  for chartsheet_index, chartsheet in self.chartsheets {
+    let image_resolver = build_drawing_image_resolver(
+      self.opc_package,
+      chartsheet.drawing_part,
+    )
+    let chart_part_resolver = build_drawing_chart_part_resolver(
+      self.opc_package,
+      chartsheet.drawing_part,
+    )
+    let result = @sml_viewer.render_chartsheet_svg(
+      chartsheet.value,
+      drawing=chartsheet.drawing,
+      image_resolver~,
+      theme=theme_root,
+      id_prefix="cs" + chartsheet_index.to_string() + "-",
+      part_resolver=chart_part_resolver,
     )
     buf.write_string(result.svg)
   }
@@ -349,51 +608,71 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
 /// Build an `image_resolver` closure that maps a worksheet drawing's
 /// `r:embed` Ids to `data:<mime>;base64,<…>` URIs by walking the
 /// drawing part's `_rels/<drawing>.xml.rels` for the resolved image
-/// part. Returns a closure that always yields `None` when no drawing
-/// part is associated (so the SML viewer falls back to its labelled
-/// placeholder transparently).
+/// part. Relationship lookup stays scoped to the drawing part.
 fn build_drawing_image_resolver(
   opc_package : @opc.Package,
   drawing_part_name : String?,
 ) -> (String) -> String? {
   match drawing_part_name {
     None => fn(_) { None }
-    Some(part_name) =>
-      match opc_package.relationships(part_name) {
-        None => fn(_) { None }
-        Some(rels) => {
-          let part = part_name
-          let pkg = opc_package
-          let relationships = rels
-          fn(rid : String) -> String? {
-            for rel in relationships.relationships {
-              if rel.id == rid &&
-                rel.target_mode == @relationships.TargetMode::Internal &&
-                rel.type_uri.has_suffix("/image") {
-                let image_name = try? @opc_part_name.resolve_target(
-                  part,
-                  rel.target,
-                )
-                match image_name {
-                  Ok(name) =>
-                    match pkg.part(name) {
-                      Some(image_part) =>
-                        return Some(
-                          "data:" +
-                          drawing_mime_for_target(rel.target) +
-                          ";base64," +
-                          @base64.encode(image_part.data),
-                        )
-                      None => ()
-                    }
-                  Err(_) => ()
-                }
-              }
+    Some(part_name) => build_part_image_resolver(opc_package, part_name)
+  }
+}
+
+///|
+/// §18.3.1.84 CT_SheetBackgroundPicture — build a resolver for
+/// `<worksheet>/<picture r:id="...">`. The relationship id is scoped
+/// to the worksheet part, so this closure reads the worksheet part's
+/// `.rels` and only resolves internal `/image` relationships there.
+fn build_worksheet_image_resolver(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+) -> (String) -> String? {
+  build_part_image_resolver(opc_package, worksheet_part_name)
+}
+
+///|
+/// Neutral SoT for OPC image resolution from a relationship owner
+/// part. The caller chooses the owner part according to the OOXML
+/// element being rendered: drawing pictures pass the drawing part;
+/// worksheet background pictures pass the worksheet part.
+fn build_part_image_resolver(
+  opc_package : @opc.Package,
+  owner_part_name : String,
+) -> (String) -> String? {
+  match opc_package.relationships(owner_part_name) {
+    None => fn(_) { None }
+    Some(rels) => {
+      let part = owner_part_name
+      let pkg = opc_package
+      let relationships = rels
+      fn(rid : String) -> String? {
+        for rel in relationships.relationships {
+          if rel.id == rid &&
+            rel.target_mode == @relationships.TargetMode::Internal &&
+            rel.type_uri.has_suffix("/image") {
+            let image_name = try
+              @opc_part_name.resolve_target(part, rel.target)
+            catch {
+              _ => continue
+            } noraise {
+              name => name
             }
-            None
+            match pkg.part(image_name) {
+              Some(image_part) =>
+                return Some(
+                  "data:" +
+                  drawing_mime_for_target(rel.target) +
+                  ";base64," +
+                  @base64.encode(image_part.data),
+                )
+              None => ()
+            }
           }
         }
+        None
       }
+    }
   }
 }
 
@@ -459,9 +738,8 @@ fn build_drawing_chart_part_resolver(
 /// path).  Mirrors `build_drawing_image_resolver` but resolves
 /// against the worksheet part (not the drawing part) and returns the
 /// target string directly.  Returns a closure that always yields
-/// `None` when the worksheet has no relationships, so the SML viewer
-/// falls back to its `@location` / metadata-only behaviour
-/// transparently.
+/// `None` when the worksheet has no relationships; the SML viewer
+/// then uses its §18.3.1.47 `@location` / metadata-only handling.
 fn build_worksheet_hyperlink_resolver(
   opc_package : @opc.Package,
   worksheet_part_name : String,
@@ -481,6 +759,37 @@ fn build_worksheet_hyperlink_resolver(
         None
       }
     }
+  }
+}
+
+///|
+/// Build a resolver for worksheet form controls.  The key is the
+/// `<control r:id>` value scoped to the worksheet part; values are the
+/// parsed root elements of the resolved control persistence parts.
+fn build_worksheet_control_part_resolver(
+  control_parts : Array[WorksheetControlPart],
+) -> (String) -> @xml.Element? {
+  fn(rid : String) -> @xml.Element? {
+    for part in control_parts {
+      if part.r_id == rid {
+        return Some(part.value)
+      }
+    }
+    None
+  }
+}
+
+///|
+fn build_worksheet_custom_property_resolver(
+  custom_property_parts : Array[WorksheetCustomPropertyPart],
+) -> (String) -> @xml.Element? {
+  fn(rid : String) -> @xml.Element? {
+    for part in custom_property_parts {
+      if part.r_id == rid {
+        return Some(part.value)
+      }
+    }
+    None
   }
 }
 
@@ -517,39 +826,41 @@ fn read_worksheets(
 ) -> Array[WorksheetPart] raise {
   let result : Array[WorksheetPart] = []
   let rel_targets = worksheet_relationship_targets(opc_package, owner)
-  let has_sheet_entries = match workbook.sheets {
-    Some(sheets) => sheets.sheets.length() > 0
-    None => false
-  }
-  if has_sheet_entries {
-    match workbook.sheets {
-      Some(sheets) =>
-        for sheet in sheets.sheets {
-          match rel_targets.get(sheet.r_id) {
-            Some(name) =>
-              match read_worksheet_part(opc_package, name) {
-                Some(part) => result.push(part)
-                None => ()
-              }
-            None => ()
-          }
+  match workbook.sheets {
+    Some(sheets) =>
+      for sheet in sheets.sheets {
+        match rel_targets.get(sheet.r_id) {
+          Some(name) =>
+            match read_worksheet_part(opc_package, name) {
+              Some(part) => result.push(part)
+              None => ()
+            }
+          None => ()
         }
-      None => ()
-    }
-    return result
+      }
+    None => ()
   }
-  // Legacy fallback for minimal packages that omit `<workbook>/<sheets>`.
-  // For conforming workbooks, `<sheets>/<sheet r:id>` is the order SoT.
-  match opc_package.relationships(owner) {
-    Some(relationships) =>
-      for rel in relationships.relationships {
-        if rel.type_uri.has_suffix("/worksheet") &&
-          rel.target_mode == @relationships.TargetMode::Internal {
-          let name = @opc_part_name.resolve_target(owner, rel.target)
-          match read_worksheet_part(opc_package, name) {
-            Some(part) => result.push(part)
-            None => ()
-          }
+  result
+}
+
+///|
+fn read_chartsheets(
+  opc_package : @opc.Package,
+  owner : String,
+  workbook : @sml.CT_Workbook,
+) -> Array[ChartsheetPart] raise {
+  let result : Array[ChartsheetPart] = []
+  let rel_targets = chartsheet_relationship_targets(opc_package, owner)
+  match workbook.sheets {
+    Some(sheets) =>
+      for sheet in sheets.sheets {
+        match rel_targets.get(sheet.r_id) {
+          Some(name) =>
+            match read_chartsheet_part(opc_package, name) {
+              Some(part) => result.push(part)
+              None => ()
+            }
+          None => ()
         }
       }
     None => ()
@@ -578,6 +889,164 @@ fn worksheet_relationship_targets(
 }
 
 ///|
+fn chartsheet_relationship_targets(
+  opc_package : @opc.Package,
+  owner : String,
+) -> Map[String, String] raise {
+  let targets : Map[String, String] = Map([], capacity=0)
+  match opc_package.relationships(owner) {
+    Some(relationships) =>
+      for rel in relationships.relationships {
+        if rel.type_uri.has_suffix("/chartsheet") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(owner, rel.target)
+          targets.set(rel.id, name)
+        }
+      }
+    None => ()
+  }
+  targets
+}
+
+///|
+fn read_workbook_revision_headers(
+  opc_package : @opc.Package,
+  workbook_part : String,
+) -> (String, @sml.CT_RevisionHeaders)? raise {
+  match opc_package.relationships(workbook_part) {
+    None => None
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.type_uri.has_suffix("/revisionHeaders") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(workbook_part, rel.target)
+          let part = opc_package.required_part(
+            name,
+            section="12.3.16",
+            source_path=workbook_part,
+          )
+          return Some((name, @sml_reader.read_headers(part.data)))
+        }
+      }
+      None
+    }
+  }
+}
+
+///|
+fn read_workbook_revision_logs(
+  opc_package : @opc.Package,
+  revision_headers_part : String,
+) -> Array[RevisionLogPart] raise {
+  let out : Array[RevisionLogPart] = []
+  match opc_package.relationships(revision_headers_part) {
+    None => out
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.type_uri.has_suffix("/revisionLog") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(
+            revision_headers_part,
+            rel.target,
+          )
+          let part = opc_package.required_part(
+            name,
+            section="12.3.17",
+            source_path=revision_headers_part,
+          )
+          out.push({ name, value: @sml_reader.read_revisions(part.data) })
+        }
+      }
+      out
+    }
+  }
+}
+
+///|
+fn read_workbook_external_links(
+  opc_package : @opc.Package,
+  workbook_part : String,
+) -> Array[ExternalLinkPart] raise {
+  let out : Array[ExternalLinkPart] = []
+  match opc_package.relationships(workbook_part) {
+    None => out
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.type_uri.has_suffix("/externalLink") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(workbook_part, rel.target)
+          let part = opc_package.required_part(
+            name,
+            section="12.3.9",
+            source_path=workbook_part,
+          )
+          out.push({ name, value: @sml_reader.read_external_link(part.data) })
+        }
+      }
+      out
+    }
+  }
+}
+
+///|
+fn read_workbook_user_names(
+  opc_package : @opc.Package,
+  workbook_part : String,
+) -> (String, @sml.CT_Users)? raise {
+  match opc_package.relationships(workbook_part) {
+    None => None
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.type_uri.has_suffix("/usernames") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(workbook_part, rel.target)
+          let part = opc_package.required_part(
+            name,
+            section="12.3.18",
+            source_path=workbook_part,
+          )
+          return Some((name, @sml_reader.read_users(part.data)))
+        }
+      }
+      None
+    }
+  }
+}
+
+///|
+fn revision_log_values(
+  parts : Array[RevisionLogPart],
+) -> Array[@sml.CT_Revisions] {
+  let out : Array[@sml.CT_Revisions] = []
+  for part in parts {
+    out.push(part.value)
+  }
+  out
+}
+
+///|
+fn external_link_values(
+  parts : Array[ExternalLinkPart],
+) -> Array[@sml.CT_ExternalLink] {
+  let out : Array[@sml.CT_ExternalLink] = []
+  for part in parts {
+    out.push(part.value)
+  }
+  out
+}
+
+///|
+fn single_xml_cells_values(
+  parts : Array[SingleXmlCellsPart],
+) -> Array[@sml.CT_SingleXmlCells] {
+  let out : Array[@sml.CT_SingleXmlCells] = []
+  for part in parts {
+    out.push(part.value)
+  }
+  out
+}
+
+///|
 fn read_worksheet_part(
   opc_package : @opc.Package,
   name : String,
@@ -590,9 +1059,61 @@ fn read_worksheet_part(
         Some((wsdr, dn)) => (Some(wsdr), Some(dn))
         None => (None, None)
       }
+      let (legacy_drawing, legacy_drawing_part) = match
+        read_worksheet_legacy_drawing(opc_package, name, worksheet) {
+        Some((root, part_name)) => (Some(root), Some(part_name))
+        None => (None, None)
+      }
+      let (legacy_drawing_hf, legacy_drawing_hf_part) = match
+        read_worksheet_legacy_drawing_hf(opc_package, name, worksheet) {
+        Some((root, part_name)) => (Some(root), Some(part_name))
+        None => (None, None)
+      }
       let tables = read_worksheet_tables(opc_package, name)
       let comments = read_worksheet_comments(opc_package, name)
-      Some({ name, value: worksheet, drawing, drawing_part, tables, comments })
+      let query_tables = read_worksheet_query_tables(opc_package, name)
+      let single_xml_cells = read_worksheet_single_xml_cells(opc_package, name)
+      let control_parts = read_worksheet_control_parts(
+        opc_package, name, worksheet,
+      )
+      let custom_property_parts = read_worksheet_custom_property_parts(
+        opc_package, name, worksheet,
+      )
+      Some({
+        name,
+        value: worksheet,
+        drawing,
+        drawing_part,
+        legacy_drawing,
+        legacy_drawing_part,
+        legacy_drawing_hf,
+        legacy_drawing_hf_part,
+        tables,
+        comments,
+        query_tables,
+        single_xml_cells,
+        control_parts,
+        custom_property_parts,
+      })
+    }
+    None => None
+  }
+}
+
+///|
+fn read_chartsheet_part(
+  opc_package : @opc.Package,
+  name : String,
+) -> ChartsheetPart? raise {
+  match opc_package.part(name) {
+    Some(part) => {
+      let chartsheet = @sml_reader.read_chartsheet(part.data)
+      let (drawing, drawing_part) = match
+        read_chartsheet_drawing(opc_package, name, chartsheet) {
+        Some((wsdr, dn)) => (Some(wsdr), Some(dn))
+        None => (None, None)
+      }
+      Some({ name, value: chartsheet, drawing, drawing_part })
     }
     None => None
   }
@@ -636,6 +1157,175 @@ fn read_worksheet_comments(
 }
 
 ///|
+/// §18.12 — resolve worksheet `.../queryTable` relationships and
+/// return typed query table parts in relationship order.
+fn read_worksheet_query_tables(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+) -> Array[@sml.CT_QueryTable] raise {
+  let out : Array[@sml.CT_QueryTable] = []
+  match opc_package.relationships(worksheet_part_name) {
+    None => out
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.type_uri.has_suffix("/queryTable") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(
+            worksheet_part_name,
+            rel.target,
+          )
+          let part = opc_package.required_part(
+            name,
+            section="12.3.17",
+            source_path=worksheet_part_name,
+          )
+          out.push(@sml_reader.read_query_table(part.data))
+        }
+      }
+      out
+    }
+  }
+}
+
+///|
+/// §18.3.1.20 / §18.3.1.32 — resolve every worksheet `<control r:id>`
+/// through the worksheet part's `.../control` relationships and parse
+/// the target ActiveX/control persistence parts as raw XML roots.
+fn read_worksheet_control_parts(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+  worksheet : @sml.CT_Worksheet,
+) -> Array[WorksheetControlPart] {
+  let out : Array[WorksheetControlPart] = []
+  let controls = match worksheet.controls {
+    Some(value) => value
+    None => return out
+  }
+  match opc_package.relationships(worksheet_part_name) {
+    None => return out
+    Some(rels) => {
+      for control in controls.controls {
+        let rid = control.r_id
+        if rid.length() == 0 {
+          continue
+        }
+        for rel in rels.relationships {
+          if rel.id == rid &&
+            rel.type_uri.has_suffix("/control") &&
+            rel.target_mode == @relationships.TargetMode::Internal {
+            let control_name = try
+              @opc_part_name.resolve_target(worksheet_part_name, rel.target)
+            catch {
+              _ => continue
+            } noraise {
+              name => name
+            }
+            match opc_package.part(control_name) {
+              Some(part) =>
+                try @xml.parse(part.data) catch {
+                  _ => ()
+                } noraise {
+                  doc =>
+                    out.push({ r_id: rid, name: control_name, value: doc.root })
+                }
+              None => ()
+            }
+          }
+        }
+      }
+      out
+    }
+  }
+}
+
+///|
+/// §18.3.1.16 / §18.3.1.18 — resolve worksheet custom property
+/// relationships from `<customPr r:id>` to their application-defined
+/// XML parts.
+fn read_worksheet_custom_property_parts(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+  worksheet : @sml.CT_Worksheet,
+) -> Array[WorksheetCustomPropertyPart] {
+  let out : Array[WorksheetCustomPropertyPart] = []
+  let custom_properties = match worksheet.custom_properties {
+    Some(value) => value
+    None => return out
+  }
+  match opc_package.relationships(worksheet_part_name) {
+    None => return out
+    Some(rels) => {
+      for custom_pr in custom_properties.custom_pr {
+        let rid = custom_pr.r_id
+        if rid.length() == 0 {
+          continue
+        }
+        for rel in rels.relationships {
+          if rel.id == rid &&
+            rel.type_uri.has_suffix("/customProperty") &&
+            rel.target_mode == @relationships.TargetMode::Internal {
+            let part_name = try
+              @opc_part_name.resolve_target(worksheet_part_name, rel.target)
+            catch {
+              _ => continue
+            } noraise {
+              name => name
+            }
+            match opc_package.part(part_name) {
+              Some(part) =>
+                try @xml.parse(part.data) catch {
+                  _ => ()
+                } noraise {
+                  doc =>
+                    out.push({ r_id: rid, name: part_name, value: doc.root })
+                }
+              None => ()
+            }
+          }
+        }
+      }
+      out
+    }
+  }
+}
+
+///|
+fn read_chartsheet_drawing(
+  opc_package : @opc.Package,
+  chartsheet_part_name : String,
+  chartsheet : @sml.CT_Chartsheet,
+) -> (@drawing.WsDr, String)? raise {
+  let drawing_r_id = match chartsheet.drawing {
+    Some(drawing) => drawing.r_id
+    None => return None
+  }
+  if drawing_r_id.length() == 0 {
+    return None
+  }
+  match opc_package.relationships(chartsheet_part_name) {
+    None => None
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.id == drawing_r_id &&
+          rel.type_uri.has_suffix("/drawing") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let drawing_name = @opc_part_name.resolve_target(
+            chartsheet_part_name,
+            rel.target,
+          )
+          match opc_package.part(drawing_name) {
+            Some(part) =>
+              return Some((@drawing.read_ws_dr(part.data), drawing_name))
+            None => ()
+          }
+        }
+      }
+      None
+    }
+  }
+}
+
+///|
 /// Resolve the `<drawing r:id="...">` reference inside a worksheet to
 /// the corresponding `xl/drawings/drawingN.xml` part. Returns the
 /// pair `(typed WsDr, drawing part name)` so callers can index the
@@ -667,6 +1357,77 @@ fn read_worksheet_drawing(
           match opc_package.part(drawing_name) {
             Some(part) =>
               return Some((@drawing.read_ws_dr(part.data), drawing_name))
+            None => ()
+          }
+        }
+      }
+      None
+    }
+  }
+}
+
+///|
+/// Resolve `<legacyDrawing r:id="...">` to the VML Drawing part
+/// owned by the worksheet.  The relationship type is the standard
+/// officeDocument `/vmlDrawing` relationship; the target part root is
+/// the null-namespace `<xml>` wrapper mandated for VML Drawing parts.
+fn read_worksheet_legacy_drawing(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+  worksheet : @sml.CT_Worksheet,
+) -> (@xml.Element, String)? {
+  let drawing_r_id = match worksheet.legacy_drawing {
+    Some(drawing) => drawing.r_id
+    None => return None
+  }
+  read_worksheet_vml_drawing(opc_package, worksheet_part_name, drawing_r_id)
+}
+
+///|
+/// Resolve `<legacyDrawingHF r:id="...">` to the header/footer VML
+/// Drawing part owned by the worksheet.
+fn read_worksheet_legacy_drawing_hf(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+  worksheet : @sml.CT_Worksheet,
+) -> (@xml.Element, String)? {
+  let drawing_r_id = match worksheet.legacy_drawing_hf {
+    Some(drawing) => drawing.r_id
+    None => return None
+  }
+  read_worksheet_vml_drawing(opc_package, worksheet_part_name, drawing_r_id)
+}
+
+///|
+fn read_worksheet_vml_drawing(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+  drawing_r_id : String,
+) -> (@xml.Element, String)? {
+  if drawing_r_id.length() == 0 {
+    return None
+  }
+  match opc_package.relationships(worksheet_part_name) {
+    None => None
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.id == drawing_r_id &&
+          rel.type_uri.has_suffix("/vmlDrawing") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let drawing_name = try
+            @opc_part_name.resolve_target(worksheet_part_name, rel.target)
+          catch {
+            _ => continue
+          } noraise {
+            name => name
+          }
+          match opc_package.part(drawing_name) {
+            Some(part) =>
+              try @xml.parse(part.data) catch {
+                _ => ()
+              } noraise {
+                doc => return Some((doc.root, drawing_name))
+              }
             None => ()
           }
         }
@@ -768,6 +1529,48 @@ fn read_worksheet_tables(
 }
 
 ///|
+/// §18.5.2 — load tableSingleCells parts referenced by worksheet
+/// relationships. Unlike `<table>` parts, the relationship itself
+/// owns discovery; the root is parsed as `CT_SingleXmlCells`.
+fn read_worksheet_single_xml_cells(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+) -> Array[SingleXmlCellsPart] raise {
+  let out : Array[SingleXmlCellsPart] = []
+  match opc_package.relationships(worksheet_part_name) {
+    None => out
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.type_uri.has_suffix("/tableSingleCells") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(
+            worksheet_part_name,
+            rel.target,
+          )
+          let part = opc_package.required_part(
+            name,
+            section="12.3.19",
+            source_path=worksheet_part_name,
+          )
+          out.push({ name, value: read_single_xml_cells_part(part.data) })
+        }
+      }
+      out
+    }
+  }
+}
+
+///|
+fn read_single_xml_cells_part(data : Bytes) -> @sml.CT_SingleXmlCells raise {
+  let doc = @xml.parse(data)
+  match doc.root.name.local_name {
+    "singleXmlCells" | "tableSingleCells" =>
+      @sml.CT_SingleXmlCells::new(doc.root)
+    _ => @sml_reader.read_table_single_cells(data)
+  }
+}
+
+///|
 /// §18.8.3 / OPC §11.3.10 — locate the workbook's theme part
 /// via its relationship table.  Returns None when no theme rel
 /// nor canonical `/xl/theme/theme1.xml` part is present.
@@ -810,7 +1613,7 @@ fn locate_theme_part(
 fn find_package_relationship_part(
   opc_package : @opc.Package,
   relationship_type : String,
-  fallback : String,
+  default_part : String,
 ) -> String raise {
   match opc_package.relationships("/") {
     Some(relationships) =>
@@ -822,7 +1625,7 @@ fn find_package_relationship_part(
       }
     None => ()
   }
-  "/" + fallback
+  "/" + default_part
 }
 
 ///|
@@ -1041,6 +1844,30 @@ fn build_pivot_cache_lookup(
     result.push({ cache_id: pc.cache_id, definition_part, records_part })
   }
   result
+}
+
+///|
+/// §18.10.1.67 — keep the typed pivotCacheDefinition parts available
+/// to the SVG metadata projection. The pivot overlay consumes the
+/// decoded/materialized cache model, but some ECMA-376 cache branches
+/// are metadata-only and live only on the domain `CT_PivotCacheDefinition`.
+fn read_pivot_cache_definitions(
+  opc_package : @opc.Package,
+  cache_lookup : Array[PivotCacheRef],
+) -> Array[@sml.CT_PivotCacheDefinition] {
+  let out : Array[@sml.CT_PivotCacheDefinition] = []
+  for entry in cache_lookup {
+    match opc_package.part(entry.definition_part) {
+      None => ()
+      Some(part) =>
+        try @sml_reader.read_pivot_cache_definition(part.data) catch {
+          _ => ()
+        } noraise {
+          value => out.push(value)
+        }
+    }
+  }
+  out
 }
 
 ///|

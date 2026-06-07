@@ -115,6 +115,40 @@ fn read_radial_fill_center(grad_fill : @xml.Element) -> (Double, Double)? {
 }
 
 ///|
+/// §20.1.8.56 `<a:tileRect>` — optional gradient tile rectangle.
+/// The l/t/r/b insets are percentages of the shape box; defaults are
+/// zero. Returns `None` when no tile rectangle is authored.
+fn read_gradient_tile_rect(
+  grad_fill : @xml.Element,
+) -> (Double, Double, Double, Double)? {
+  match first_child_named(grad_fill, "tileRect") {
+    None => None
+    Some(rect) => {
+      let l = parse_st_positive_fixed_percentage(attr_value(rect, "l"))
+      let t = parse_st_positive_fixed_percentage(attr_value(rect, "t"))
+      let r = parse_st_positive_fixed_percentage(attr_value(rect, "r"))
+      let b = parse_st_positive_fixed_percentage(attr_value(rect, "b"))
+      Some((l, t, r, b))
+    }
+  }
+}
+
+///|
+fn tile_rect_axis(start : Double, end_ : Double, p : Double) -> Double {
+  start + (end_ - start) * (p / 100.0)
+}
+
+///|
+fn tile_rect_visible_extent(a : Double, b : Double) -> Double {
+  let extent = 100.0 - a - b
+  if extent < 0.001 {
+    0.001
+  } else {
+    extent
+  }
+}
+
+///|
 /// Read `<a:lin ang="..."/>` and return the angle in OOXML
 /// 60000ths-of-a-degree converted to degrees.  Returns 0 when absent
 /// (gradient is left-to-right).
@@ -156,6 +190,7 @@ fn render_grad_fill_def(
   }
   let stop_nodes = build_stop_nodes(stops)
   let radial = is_radial_gradient(grad_fill)
+  let tile_rect = read_gradient_tile_rect(grad_fill)
   if radial {
     // §20.1.8.46 (a:path) / §20.1.8.30 (a:fillToRect) — honour the
     // gradient focus rectangle so an off-centre radial (e.g. a
@@ -165,35 +200,78 @@ fn render_grad_fill_def(
     let coords = get_radial_gradient_coords(
       radial_center=read_radial_fill_center(grad_fill),
     )
-    Some(
-      @markup.elem_ns(
-        "radialGradient",
-        @markup.svg_ns,
-        [
-          @markup.attr("id", gradient_id),
-          @markup.attr("cx", coords.cx.to_string() + "%"),
-          @markup.attr("cy", coords.cy.to_string() + "%"),
-          @markup.attr("r", coords.r.to_string() + "%"),
-        ],
-        stop_nodes,
-      ),
-    )
+    let attrs : Array[@xml.Attribute] = []
+    let mut cx = coords.cx
+    let mut cy = coords.cy
+    let mut radius = coords.r
+    match tile_rect {
+      Some((l, t, r, b)) => {
+        let right = 100.0 - r
+        let bottom = 100.0 - b
+        cx = tile_rect_axis(l, right, cx)
+        cy = tile_rect_axis(t, bottom, cy)
+        let ex = tile_rect_visible_extent(l, r)
+        let ey = tile_rect_visible_extent(t, b)
+        let scale = if ex < ey { ex } else { ey }
+        radius = radius * (scale / 100.0)
+        attrs.push(@markup.attr("spreadMethod", "repeat"))
+        attrs.push(
+          @markup.attr(
+            "data-ooxml-tile-rect",
+            l.to_string() +
+            " " +
+            t.to_string() +
+            " " +
+            r.to_string() +
+            " " +
+            b.to_string(),
+          ),
+        )
+      }
+      None => ()
+    }
+    attrs.push(@markup.attr("id", gradient_id))
+    attrs.push(@markup.attr("cx", cx.to_string() + "%"))
+    attrs.push(@markup.attr("cy", cy.to_string() + "%"))
+    attrs.push(@markup.attr("r", radius.to_string() + "%"))
+    Some(@markup.elem_ns("radialGradient", @markup.svg_ns, attrs, stop_nodes))
   } else {
     let coords = ooxml_angle_to_svg_linear_gradient(read_lin_angle(grad_fill))
-    Some(
-      @markup.elem_ns(
-        "linearGradient",
-        @markup.svg_ns,
-        [
-          @markup.attr("id", gradient_id),
-          @markup.attr("x1", coords.x1.to_string() + "%"),
-          @markup.attr("y1", coords.y1.to_string() + "%"),
-          @markup.attr("x2", coords.x2.to_string() + "%"),
-          @markup.attr("y2", coords.y2.to_string() + "%"),
-        ],
-        stop_nodes,
-      ),
-    )
+    let attrs : Array[@xml.Attribute] = []
+    let mut x1 = coords.x1
+    let mut y1 = coords.y1
+    let mut x2 = coords.x2
+    let mut y2 = coords.y2
+    match tile_rect {
+      Some((l, t, r, b)) => {
+        let right = 100.0 - r
+        let bottom = 100.0 - b
+        x1 = tile_rect_axis(l, right, x1)
+        y1 = tile_rect_axis(t, bottom, y1)
+        x2 = tile_rect_axis(l, right, x2)
+        y2 = tile_rect_axis(t, bottom, y2)
+        attrs.push(@markup.attr("spreadMethod", "repeat"))
+        attrs.push(
+          @markup.attr(
+            "data-ooxml-tile-rect",
+            l.to_string() +
+            " " +
+            t.to_string() +
+            " " +
+            r.to_string() +
+            " " +
+            b.to_string(),
+          ),
+        )
+      }
+      None => ()
+    }
+    attrs.push(@markup.attr("id", gradient_id))
+    attrs.push(@markup.attr("x1", x1.to_string() + "%"))
+    attrs.push(@markup.attr("y1", y1.to_string() + "%"))
+    attrs.push(@markup.attr("x2", x2.to_string() + "%"))
+    attrs.push(@markup.attr("y2", y2.to_string() + "%"))
+    Some(@markup.elem_ns("linearGradient", @markup.svg_ns, attrs, stop_nodes))
   }
 }
 
